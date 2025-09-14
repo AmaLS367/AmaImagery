@@ -1,0 +1,34 @@
+{
+    "title": "Create account",
+    "subtitle": "It’s quick",
+    "note": "By creating an account, you agree to the service rules and privacy policy.",
+    "fields": {
+      "email": "Email",
+      "username": "Username",
+      "password": "Password",
+      "confirm": "Confirm password",
+      "agree": "I agree with the terms"
+    },
+    "placeholders": {
+      "email": "name@example.com",
+      "username": "your_nickname",
+      "password": "min 8 chars",
+      "confirm": "repeat password"
+    },
+    "actions": {
+      "submit": "Sign up",
+      "toLoginHint": "Already have an account?",
+      "toLogin": "Sign in"
+    },
+    "rules": {
+      "len": "At least 8 characters",
+      "mix": "Letters and numbers recommended"
+    },
+    "messages": {
+      "success": "Account created",
+      "exists": "User already exists",
+      "mismatch": "Passwords don't match",
+      "required": "Fill all required fields"
+    }
+  }
+  

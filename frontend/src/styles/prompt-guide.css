@@ -1,0 +1,331 @@
+/* ===== PromptGuide scoped styles (.pg-*) ===== */
+.pg-root {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+}
+
+.pg-section { 
+  margin: 0 auto; 
+  max-width: 1200px; 
+  padding: 0 16px 48px; /* Увеличиваем отступ снизу */
+}
+
+.pg-h1 { 
+  font-size: 32px; /* Увеличиваем размер */
+  font-weight: 800; 
+  margin: 0 0 16px; /* Увеличиваем отступ снизу */
+  letter-spacing: -0.02em; 
+  color: hsl(var(--foreground));
+  line-height: 1.2; /* Улучшаем межстрочный интервал */
+}
+
+.pg-h2 { 
+  font-size: 22px; /* Увеличиваем размер */
+  font-weight: 700; 
+  margin: 0 0 20px; /* Улучшаем отступы */
+  color: hsl(var(--foreground));
+  line-height: 1.3; /* Улучшаем межстрочный интервал */
+}
+
+.pg-muted { 
+  color: hsl(var(--muted-foreground)); 
+  font-size: 13px; 
+}
+
+.pg-hero { 
+  border-bottom: 1px solid hsl(var(--border)); 
+  background: hsl(var(--background)); /* Убираем градиент, делаем более естественным */
+  padding: 40px 0; /* Добавляем вертикальные отступы */
+}
+
+.pg-hero-inner { 
+  margin: 0 auto; 
+  max-width: 1200px; 
+  display: flex; 
+  gap: 32px; /* Увеличиваем отступ между колонками */
+  padding: 0 16px; /* Убираем вертикальные отступы, так как они в .pg-hero */
+  align-items: flex-start; 
+}
+
+.pg-hero-text { 
+  flex: 1 1 auto; 
+}
+
+.pg-hero-side { 
+  width: 360px; 
+  display: none; 
+}
+
+@media (min-width: 900px) { 
+  .pg-hero-side { 
+    display: block; 
+  } 
+}
+
+.pg-note { 
+  border: 1px solid hsl(var(--border)); 
+  border-radius: 16px; 
+  padding: 12px; 
+  background: hsl(var(--muted) / 0.3); 
+  position: relative; /* для позиционирования плавающей кнопки */
+}
+
+.pg-note-title { 
+  font-weight: 600; 
+  font-size: 14px; 
+  margin-bottom: 6px; 
+  color: hsl(var(--foreground));
+}
+
+.pg-pills { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 8px; 
+  margin-top: 10px; 
+}
+
+.pg-pill { 
+  border: 1px solid hsl(var(--border)); 
+  border-radius: 999px; 
+  padding: 4px 10px; 
+  font-size: 12px; 
+  color: hsl(var(--muted-foreground)); 
+  background: hsl(var(--muted) / 0.3);
+}
+
+.pg-btn { 
+  border: 1px solid hsl(var(--border)); 
+  border-radius: 10px; 
+  padding: 6px 10px; 
+  font-size: 12px; 
+  background: hsl(var(--background)); 
+  color: hsl(var(--foreground));
+  cursor: pointer; 
+  transition: background-color 0.2s;
+}
+
+.pg-btn:hover { 
+  background: hsl(var(--muted) / 0.5); 
+}
+
+.pg-code {
+  position: relative;
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  background: hsl(var(--muted) / 0.2);
+  padding: 12px;
+}
+
+.pg-code pre { 
+  white-space: pre-wrap; 
+  font-size: 13px; 
+  line-height: 1.35; 
+  margin: 0; 
+  color: hsl(var(--foreground));
+  word-break: break-word; /* Перенос длинных строк */
+}
+
+.pg-grid-4 { 
+  display: grid; 
+  grid-template-columns: 1fr; 
+  gap: 20px; /* Увеличиваем отступы */
+}
+
+.pg-grid-3 { 
+  display: grid; 
+  grid-template-columns: 1fr; 
+  gap: 20px; /* Увеличиваем отступы */
+}
+
+.pg-grid-2 { 
+  display: grid; 
+  grid-template-columns: 1fr; 
+  gap: 20px; /* Увеличиваем отступы */
+}
+
+@media (min-width: 760px) { 
+  .pg-grid-4 { grid-template-columns: repeat(2,1fr); } 
+  .pg-grid-3 { grid-template-columns: repeat(2,1fr); } 
+  .pg-grid-2 { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (min-width: 1100px) { 
+  .pg-grid-4 { grid-template-columns: repeat(4,1fr); } 
+  .pg-grid-3 { grid-template-columns: repeat(3,1fr); } 
+  .pg-grid-2 { grid-template-columns: repeat(2,1fr); }
+}
+
+.pg-card, .pg-card-simple { 
+  border: 1px solid hsl(var(--border)); 
+  border-radius: 16px; 
+  background: hsl(var(--card)); 
+  color: hsl(var(--card-foreground));
+  overflow: hidden; 
+}
+
+.pg-card-simple { 
+  padding: 12px; 
+  position: relative; /* для позиционирования плавающей кнопки */
+}
+
+.pg-card-title { 
+  font-size: 15px; 
+  font-weight: 700; 
+  margin-bottom: 6px; 
+  color: hsl(var(--foreground));
+}
+
+.pg-subtitle { 
+  font-weight: 600; 
+  font-size: 14px; 
+  margin-top: 8px; 
+  color: hsl(var(--foreground));
+}
+
+.pg-list { 
+  list-style: disc inside; 
+  font-size: 13px; 
+  color: hsl(var(--muted-foreground)); 
+  display: grid; 
+  gap: 4px; 
+}
+
+.pg-image-wrap { 
+  position: relative; 
+  overflow: hidden; /* Скрываем переполнение */
+  border-radius: 12px; /* Скругленные углы */
+  background: hsl(var(--muted) / 0.2); /* Фон для загрузки */
+}
+
+.pg-image { 
+  width: 100%; 
+  height: 280px; /* Увеличиваем высоту */
+  object-fit: cover; 
+  display: block; 
+  transition: transform 0.3s ease; /* Плавное увеличение при hover */
+}
+
+.pg-image:hover { 
+  transform: scale(1.02); /* Легкое увеличение при наведении */
+}
+
+.pg-badge { 
+  position: absolute; 
+  left: 10px; 
+  top: 10px; 
+  font-size: 11px; 
+  padding: 4px 8px; 
+  border-radius: 10px; 
+  color: white; 
+}
+
+.pg-badge-good { 
+  background: hsl(142 76% 36%); 
+}
+
+.pg-badge-bad { 
+  background: hsl(0 84% 60%); 
+}
+
+.pg-image-open { 
+  position: absolute; 
+  right: 10px; 
+  top: 10px; 
+  background: hsl(var(--background) / 0.9); 
+  border: 1px solid hsl(var(--border)); 
+  border-radius: 8px; 
+  padding: 6px 8px; 
+  font-size: 11px; 
+  color: hsl(var(--foreground)); 
+  cursor: pointer; 
+  transition: all 0.2s ease; 
+  backdrop-filter: blur(4px); 
+  z-index: 5; 
+}
+
+.pg-image-open:hover { 
+  background: hsl(var(--primary) / 0.1); 
+  border-color: hsl(var(--primary)); 
+  color: hsl(var(--primary)); 
+  transform: scale(1.05); 
+}
+
+.pg-card-body { 
+  padding: 12px 16px 16px; /* Увеличиваем отступы */
+  position: relative; /* для позиционирования плавающей кнопки */
+}
+
+.pg-card-green { 
+  border-color: hsl(142 76% 36% / 0.35); 
+}
+
+.pg-card-red { 
+  border-color: hsl(0 84% 60% / 0.35); 
+}
+
+.pg-details { 
+  border: 1px solid hsl(var(--border)); 
+  border-radius: 12px; 
+  padding: 8px 12px; 
+  background: hsl(var(--card)); 
+  color: hsl(var(--card-foreground));
+  margin-bottom: 10px; 
+}
+
+.pg-details > summary { 
+  cursor: pointer; 
+  font-weight: 600; 
+  color: hsl(var(--foreground));
+}
+
+.pg-foot { 
+  margin: 24px auto 48px; 
+  max-width: 1200px; 
+  padding: 0 16px; 
+  font-size: 12px; 
+  color: hsl(var(--muted-foreground)); 
+} 
+
+.pg-examples-lead { margin-bottom: 14px; }
+
+.pg-hero + .pg-section { margin-top: 16px; }
+
+/* плавающая кнопка копирования */
+.pg-copy-floating {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+/* небольшой зазор между заголовком и кодом, чтобы кнопка не налезала визуально */
+.pg-note .pg-code,
+.pg-card-simple .pg-code,
+.pg-card-body .pg-code { 
+  margin-top: 8px; 
+}
+
+/* контекстные оффсеты для кнопки копирования */
+
+/* Быстрый шаблон + Портрет/Full-body/Сцена/Фильтры качества: поднять на 2–3px */
+.pg-note .pg-copy-floating,
+.pg-card-simple .pg-copy-floating {
+  top: 6px; /* было 10px */
+}
+
+/* Примеры и анти-примеры: опустить на 10–12px */
+.pg-card-body .pg-copy-floating {
+  top: 33px; /* было 10px */
+}
+
+/* === Mobile/Tablet adjustments === */
+@media (max-width: 760px) {
+  .pg-hero { padding: 28px 0; }
+  .pg-hero-inner { flex-direction: column; gap: 16px; }
+  .pg-image { height: 220px; }
+}
+@media (max-width: 420px) {
+  .pg-h1 { font-size: 28px; }
+  .pg-hero { padding: 24px 0; }
+}
+

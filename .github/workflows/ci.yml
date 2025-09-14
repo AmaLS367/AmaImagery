@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  pull_request:
+
+jobs:
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck --if-present || npx tsc --noEmit
+      - run: npm run lint --if-present
+      - run: npm run build
+
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pip install pip-audit safety bandit
+      - run: pip-audit -r requirements.txt
+      - run: safety check -r requirements.txt
+      - run: bandit -q -r app -x tests
+      - run: pytest -m "not (gpu or redis or db or e2e or slow or perf)" --maxfail=1 --disable-warnings -q

@@ -1,0 +1,61 @@
+@tailwind components;
+
+@layer components {
+  .about { @apply text-foreground; }
+  .about__container { @apply mx-auto max-w-6xl px-4 md:px-6; }
+
+  /* Hero */
+  .about__hero {
+    @apply relative border-b;
+    background: radial-gradient(1200px 400px at 50% -10%,
+      hsl(var(--primary) / .10), transparent 60%);
+  }
+  .about__badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-secondary text-secondary-foreground border; }
+  .about__title { @apply mt-6 text-3xl md:text-4xl font-bold tracking-tight; }
+  .about__subtitle { @apply mt-3 max-w-2xl text-muted-foreground leading-relaxed; }
+  /* подняли кнопки и дали им зазор снизу */
+  .about__cta { @apply mt-4 mb-5 flex flex-wrap gap-3; }
+  .about__btn { @apply h-9 rounded-xl border px-4 transition-colors bg-card text-card-foreground hover:bg-secondary; }
+  .about__btn--primary { @apply bg-primary text-primary-foreground hover:bg-primary/90; }
+
+  /* Sections */
+  .about__section { @apply py-10 md:py-12 border-b; }
+
+  .about__h2 { @apply text-xl md:text-2xl font-semibold; }
+  .about__h3 { @apply text-base md:text-lg font-semibold; }
+  .about__h4 { @apply text-sm md:text-base font-semibold; }
+  .about__p { @apply text-sm text-muted-foreground leading-relaxed; }
+
+  /* Grid cards */
+  .about__grid { @apply mt-6 grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6; }
+  .about__card { @apply rounded-2xl border p-5 md:p-6 bg-card text-card-foreground shadow-sm; }
+
+  /* Steps */
+  .about__steps { @apply mt-6 space-y-4; }
+  .about__step { @apply flex gap-4 items-start; }
+  .about__stepnum { @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold; }
+
+  /* Quick help strip */
+  .about__divider { @apply border-t; }
+  .about__quick { @apply py-4; }
+  .about__links { @apply flex flex-wrap items-center gap-6; }
+  .about__link { @apply underline underline-offset-4 decoration-dotted hover:text-foreground text-sm; }
+}
+
+@layer components {
+  /* === Mobile/Tablet adjustments === */
+  @media (max-width: 1024px) { /* планшеты и ниже */
+    .about__section { @apply py-8; }
+  }
+  @media (max-width: 768px) {   /* телефоны */
+    .about__container { @apply px-4; }
+    .about__title { @apply mt-6; }
+    .about__subtitle { @apply leading-relaxed; }
+    .about__cta { @apply mb-5; }
+    .about__btn { @apply w-full; }
+    .about__grid { @apply grid-cols-1 gap-5; }
+    .about__steps { @apply space-y-4; }
+    .about__links { @apply gap-4; }
+  }
+}
+

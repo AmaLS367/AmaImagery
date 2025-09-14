@@ -1,0 +1,46 @@
+{
+  "appName": "GenAI Studio",
+  "nav": {
+    "login": "Log in",
+    "register": "Sign up",
+    "logout": "Log out",
+    "loggingOut": "Signing out…",
+    "profile": "Profile",
+    "guide": "Prompt guide",
+    "history": "History",
+    "settings": "Settings",
+    "faq": "FAQ",
+    "about": "About",
+    "privacy": "Privacy"
+  },
+  "theme": {
+    "dark": "Dark theme"
+  },
+  "accent": {
+    "color": "Accent color"
+  },
+  "motion": {
+    "intensity": "Animation intensity"
+  },
+  "glass": {
+    "enable": "Glass effect"
+  },
+  "language": {
+    "title": "Interface language",
+    "ru": "Russian",
+    "en": "English"
+  },
+  "actions": {
+    "generate": "Generate",
+    "reset": "Reset",
+    "guide": "Prompt guide",
+    "open": "Open",
+    "download": "Download"
+  },
+  "footbar": {
+    "brandTag": "Image generation. Speed, control, history.",
+    "about": "About project",
+    "privacy": "Privacy Policy",
+    "support": "Support"
+  }
+}

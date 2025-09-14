@@ -1,0 +1,19 @@
+{
+  "filterPlaceholder": "Фильтр по тексту промпта",
+  "ratioAny": "Любое соотношение",
+  "cfgAny": "CFG — любое",
+  "cfgLt6": "CFG < 6",
+  "cfg6_8": "CFG 6–8",
+  "cfgGt8": "CFG > 8",
+  "refresh": "Обновить",
+  "refreshing": "Обновляем…",
+  "errorLoading": "Ошибка загрузки истории",
+  "empty": "История пуста.",
+  "badges": {
+    "wxh": "Ш×В:",
+    "cfg": "CFG:",
+    "steps": "Шаги:",
+    "seed": "Seed:",
+    "model": "Модель:"
+  }
+}

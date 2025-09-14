@@ -1,0 +1,15 @@
+{
+  "validation": "Check the fields and try again.",
+  "unauthorized": "Please sign in to continue.",
+  "forbidden": "You don’t have permission to do this.",
+  "not_found": "Not found.",
+  "wrong_method": "Unsupported action.",
+  "timeout": "The server took too long to respond. Try again later.",
+  "conflict": "Conflict. The state changed, please refresh.",
+  "payload_too_large": "The file is too large.",
+  "unsupported_media": "Unsupported file type.",
+  "rate_limit": "Too many requests. Try again in a moment.",
+  "network": "Network error. Check your connection.",
+  "server": "Server error. Try again later.",
+  "unknown": "Unexpected error."
+}

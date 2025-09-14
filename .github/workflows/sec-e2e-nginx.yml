@@ -1,0 +1,41 @@
+name: sec-e2e-nginx
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and up
+        run: |
+          docker compose -f docker/compose.prod.yml up -d --build
+          sleep 5
+      - name: Check security headers (CSP/COOP/COEP)
+        run: |
+          curl -skI https://localhost | tee headers.txt
+          grep -i '^content-security-policy:' headers.txt
+          grep -i '^cross-origin-opener-policy:' headers.txt
+          grep -i '^cross-origin-embedder-policy:' headers.txt
+      - name: /docs off
+        run: |
+          code=$(curl -sk -o /dev/null -w "%{http_code}" https://localhost/docs || true)
+          test "$code" != "200"
+      - name: No outbound (socket blocked) — smoke
+        run: |
+          docker compose exec -T api python - <<'PY'
+import socket, os
+s = socket.socket()
+try:
+    try:
+        s.connect(("1.1.1.1", 80))
+        raise SystemExit(1)
+    except OSError:
+        pass
+finally:
+    s.close()
+PY
+      - name: Down
+        if: always()
+        run: docker compose -f docker/compose.prod.yml down -v

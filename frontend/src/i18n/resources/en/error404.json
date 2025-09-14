@@ -1,0 +1,25 @@
+{
+  "code": "404",
+  "title": "Page not found",
+  "lead": "The page you’re looking for doesn’t exist or was moved.",
+  "hint": "Check the URL or use the buttons below.",
+  "actions": {
+    "home": "Go home",
+    "faq": "Open FAQ",
+    "back": "Go back",
+    "retry": "Retry"
+  },
+  "search": {
+    "placeholder": "Search…"
+  },
+  "quick": {
+    "title": "Quick links",
+    "open": "Open",
+    "items": {
+      "generator": { "title": "Generator", "desc": "Create images with full control." },
+      "guide":     { "title": "Prompt guide", "desc": "Short rules and examples." },
+      "faq":       { "title": "FAQ", "desc": "Most common answers." },
+      "about":     { "title": "About GenAI", "desc": "What this project is and how it works." }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+    "title": "Вход",
+    "subtitle": "Войдите в аккаунт",
+    "fields": {
+      "email": "Почта",
+      "username": "Имя пользователя",
+      "emailOrUsername": "Почта или имя пользователя",
+      "password": "Пароль"
+    },
+    "placeholders": {
+      "email": "name@example.com",
+      "username": "ваш_ник",
+      "emailOrUsername": "name@example.com или ник",
+      "password": "••••••••"
+    },
+    "actions": {
+      "submit": "Войти",
+      "forgot": "Забыли пароль?",
+      "remember": "Запомнить меня",
+      "toRegisterHint": "Нет аккаунта?",
+      "toRegister": "Создать"
+    },
+    "messages": {
+      "success": "Вход выполнен",
+      "invalid": "Неверные данные",
+      "required": "Заполните обязательные поля",
+      "rateLimited": "Слишком много попыток. Повторите позже."
+    }
+  }
+  

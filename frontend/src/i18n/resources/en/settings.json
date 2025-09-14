@@ -1,0 +1,63 @@
+{
+  "theme": {
+    "title": "Theme & accent",
+    "dark": {
+      "label": "Dark theme",
+      "desc": "Switch interface appearance"
+    }
+  },
+  "accent": {
+    "title": "Accent color"
+  },
+  "motion": {
+    "title": "Animation intensity",
+    "desc": "0 — no animations; 1 — standard; 2 — emphasized"
+  },
+  "glass": {
+    "title": "Glass panels",
+    "desc": "Semi‑transparent cards with blur"
+  },
+  "queueHistory": {
+    "title": "Queue & history"
+  },
+  "queue": {
+    "parallel": {
+      "label": "Parallel generations",
+      "desc": "1–3 at the same time"
+    },
+    "cancel": {
+      "label": "Cancel previous",
+      "desc": "Abort unfinished on new run"
+    }
+  },
+  "history": {
+    "limit": {
+      "label": "History limit",
+      "desc": "How many cards to show"
+    }
+  },
+  "nsfw": {
+    "show": {
+      "label": "Show NSFW",
+      "desc": "Turn off to hide 18+ cards"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "desktop": {
+      "label": "Desktop notification “done”",
+      "desc": "Show system notification after generation"
+    },
+    "sound": {
+      "label": "Sound “done”",
+      "desc": "Short sound after generation"
+    }
+  },
+  "language": {
+    "cardTitle": "Language"
+  },
+  "banlist": {
+    "title": "NEG ban‑list",
+    "hint": "Comma or newline separated. Will be appended to NEG."
+  }
+}

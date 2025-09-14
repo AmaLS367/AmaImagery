@@ -1,0 +1,254 @@
+/* ===== Регистрация: без смены фона при заполнении, только лёгкое подсвечивание на фокусе. Ширина ~58% экрана. ===== */
+
+:root {
+    --radius-lg: var(--radius, 18px);
+    --glass-bg: hsla(var(--background, 224 14% 7%), 0.52);
+    --glass-bg-hover: hsla(var(--background, 224 14% 7%), 0.68);
+    --glass-border: hsla(var(--foreground, 0 0% 100%), 0.10);
+    --ring: var(--ring, 210 90% 56%);
+    --primary: var(--primary, 224 76% 45%);
+    --accent: var(--accent, 270 95% 65%);
+    --text: hsl(var(--foreground, 0 0% 100%));
+    --muted: hsla(var(--foreground, 0 0% 100%), 0.65);
+    --error: 0 84% 60%;
+    --success: 142 71% 45%;
+    --field-bg: rgba(255,255,255,0.03);        /* базовый фон инпута */
+    --field-border: hsla(var(--foreground, 0 0% 100%), 0.16);
+    --field-border-focus: hsla(var(--ring), 0.70);
+    --field-ring: hsla(var(--ring), 0.20);     /* мягкое свечение */
+    --label-active: hsla(var(--foreground, 0 0% 100%), 0.88);
+    --caret: hsl(var(--ring));
+  }
+  
+  /* particles.js слой */
+  .reg-particles {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+  }
+  
+  /* Корень */
+  .reg-root {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: clamp(16px, 4vw, 48px);
+    color: var(--text);
+    isolation: isolate;
+  }
+  
+  /* Фоновая виньетка */
+  .reg-root::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(1200px 700px at 15% 10%, rgba(77,163,255,0.10), transparent 60%),
+      radial-gradient(900px 600px at 85% 90%, rgba(150,120,255,0.10), transparent 55%),
+      linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.34));
+    z-index: -1;
+    pointer-events: none;
+  }
+  
+  /* Карта формы — ~58% ширины */
+  .reg-wrap {
+    position: relative;
+    z-index: 1;
+    width: clamp(420px, 58vw, 900px);
+    border-radius: var(--radius-lg);
+    background: var(--glass-bg);
+    backdrop-filter: saturate(120%) blur(16px);
+    -webkit-backdrop-filter: saturate(120%) blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 12px 36px rgba(0,0,0,0.35),
+      0 0 0 1px rgba(255,255,255,0.03) inset;
+    padding: clamp(22px, 4vw, 36px);
+    animation: reg-pop 300ms cubic-bezier(.2,.7,.2,1) both;
+  }
+  
+  @keyframes reg-pop {
+    from { transform: translateY(8px) scale(.995); opacity: 0 }
+    to   { transform: translateY(0)   scale(1);     opacity: 1 }
+  }
+  
+  /* Заголовок */
+  .reg-title {
+    margin: 2px 0 20px;
+    font-size: clamp(24px, 3.2vw, 34px);
+    font-weight: 800;
+    letter-spacing: .2px;
+    line-height: 1.2;
+    text-shadow: 0 1px 0 rgba(0,0,0,.25);
+  }
+  
+  /* Алерты */
+  .reg-alert {
+    border: 1px solid transparent;
+    padding: 12px 14px;
+    border-radius: calc(var(--radius-lg) - 8px);
+    font-size: clamp(13px, 1.4vw, 15px);
+    line-height: 1.35;
+    margin-bottom: 14px;
+    backdrop-filter: blur(6px);
+  }
+  .reg-alert--error {
+    background: hsla(var(--error), 0.12);
+    border-color: hsla(var(--error), 0.35);
+    color: hsl(var(--error));
+  }
+  .reg-alert--success {
+    background: hsla(var(--success), 0.12);
+    border-color: hsla(var(--success), 0.35);
+    color: hsl(var(--success));
+  }
+  
+  /* Форма — одна колонка */
+  .reg-form { display: grid; gap: 18px; }
+  
+  /* Поле */
+  .reg-field { position: relative; }
+  
+  /* Инпут — БЕЗ изменения фона/цвета при заполнении. */
+  .reg-input {
+    width: 100%;
+    height: 56px;
+    border-radius: 14px;
+    border: 1px solid var(--field-border);
+    background: var(--field-bg);               /* фиксированный фон */
+    color: var(--text);                         /* фиксированный цвет */
+    outline: none;
+    padding: 22px 16px 10px;
+    font-size: clamp(14px, 1.6vw, 16px);
+    line-height: 1.35;
+    transition: border-color .16s ease, box-shadow .16s ease;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
+    caret-color: var(--caret);
+  }
+  .reg-input::-ms-reveal,
+  .reg-input::-ms-clear { display: none; }
+  
+  /* ФОКУС — только лёгкое свечение, фон тот же */
+  .reg-input:focus {
+    border-color: var(--field-border-focus);
+    box-shadow: 0 0 0 3px var(--field-ring), 0 1px 0 rgba(255,255,255,0.02) inset;
+  }
+  
+  /* УБРАНО изменение фона/границы при наличии значения */
+  .has-value .reg-input { border-color: var(--field-border); }
+  
+  /* Лейбл */
+  .reg-label {
+    position: absolute;
+    left: 16px;
+    top: 18px;
+    color: var(--muted);
+    font-size: clamp(12.5px, 1.4vw, 14px);
+    line-height: 1;
+    transition: transform .16s ease, color .16s ease, opacity .16s ease, top .16s ease;
+    transform-origin: left top;
+    pointer-events: none;
+  }
+  
+  /* Активированное состояние: фокус ИЛИ есть значение */
+  .reg-field:has(.reg-input:focus) .reg-label,
+  .reg-field.has-value .reg-label {
+    transform: translateY(-12px) scale(0.88);
+    top: 14px;
+    color: var(--label-active);
+    opacity: 0.95;
+  }
+  
+  /* Поддержка автозаполнения: не меняем фон, плавающий лейбл включается */
+  .reg-input:-webkit-autofill,
+  .reg-input:-webkit-autofill:hover,
+  .reg-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text);
+    box-shadow: 0 0 0 1000px var(--field-bg) inset, 0 1px 0 rgba(255,255,255,0.02) inset !important;
+    border: 1px solid var(--field-border) !important;
+    caret-color: var(--caret);
+    transition: background-color 9999s ease-out 0s; /* гасим жёлтый хрома */
+  }
+  .reg-field:has(.reg-input:-webkit-autofill) .reg-label {
+    transform: translateY(-12px) scale(0.88);
+    top: 14px;
+    color: var(--label-active);
+    opacity: 0.95;
+  }
+  /* Firefox */
+  .reg-input:-moz-autofill {
+    box-shadow: 0 0 0 1000px var(--field-bg) inset, 0 1px 0 rgba(255,255,255,0.02) inset;
+    -moz-text-fill-color: var(--text);
+  }
+  
+  /* Ошибка */
+  .reg-error {
+    margin: 6px 2px 0;
+    font-size: clamp(11.5px, 1.3vw, 12.5px);
+    color: hsl(var(--error));
+  }
+  
+  /* Кнопка */
+  .reg-submit {
+    width: 100%;
+    height: 56px;
+    border-radius: 14px;
+    font-weight: 700;
+    letter-spacing: .2px;
+    font-size: clamp(14px, 1.6vw, 16px);
+    background-image:
+      linear-gradient(135deg, hsla(var(--primary), 0.98), hsla(var(--accent), 0.98));
+    border: 1px solid hsla(var(--primary), 0.35);
+    box-shadow:
+      0 8px 22px hsla(var(--primary), 0.25),
+      0 0 0 1px rgba(255,255,255,0.04) inset;
+    transition: transform .06s ease, box-shadow .16s ease, filter .16s ease;
+  }
+  .reg-submit:hover {
+    filter: brightness(1.05);
+    box-shadow:
+      0 14px 28px hsla(var(--accent), 0.28),
+      0 0 0 1px rgba(255,255,255,0.06) inset;
+  }
+  .reg-submit:active { transform: translateY(1px); }
+  
+  /* Подпись */
+  .reg-note {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: clamp(12px, 1.4vw, 13px);
+    text-align: center;
+  }
+  
+  /* Hover карточки */
+  @media (hover: hover) and (pointer: fine) {
+    .reg-wrap:hover {
+      background: var(--glass-bg-hover);
+      border-color: hsla(var(--foreground, 0 0% 100%), 0.12);
+    }
+  }
+  
+  /* Адаптив */
+  @media (max-width: 860px) {
+    .reg-wrap { width: min(100%, 720px); }
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .reg-wrap, .reg-submit { animation: none; transition: none; }
+    .reg-root::before { background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.3)); }
+  }
+  
+  /* Аккуратное выделение текста */
+  .reg-input::selection { background: hsla(var(--ring), 0.28); color: var(--text); }
+
+  @media (max-width: 480px) {
+    .reg-root { padding: 12px; }
+    .reg-wrap { padding: 18px; }
+    .reg-input { height: 52px; padding: 20px 14px 10px; }
+    .reg-submit { height: 52px; }
+  }
+
+  

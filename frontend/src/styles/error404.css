@@ -1,0 +1,133 @@
+@tailwind components;
+
+/* 404 — Glitch-Hero + Quick Links, в стиле сайта */
+@layer components {
+  .e404 { @apply text-foreground; }
+  .e404__container { @apply mx-auto max-w-6xl px-4 md:px-6; }
+
+  /* Hero-полоса: мягкая подсветка + разделитель */
+  .e404__hero {
+    @apply relative border-b;
+    background:
+      radial-gradient(1100px 420px at 50% -10%, hsl(var(--primary)/.10), transparent 60%),
+      radial-gradient(900px 260px at 70% -20%, hsl(var(--accent)/.08), transparent 60%);
+  }
+
+  .e404__badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-secondary text-secondary-foreground border; }
+  .e404__title { @apply mt-4 text-2xl md:text-3xl font-semibold tracking-tight; }
+  .e404__subtitle { @apply mt-2 max-w-3xl text-muted-foreground leading-relaxed; }
+
+  .e404__actions { @apply mt-5 mb-4 flex flex-wrap gap-3; }
+  .e404__btn { @apply inline-flex items-center justify-center leading-none h-10 rounded-xl border px-5 transition-colors bg-card text-card-foreground hover:bg-secondary; }
+  .e404__btn--primary { @apply bg-primary text-primary-foreground hover:bg-primary/90; }
+
+  .e404__search { @apply mt-3 mb-6; }
+  .e404__input {
+    @apply h-11 w-full rounded-full border bg-card text-card-foreground px-4 outline-none;
+    box-shadow: inset 0 0 0 1px hsl(var(--border));
+  }
+  .e404__input:focus { box-shadow: 0 0 0 3px hsl(var(--primary)/.25); }
+
+  /* === GLITCH === */
+  .e404__code { @apply mt-2; position: relative; }
+  .glitch {
+    position: relative;
+    display: inline-block;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: .9;
+    font-size: clamp(72px, 16vw, 160px);
+    background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--primary)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute; inset: 0;
+    pointer-events: none;
+    will-change: clip-path, transform;
+    mix-blend-mode: screen;
+    opacity: .75;
+  }
+  .glitch::before {
+    color: hsl(var(--accent));
+    transform: translate3d(1.5px,0,0);
+    animation: gtop 1800ms infinite steps(2, end);
+  }
+  .glitch::after {
+    color: hsl(var(--primary));
+    transform: translate3d(-1.5px,0,0);
+    animation: gbottom 1800ms infinite steps(2, end) reverse;
+  }
+  .e404__hero::after {
+    content: "";
+    position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,.03) 0 1px,
+      transparent 1px 3px
+    );
+    mix-blend-mode: soft-light;
+    opacity: .35;
+    animation: flicker 4s ease-in-out infinite;
+  }
+  @keyframes gtop {
+    0%   { clip-path: polygon(0 2%,100% 2%,100% 8%,0 8%); }
+    10%  { clip-path: polygon(0 12%,100% 12%,100% 18%,0 18%); }
+    20%  { clip-path: polygon(0 28%,100% 28%,100% 34%,0 34%); }
+    30%  { clip-path: polygon(0 46%,100% 46%,100% 50%,0 50%); }
+    40%  { clip-path: polygon(0 58%,100% 58%,100% 62%,0 62%); }
+    50%  { clip-path: polygon(0 74%,100% 74%,100% 78%,0 78%); }
+    60%  { clip-path: polygon(0 6%,100% 6%,100% 12%,0 12%); }
+    70%  { clip-path: polygon(0 38%,100% 38%,100% 44%,0 44%); }
+    80%  { clip-path: polygon(0 66%,100% 66%,100% 70%,0 70%); }
+    90%  { clip-path: polygon(0 86%,100% 86%,100% 90%,0 90%); }
+    100% { clip-path: polygon(0 22%,100% 22%,100% 28%,0 28%); }
+  }
+  @keyframes gbottom {
+    0%   { clip-path: polygon(0 10%,100% 10%,100% 14%,0 14%); }
+    10%  { clip-path: polygon(0 24%,100% 24%,100% 30%,0 30%); }
+    20%  { clip-path: polygon(0 40%,100% 40%,100% 46%,0 46%); }
+    30%  { clip-path: polygon(0 56%,100% 56%,100% 62%,0 62%); }
+    40%  { clip-path: polygon(0 70%,100% 70%,100% 74%,0 74%); }
+    50%  { clip-path: polygon(0 84%,100% 84%,100% 88%,0 88%); }
+    60%  { clip-path: polygon(0 18%,100% 18%,100% 22%,0 22%); }
+    70%  { clip-path: polygon(0 34%,100% 34%,100% 38%,0 38%); }
+    80%  { clip-path: polygon(0 48%,100% 48%,100% 52%,0 52%); }
+    90%  { clip-path: polygon(0 60%,100% 60%,100% 64%,0 64%); }
+    100% { clip-path: polygon(0 76%,100% 76%,100% 80%,0 80%); }
+  }
+  @keyframes flicker { 0%,100%{opacity:.32} 50%{opacity:.44} }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glitch::before, .glitch::after { animation: none; transform: none; opacity: .6; }
+    .e404__hero::after { animation: none; }
+  }
+
+  /* === Quick Links === */
+  .e404__section { @apply py-10 md:py-12; }
+  .e404__section-title { @apply mb-4 text-lg font-semibold; }
+  .e404__grid { @apply grid gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4; }
+  .e404__card {
+    @apply rounded-2xl border bg-card text-card-foreground p-4 transition-all;
+    box-shadow: 0 8px 24px rgba(0,0,0,.06);
+  }
+  .e404__card:hover { @apply bg-secondary; transform: translateY(-2px); }
+  .e404__card-title { @apply font-medium; }
+  .e404__card-desc { @apply mt-1 text-sm text-muted-foreground; }
+  .e404__card-cta { @apply mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary; }
+}
+
+/* === Mobile/Tablet adjustments === */
+@layer components {
+  @media (max-width: 1024px) {
+    .e404__section { @apply py-8; }
+  }
+  @media (max-width: 768px) {
+    .e404__container { @apply px-4; }
+    .e404__actions { @apply mb-3; }
+    .e404__btn { @apply w-full; }
+  }
+}

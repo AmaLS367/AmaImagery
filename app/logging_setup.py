@@ -1,7 +1,8 @@
 from __future__ import annotations
-import json, logging, re, uuid, time, os, contextvars
+import json, logging, re, uuid, time
+import os, contextvars, sys
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Dict, Union
 from loguru import logger as _logger
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,6 +20,13 @@ from app.config import settings
 _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
 _gen_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("gen_id", default=None)
 _client_ip: contextvars.ContextVar[str | None] = contextvars.ContextVar("client_ip", default=None)
+
+_MASK_PATTERNS = (
+    (re.compile(r'(?i)(Authorization:\s*Bearer\s+)[A-Za-z0-9._-]+'), r'\1***'),
+    (re.compile(r'(?i)(\bBearer\s+)[A-Za-z0-9._-]+'), r'\1***'),
+    (re.compile(r'(?i)(api[-_ ]?key\s*[:=]\s*)[A-Za-z0-9._-]+'), r'\1***'),
+    (re.compile(r'(?i)(secret[_-]?key\s*[:=]\s*)[A-Za-z0-9._-]+'), r'\1***'),
+)
 
 def get_request_id() -> str | None: return _request_id.get()
 def set_request_id(v: str | None) -> None: _request_id.set(v)
@@ -53,12 +61,12 @@ def _sanitize(obj: Any) -> Any:
         return obj
 
 # -------- фильтры --------
-def _event_filter(expected: str) -> Callable[[dict], bool]:
-    def _f(rec: dict) -> bool:
+def _event_filter(expected: str) -> Callable[[Any], bool]:
+    def _f(rec: Any) -> bool:
         return rec["extra"].get("event_type") == expected
     return _f
 
-def _app_filter(rec: dict) -> bool:
+def _app_filter(rec: Any) -> bool:
     et = rec["extra"].get("event_type")
     return et not in {"access","generation","prompt","metrics"} or et == "error"
 
@@ -66,13 +74,37 @@ def _app_filter(rec: dict) -> bool:
 logger = _logger
 
 # -------- перехват стандартного logging -> loguru --------
+# ПОСЛЕ
 class InterceptHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
+    @staticmethod
+    def _safe_message(record):
         try:
-            level = logger.level(record.levelname).name
+            return record.getMessage()
         except Exception:
-            level = record.levelno
-        logger.bind(event_type="app").opt(depth=6, exception=record.exc_info).log(level, record.getMessage())
+            try:
+                base = str(record.msg)
+            except Exception:
+                base = "<log-format-error>"
+            try:
+                if record.args:
+                    return f"{base} | args={tuple(map(repr, record.args))}"
+            except Exception:
+                pass
+            return base
+
+    def emit(self, record):
+        try:
+            try:
+                level = logger.level(record.levelname).name
+            except Exception:
+                level = record.levelno
+            msg = self._safe_message(record)
+            logger.bind(event_type="app").opt(depth=6, exception=record.exc_info).log(level, msg)
+        except Exception:
+            try:
+                logger.opt(exception=True).warning("logging_emit_failed")
+            except Exception:
+                pass
 
 def _patch_std_logging():
     logging.root.handlers = [InterceptHandler()]
@@ -80,6 +112,15 @@ def _patch_std_logging():
     for name in ("uvicorn", "uvicorn.access", "uvicorn.error", "fastapi", "asyncio", "gunicorn"):
         logging.getLogger(name).handlers = [InterceptHandler()]
         logging.getLogger(name).propagate = False
+        
+# ==============================================
+def _mask_text(text: str) -> str:
+    # использует уже объявленный _SECRET_RX
+    try:
+        return _SECRET_RX.sub(lambda m: (m.group("bearer") or m.group("key") or "") + "***", str(text))
+    except Exception:
+        return str(text)
+
 
 # -------- настройка sinks --------
 def setup_logging() -> None:
@@ -93,15 +134,18 @@ def setup_logging() -> None:
     level = settings.log_level.upper()
 
     # консоль (dev)
+    def _console_sink(message):
+        print(_mask_text(message), end="")
+
     _logger.add(
-        sink=lambda msg: print(msg, end=""),
+        sink=_console_sink,
         level=level,
         backtrace=False,
         diagnose=False,
         format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {message} | {extra}",
     )
 
-    def _add_file(rel: str, filt: Optional[Callable[[dict], bool]] = None):
+    def _add_file(rel: str, filt: Optional[Callable[[Any], bool]] = None):
         _logger.add(
             str(base / rel / "{time:YYYY-MM-DD}.jsonl"),
             level="DEBUG",
@@ -120,10 +164,11 @@ def setup_logging() -> None:
     _add_file("prompts", _event_filter("prompt"))
     _add_file("errors", _event_filter("error"))
     _add_file("metrics", _event_filter("metrics"))
+    _add_file("security", _event_filter("security"))
     _add_file("app", _app_filter)
 
     # автодобавление контекста в extra
-    def _patch(record: dict) -> None:
+    def _patch(record: Any) -> None:
         rid = get_request_id()
         gid = get_gen_id()
         cip = get_client_ip()
@@ -133,6 +178,15 @@ def setup_logging() -> None:
             record["extra"]["gen_id"] = gid
         if cip and "client_ip" not in record["extra"]:
             record["extra"]["client_ip"] = cip
+        # Маскирование секретов/Authorization в сообщении
+        try:
+            msg = record["message"]
+            record["message"] = _SECRET_RX.sub(
+                lambda m: (m.group("bearer") or m.group("key") or "") + "***",
+                msg,
+            )
+        except Exception:
+            pass
 
     # финально: все .bind()/.info() идут через уже пропатченный logger
     logger = _logger.patch(_patch)
@@ -150,9 +204,18 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             duration_ms = int((time.perf_counter() - start) * 1000)
 
-            body = [section async for section in response.body_iterator]
-            response.body_iterator = iterate_in_threadpool(iter(body))
-            bytes_out = sum(len(b) for b in body)
+            # Получаем тело ответа для подсчета байтов
+            body = []
+            try:
+                # Используем getattr для безопасного доступа к body_iterator
+                body_iterator = getattr(response, 'body_iterator', None)
+                if body_iterator is not None:
+                    body = [section async for section in body_iterator]
+                    setattr(response, 'body_iterator', iterate_in_threadpool(iter(body)))
+            except (AttributeError, TypeError):
+                # Если body_iterator недоступен, пропускаем подсчет байтов
+                pass
+            bytes_out = sum(len(b) for b in body) if body else 0
 
             logger.bind(
                 event_type="access",
@@ -164,6 +227,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 bytes_out=bytes_out,
                 user_agent=request.headers.get("user-agent"),
             ).info("Access")
+            response.headers["X-Request-ID"] = rid
             return response
         except Exception:
             duration_ms = int((time.perf_counter() - start) * 1000)
@@ -211,3 +275,9 @@ def save_prompt_raw(prompt_hash: str, original: str, negative: str | None) -> No
         os.chmod(p, 0o600)
     except Exception:
         logger.bind(event_type="app").warning("Failed to save raw prompt", extra={"prompt_hash": prompt_hash})
+
+# -------- helper для security-событий --------
+def sec(event: str, **fields):
+    payload = {"event": event}
+    payload.update(fields)
+    logger.bind(event_type="security", **payload).info("security")

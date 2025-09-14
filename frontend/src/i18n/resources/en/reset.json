@@ -1,0 +1,32 @@
+{
+    "title": "Password reset",
+    "modes": {
+      "request": "Get reset link",
+      "apply": "Set new password"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "New password",
+      "confirm": "Confirm password",
+      "token": "Reset token"
+    },
+    "placeholders": {
+      "email": "name@example.com",
+      "password": "new password",
+      "confirm": "repeat password",
+      "token": "from email"
+    },
+    "actions": {
+      "sendLink": "Send link",
+      "apply": "Update password",
+      "toLogin": "Back to sign in"
+    },
+    "messages": {
+      "linkSent": "Reset link sent to email",
+      "updated": "Password updated",
+      "mismatch": "Passwords don't match",
+      "required": "Fill all required fields",
+      "invalidToken": "Invalid or expired token"
+    }
+  }
+  

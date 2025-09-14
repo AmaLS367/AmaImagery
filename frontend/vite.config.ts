@@ -7,17 +7,50 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        '@': '/src'
+      }
+    },
     server: {
       host: '0.0.0.0',
       port: 5173,
       strictPort: true,
       cors: { origin: '*' },
-      hmr: { protocol: 'wss', clientPort: 443 },
+      hmr: { protocol: 'ws' },
       proxy: {
-        '/generate': { target, changeOrigin: true, secure: false },
+        '/generate': { 
+          target, 
+          changeOrigin: true, 
+          secure: false,
+          configure: (proxy, options) => {
+            proxy.on('error', (err, req, res) => {
+              console.log('proxy error', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log('Sending Request:', req.method, req.url);
+            });
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              console.log('Received Response:', proxyRes.statusCode);
+            });
+          }
+        },
         '/health':   { target, changeOrigin: true, secure: false },
         '/file':     { target, changeOrigin: true, secure: false },
+        '/auth':     { target, changeOrigin: true },
+        '/users':    { target, changeOrigin: true },
       },
     },
   }
 })
+
+// (универсально для любых *.trycloudflare.com и прочих туннелей):
+
+// server: {
+//   host: true,
+//   allowedHosts: true, // отключает проверку хоста
+//   hmr: {
+//     protocol: 'https',
+//     clientPort: 443,
+//   },
+// }

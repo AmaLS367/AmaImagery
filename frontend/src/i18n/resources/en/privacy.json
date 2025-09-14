@@ -1,0 +1,97 @@
+{
+  "hero": {
+    "badge": "Template",
+    "subtitle": "Basic sample for your product. Replace the bracketed fields and verify with a lawyer in your jurisdiction."
+  },
+  "meta": {
+    "dateLabel": "Date:",
+    "ownerLabel": "Owner:",
+    "owner": "[Company], [jurisdiction], [address]"
+  },
+  "s1": {
+    "title": "What data we collect",
+    "account_label": "Account:",
+    "account_text": "email/nickname, OAuth identifiers, password hash.",
+    "work_label": "Work data:",
+    "work_text": "prompts, negative prompts, parameters, uploaded references, generated images, action history.",
+    "tech_label": "Technical data:",
+    "tech_text": "IP, browser headers, language, user agent, timings, log events, session identifiers.",
+    "storage_label": "Cookies & local storage:",
+    "storage_text": "theme settings, last tab, session tokens.",
+    "support_label": "Support:",
+    "support_text": "tickets, attachments, metadata.",
+    "payments_label": "Payments (if any):",
+    "payments_text": "tokens/identifiers from the provider. Payment details are with the provider, not with us."
+  },
+  "s2": {
+    "title": "Why we process it",
+    "service": "Service delivery: auth, generation, history display, settings storage.",
+    "security": "Security: abuse protection, limits, audit.",
+    "improve": "Product improvement: aggregated statistics and diagnostics.",
+    "support": "User support.",
+    "legal": "Legal obligations."
+  },
+  "s3": {
+    "title": "Legal bases",
+    "euNote": "For the EU/UK:",
+    "contract": "Performance of a contract — core functionality of the service.",
+    "legitimate": "Legitimate interest — security and basic analytics.",
+    "consent": "Consent — optional trackers/marketing (disabled by default).",
+    "obligation": "Legal obligation — when required by law."
+  },
+  "s4": {
+    "title": "Sharing with third parties",
+    "hosting": "Hosting/cloud, CDN.",
+    "mail": "Email service, support desk.",
+    "analytics": "Crash reporting/analytics (if enabled).",
+    "payments": "Payment provider (if any).",
+    "note": "We transfer the minimum, sign DPAs, and forbid secondary use."
+  },
+  "s5": {
+    "title": "Retention periods",
+    "account": "Account — while the account is active.",
+    "history": "Generation history — until you delete it or up to [term/quota].",
+    "logs": "Logs — up to [30–90] days.",
+    "support": "Support tickets — up to [12] months.",
+    "backups": "Backups — according to the retention cycle of [N] days."
+  },
+  "s6": {
+    "title": "User rights",
+    "list1": "Access, rectification, erasure, portability.",
+    "list2": "Restriction of processing and objection.",
+    "list3": "Withdrawal of consent, if the basis is consent.",
+    "list4": "Complaint to the supervisory authority.",
+    "contactIntro": "Send requests to:"
+  },
+  "s7": {
+    "title": "Security",
+    "enc": "Encryption in transit (HTTPS).",
+    "access": "Limited data access, access logs.",
+    "updates": "Regular updates and monitoring.",
+    "note": "Absolute protection does not exist. We operate on data minimization principles."
+  },
+  "s8": {
+    "title": "International transfers",
+    "text": "If data leaves your country/the EU — we use Standard Contractual Clauses (SCC) and additional measures."
+  },
+  "s9": {
+    "title": "Children",
+    "text": "The service is not intended for persons under [13/16]. If incompatible use is found — contact us and we will delete it."
+  },
+  "s10": {
+    "title": "Cookies and local storage",
+    "strict": "Strictly necessary: session, protection, settings.",
+    "optional": "Optional — only if enabled by you. Manage in settings and in your browser."
+  },
+  "s11": {
+    "title": "Policy changes",
+    "text": "We update as the product evolves. Material changes — notice in the interface / by email."
+  },
+  "s12": {
+    "title": "Contacts",
+    "company": "[Company/sole trader], [address]",
+    "emailLabel": "Email:",
+    "emailValue": "[privacy@domain]",
+    "dpo": "If a DPO is appointed: [name], [email]"
+  }
+}

@@ -1,0 +1,48 @@
+@tailwind components;
+
+@layer components {
+  .pp { @apply text-foreground; }
+  .pp__container { @apply mx-auto max-w-6xl px-4 md:px-6; }
+
+  /* Hero */
+  .pp__hero {
+    @apply relative border-b;
+    background: radial-gradient(1200px 400px at 50% -10%,
+      hsl(var(--primary) / .10), transparent 60%);
+  }
+  .pp__badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-secondary text-secondary-foreground border; }
+  .pp__title { @apply mt-6 text-3xl md:text-4xl font-bold tracking-tight; }
+  .pp__subtitle { @apply mt-3 max-w-3xl text-muted-foreground leading-relaxed; }
+
+  .pp__meta { @apply mt-3 text-xs text-muted-foreground space-y-1; }
+
+  .pp__cta { @apply mt-5 mb-4 flex flex-wrap gap-3; }
+  .pp__btn { @apply h-9 rounded-xl border px-4 bg-card text-card-foreground hover:bg-secondary; }
+
+  /* Sections */
+  .pp__section { @apply py-10 md:py-12 border-b; }
+  .pp__section--muted { @apply bg-muted/20; }
+
+  .pp__h2 { @apply text-xl md:text-2xl font-semibold; }
+  .pp__p { @apply text-sm text-muted-foreground leading-relaxed; }
+  .pp__list { @apply mt-4 list-disc pl-6 text-sm text-muted-foreground space-y-1.5; }
+
+  /* TOC */
+  .pp__toc { @apply mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1 text-sm; }
+  .pp__toc a { @apply underline underline-offset-4 decoration-dotted hover:text-foreground; }
+
+  .pp__link { @apply underline underline-offset-4 decoration-dotted hover:text-foreground; }
+}
+
+@layer components {
+  /* === Mobile/Tablet adjustments === */
+  @media (max-width: 1024px) {
+    .pp__section { @apply py-8; }
+  }
+  @media (max-width: 768px) {
+    .pp__container { @apply px-4; }
+    .pp__btn { @apply w-full; }
+    .pp__toc { @apply -mx-4 px-4 grid-cols-1 gap-y-1; }
+    .pp__p, .pp__list { @apply break-words; }
+  }
+}

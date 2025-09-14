@@ -1,6 +1,6 @@
 import re
-from symspellpy import SymSpell, Verbosity
-from wordfreq import top_n_list
+from symspellpy import SymSpell, Verbosity # type: ignore
+from wordfreq import top_n_list # type: ignore
 from app.logging_setup import lg
 
 

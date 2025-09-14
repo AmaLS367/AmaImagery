@@ -1,0 +1,20 @@
+{
+  "title": "Generation parameters",
+  "prompt": "Prompt",
+  "neg": "Negative prompt",
+  "style": "Style",
+  "style_real": "Realism",
+  "style_anime": "Anime",
+  "steps": "Steps",
+  "cfg": "CFG",
+  "width": "Width",
+  "height": "Height",
+  "seed": "Seed",
+  "seed_random": "Random",
+  "ref": "Reference image",
+  "ref_ex": "Upload example",
+  "ref_drop": "Drop here",
+  "ip_scale": "IP Scale",
+  "waiting": "Waiting for generation…",
+  "result": "Result"
+}

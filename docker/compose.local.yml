@@ -1,0 +1,55 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+      
+  postgres:
+    env_file:
+        - ./.env.local
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    env_file:
+      - ./.env.local
+    build:
+      context: ..                    
+      dockerfile: Dockerfile          
+    ports: ["8000:8000"]
+    volumes:
+      - ../outputs:/app/outputs
+      - ../logs:/app/logs
+      - ../frontend/dist:/app/static:ro
+      - hf_cache:/root/.cache/huggingface/hub
+      - ./models:/app/models:ro
+    environment:
+      - DATABASE_URL
+      - SECRET_KEY
+      - FRONTEND_ORIGIN
+      - UI_MOUNT_ENABLED
+      - REDIS_URL
+      - HF_HOME
+      - HUGGINGFACE_HUB_CACHE
+      - TRANSFORMERS_CACHE
+      - HF_HUB_DISABLE_TELEMETRY
+      - HF_HUB_ENABLE_HF_TRANSFER       
+    depends_on: [redis, postgres]
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../frontend/dist:/usr/share/nginx/html:ro
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  hf_cache:

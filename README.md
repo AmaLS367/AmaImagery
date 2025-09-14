@@ -1,4 +1,4 @@
-# NSFW Image Generator (SDXL-Turbo)
+# NSFW Image Generator
 
 ## Install
 ```bash

@@ -1,0 +1,39 @@
+{
+  "hero": {
+    "subtitle": "Interface for image generation. Fast. Predictable. Controllable."
+  },
+  "features": {
+    "title": "What you get",
+    "cards": {
+      "control": {
+        "title": "Precise control",
+        "text": "Generation parameters, presets, repeatability. Quick re-run from history."
+      },
+      "stable": {
+        "title": "Stable operation",
+        "text": "Requests are executed sequentially. No hangs or surprises."
+      },
+      "guide": {
+        "title": "Clear guide",
+        "text": "Short rules: reference, composition, light, details. Examples and quick tips."
+      }
+    }
+  },
+  "how": {
+    "title": "How it works",
+    "steps": [
+      {
+        "title": "Write a prompt",
+        "text": "Keep it short. Add style and lighting. Use a reference if needed."
+      },
+      {
+        "title": "Run generation",
+        "text": "Watch the status. Don’t flood the queue with duplicates."
+      },
+      {
+        "title": "Review and repeat",
+        "text": "Save good parameters as a preset. Re‑run from history in one click."
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["vitest/globals", "node"],
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": [
+        "../../frontend/src/*"
+      ]
+    }
+  },
+  "include": [
+    "unit/**/*.ts"
+  ]
+}

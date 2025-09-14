@@ -72,15 +72,17 @@ logs/
 pids/
 tmp/
 temp/
+outputs/
 
 # === Env / secrets ===
 .env
 .env.*
-!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+docker/.env.local
+docker/.env.prod
 
 # === ML / heavy artifacts ===
 runs/

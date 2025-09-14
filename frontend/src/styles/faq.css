@@ -1,0 +1,61 @@
+@tailwind components;
+
+@layer components {
+  .faq { @apply text-foreground; }
+  .faq__container { @apply mx-auto max-w-6xl px-4 md:px-6; }
+
+  /* Hero */
+  .faq__hero {
+    @apply relative border-b;
+    background: radial-gradient(1200px 400px at 50% -10%, hsl(var(--primary) / .10), transparent 60%);
+  }
+  .faq__badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-secondary text-secondary-foreground border; }
+  .faq__title { @apply mt-6 text-3xl md:text-4xl font-bold tracking-tight; }
+  .faq__subtitle { @apply mt-3 max-w-3xl text-muted-foreground leading-relaxed; }
+
+  /* Search — подняли выше и дали зазор снизу */
+  .faq__search { @apply mt-4 mb-6 flex flex-col sm:flex-row gap-3; }
+  .faq__searchInput { @apply h-10 flex-1 rounded-xl border bg-card text-card-foreground px-3; }
+  .faq__searchBtn { @apply h-10 rounded-xl border px-4 bg-primary text-primary-foreground hover:bg-primary/90; }
+
+  /* Tabs like pills */
+  .faq__tabs { @apply mb-2 flex flex-wrap gap-2; }
+  .faq__tab { @apply h-9 rounded-full border px-4 text-sm bg-card text-card-foreground hover:bg-secondary transition-colors; }
+  .faq__tab.is-active { @apply bg-primary text-primary-foreground hover:bg-primary/90; }
+
+  /* Sections */
+  .faq__section { @apply py-10 md:py-12 border-b; }
+  .faq__section--muted { @apply bg-muted/20; }
+
+  /* List */
+  .faq__list { @apply space-y-3; }
+  .faq__item { @apply rounded-2xl border bg-card text-card-foreground; }
+  .faq__item > summary { @apply cursor-pointer select-none list-none p-4 md:p-5; }
+  .faq__item[open] > summary { @apply border-b; }
+  .faq__q { @apply font-medium leading-snug; }
+  .faq__a { @apply p-4 md:p-5 text-sm text-muted-foreground; }
+
+  /* Empty */
+  .faq__empty { @apply text-sm text-muted-foreground; }
+
+  /* Contact */
+  .faq__contact { @apply flex flex-wrap items-center gap-4; }
+  .faq__contactText { @apply text-sm text-muted-foreground; }
+  .faq__btn { @apply inline-flex h-9 items-center rounded-xl border px-4 bg-card hover:bg-secondary; }
+}
+
+@layer components {
+  /* === Mobile/Tablet adjustments === */
+  @media (max-width: 1024px) {
+    .faq__section { @apply py-8; }
+  }
+  @media (max-width: 768px) {
+    .faq__search { @apply mt-3 mb-5 flex-col gap-3; }
+    .faq__searchBtn { @apply w-full; }
+    .faq__tabs { @apply -mx-4 px-4 overflow-x-auto whitespace-nowrap snap-x snap-mandatory; }
+    .faq__tab { @apply snap-start; }
+    .faq__list { @apply space-y-4; }
+    .faq__item > summary { @apply p-4; }
+    .faq__a { @apply p-4; }
+  }
+}

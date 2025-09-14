@@ -1,0 +1,19 @@
+{
+  "filterPlaceholder": "Filter by prompt text",
+  "ratioAny": "Any ratio",
+  "cfgAny": "Any CFG",
+  "cfgLt6": "CFG < 6",
+  "cfg6_8": "CFG 6–8",
+  "cfgGt8": "CFG > 8",
+  "refresh": "Refresh",
+  "refreshing": "Refreshing…",
+  "errorLoading": "Failed to load history",
+  "empty": "History is empty.",
+  "badges": {
+    "wxh": "W×H:",
+    "cfg": "CFG:",
+    "steps": "Steps:",
+    "seed": "Seed:",
+    "model": "Model:"
+  }
+}

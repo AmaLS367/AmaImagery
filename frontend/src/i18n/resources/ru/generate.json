@@ -1,0 +1,20 @@
+{
+  "title": "Параметры генерации",
+  "prompt": "Промпт",
+  "neg": "Негативный промпт",
+  "style": "Стиль",
+  "style_real": "Реализм",
+  "style_anime": "Аниме",
+  "steps": "Шаги",
+  "cfg": "CFG",
+  "width": "Ширина",
+  "height": "Высота",
+  "seed": "Seed",
+  "seed_random": "Случайный",
+  "ref": "Пример (ref image)",
+  "ref_ex": "Загрузите пример",
+  "ref_drop": "Перетащите сюда",
+  "ip_scale": "IP Scale",
+  "waiting": "Жду генерацию",
+  "result": "Результат"
+}

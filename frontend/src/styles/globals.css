@@ -47,3 +47,4 @@
 }
 @layer base { * { @apply border-border; } body { @apply bg-background text-foreground; } }
 @layer utilities { .glass { @apply bg-white/60 dark:bg-white/10 backdrop-blur border; } }
+html, body, #root { overflow-x: hidden; }

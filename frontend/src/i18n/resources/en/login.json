@@ -1,0 +1,30 @@
+{
+    "title": "Sign in",
+    "subtitle": "Enter your account to continue",
+    "fields": {
+      "email": "Email",
+      "username": "Username",
+      "emailOrUsername": "Email or username",
+      "password": "Password"
+    },
+    "placeholders": {
+      "email": "name@example.com",
+      "username": "your_nickname",
+      "emailOrUsername": "name@example.com or username",
+      "password": "••••••••"
+    },
+    "actions": {
+      "submit": "Sign in",
+      "forgot": "Forgot password?",
+      "remember": "Remember me",
+      "toRegisterHint": "No account?",
+      "toRegister": "Create one"
+    },
+    "messages": {
+      "success": "Signed in",
+      "invalid": "Invalid credentials",
+      "required": "Fill all required fields",
+      "rateLimited": "Too many attempts. Try again later."
+    }
+  }
+  
