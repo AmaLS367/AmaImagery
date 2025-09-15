@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Literal, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
-from fastapi_limiter.depends import RateLimiter
+from fastapi_limiter.depends import RateLimiter  # type: ignore
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -30,7 +30,7 @@ import jwt
 
 router = APIRouter(prefix="/auth", tags=["auth🥷"])
 
-# ========= Регистрация =========
+# ========= Registration =========
 
 class RegisterIn(BaseModel):
     email: EmailStr
