@@ -76,15 +76,6 @@ def optional_user(
 
 
 async def get_user_or_ip_identifier(request: Request) -> str:
-    """
-    Get user ID or IP address for rate limiting.
-    
-    Args:
-        request: FastAPI request object
-        
-    Returns:
-        String identifier for rate limiting
-    """
     # Try to get user from authorization header
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):

@@ -13,22 +13,44 @@ export function setAccessToken(token: string | null) {
   } catch {}
 }
 
+let refreshPromise: Promise<boolean> | null = null
+
 async function refreshAccessToken(): Promise<boolean> {
-  const resp = await fetch(`${API_BASE}/auth/refresh`, {
-    method: 'POST',
-    credentials: 'include',
-  })
-  if (!resp.ok) return false
+  if (refreshPromise) return refreshPromise
+  refreshPromise = (async () => {
+    const resp = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    if (!resp.ok) return false
+    const data = await resp.json().catch(() => null)
+    const token = data && (data.access_token || data.token)
+    if (typeof token !== 'string' || token.length === 0) return false
+
+    setAccessToken(token)
+
+    try {
+      const raw = localStorage.getItem('auth')
+      if (raw) {
+        const auth = JSON.parse(raw)
+        if (auth && auth.user) {
+          auth.user.access_token = token
+          auth.user.expires_in = 900
+          localStorage.setItem('auth', JSON.stringify(auth))
+          window.dispatchEvent(new Event('auth:update'))
+        }
+      }
+    } catch {}
+
+    return true
+  })()
   try {
-    const data = await resp.json()
-    const token = (data && (data.access_token || data.token)) || null
-    if (typeof token === 'string' && token.length > 0) {
-      setAccessToken(token)
-      return true
-    }
-  } catch {}
-  return false
+    return await refreshPromise
+  } finally {
+    refreshPromise = null
+  }
 }
+
 
 async function request(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
   const headers = new Headers(init.headers || {})
@@ -151,19 +173,12 @@ export async function generateJSON(body: GeneratePayload, signal?: AbortSignal):
   const headers = buildHeaders();
   const requestBody = JSON.stringify(body);
   
-  console.log('Making request to:', url);
-  console.log('With headers:', headers);
-  console.log('With body:', requestBody);
-  
   try {
-    console.log('Starting fetch request...');
     const r = await request('/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }, true)
-    
-    console.log('Response status:', r.status);
     
     if (!r.ok) {
       console.error('Response not OK:', r.status, r.statusText);
@@ -184,8 +199,7 @@ export async function generateJSON(body: GeneratePayload, signal?: AbortSignal):
       throw new Error(msg);
     }
     
-    const data = await r.json();
-    console.log('Response data:', data);
+    const data = await r.json();;
     return data;
   } catch (e) {
     console.error('Request failed:', e);
@@ -194,7 +208,15 @@ export async function generateJSON(body: GeneratePayload, signal?: AbortSignal):
 }
 
 // Экспорт функций под личные ручки
-export type GenerationItem = { id: string; image_path: string; prompt: any; params: any; created_at: string }
+export type GenerationItem = {
+  id: string
+  image_path: string
+  prompt: any
+  params: any
+  created_at: string
+  exp?: number
+  sig?: string
+}
 
 export async function listMyGenerations(limit = 50, offset = 0) {
   const q = new URLSearchParams({ limit: String(limit), offset: String(offset) })
@@ -213,11 +235,12 @@ export async function patchMySettings(payload: any) {
   const r = await request(`/users/me/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ data: payload }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
+
 
 
 
