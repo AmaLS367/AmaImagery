@@ -3,10 +3,15 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from pathlib import Path
+import time
+
 from app.db import get_db
 from app.auth.deps import current_user
 from app.models import User, UserSettings, Generation
 from app.logging_setup import lg
+from app.config import settings
+from app.files.signing import make_signature
 
 router = APIRouter(prefix="/users", tags=["users🤵"])
 
@@ -40,6 +45,9 @@ class GenItem(BaseModel):
     prompt: dict
     params: dict
     created_at: str
+    exp: int | None = None
+    sig: str | None = None
+    image_url: str | None = None
 
 class GenList(BaseModel):
     total: int
@@ -55,12 +63,24 @@ def my_generations(
     q = db.query(Generation).filter(Generation.user_id == user.id).order_by(Generation.created_at.desc())
     total = q.count()
     rows = q.offset(offset).limit(limit).all()
-    items = [GenItem(
-        id=str(r.id),
-        image_path=r.image_path,
-        prompt=r.prompt or {},
-        params=r.params or {},
-        created_at=r.created_at.isoformat(),
-    ) for r in rows]
+    now = int(time.time())
+    ttl = int(settings.file_download_ttl_sec)
+
+    items = []
+    for r in rows:
+        name = Path(r.image_path).name 
+        exp = now + ttl
+        sig = make_signature(name, exp)
+        image_url = f"/file?path={name}&exp={exp}&sig={sig}"
+        items.append(GenItem(
+            id=str(r.id),
+            image_path=r.image_path,
+            prompt=r.prompt or {},
+            params=r.params or {},
+            created_at=r.created_at.isoformat(),
+            exp=exp,
+            sig=sig,
+            image_url=image_url,
+        ))
     lg("app").bind(scope="users", action="list_generations").info("users.generations.list")
     return GenList(total=total, items=items)

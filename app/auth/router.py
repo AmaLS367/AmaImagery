@@ -153,7 +153,6 @@ async def login(payload: LoginIn, response: Response, db: Session = Depends(get_
     resp = JSONResponse(content=body)
     
     # Clear old refresh cookie first - use same path as setting
-    print(f"LOGIN DEBUG: Clearing old refresh cookie with path=/auth")
     resp.set_cookie(
         settings.refresh_cookie_name,
         "",
@@ -165,7 +164,6 @@ async def login(payload: LoginIn, response: Response, db: Session = Depends(get_
     )
     
     # Set new refresh cookie
-    print(f"LOGIN DEBUG: Setting new refresh cookie with path=/auth")
     _set_refresh_cookie(resp, pair["refresh"])
     lg("app").bind(scope="auth", action="login").info("auth.login")
     sec("login_success", user_id=str(user.id))
@@ -273,9 +271,7 @@ class TokenOut(BaseModel):
 @router.post("/refresh", response_model=TokenOut, dependencies=[Depends(RateLimiter(times=30, seconds=60))])
 async def refresh(response: Response, request: Request):
     rt = request.cookies.get(settings.refresh_cookie_name)
-    print(f"REFRESH DEBUG: Received refresh token: {rt[:20] if rt else 'None'}...")
     if not rt:
-        print("REFRESH DEBUG: No refresh token in cookies")
         raise HTTPException(status_code=401, detail="no refresh")
 
     try:
@@ -285,45 +281,39 @@ async def refresh(response: Response, request: Request):
             algorithms=[settings.jwt_alg],
             options={"verify_aud": False},
         )
-        print(f"REFRESH DEBUG: Decoded payload - uid: {payload.get('sub')}, sid: {payload.get('session_id')}, jti: {payload.get('jti')}")
     except jwt.PyJWTError as e:
-        print(f"REFRESH DEBUG: JWT decode error: {e}")
         raise HTTPException(status_code=401, detail="bad token")
 
     if payload.get("typ") != "refresh":
-        print("REFRESH DEBUG: Bad token type")
         raise HTTPException(status_code=401, detail="bad typ")
 
     uid = str(payload.get("sub") or "")
     sid = str(payload.get("session_id") or "")
     jti = str(payload.get("jti") or "")
     
-    print(f"REFRESH DEBUG: Checking if user {uid} is logged out")
     if await is_user_logged_out(uid):
-        print(f"REFRESH DEBUG: User {uid} is logged out, revoking family")
         await revoke_family_all(uid)
         raise HTTPException(status_code=401, detail="logged out")
     if not uid or not sid or not jti:
-        print("REFRESH DEBUG: Missing claims")
         raise HTTPException(status_code=401, detail="bad claims")
 
-    print(f"REFRESH DEBUG: Checking if JTI {jti} is revoked")
     if await is_revoked(jti):
-        print(f"REFRESH DEBUG: JTI {jti} is revoked - REFRESH REUSE DETECTED!")
         sec("refresh_reuse_detected", user_id=uid, jti=jti)
         await revoke_family(uid, sid)
-        raise HTTPException(status_code=401, detail="reused")
+        resp = JSONResponse(status_code=401, content={"detail": "reused"})
+        resp.delete_cookie(settings.refresh_cookie_name, path="/auth")
+        return resp
 
-    print(f"REFRESH DEBUG: Checking if family is current for uid={uid}, sid={sid}, jti={jti}")
+
     if not await check_family_current(uid, sid, jti):
-        print(f"REFRESH DEBUG: Family not current - REFRESH MISMATCH!")
         sec("refresh_mismatch", user_id=uid, jti=jti)
         await revoke_family(uid, sid)
-        raise HTTPException(status_code=401, detail="rotated")
+        resp = JSONResponse(status_code=401, content={"detail": "rotated"})
+        resp.delete_cookie(settings.refresh_cookie_name, path="/auth")
+        return resp
 
-    print(f"REFRESH DEBUG: Rotating refresh token for uid={uid}, sid={sid}, jti={jti}")
+
     pair = await rotate_refresh(uid, sid, old_jti=jti)
-    print(f"REFRESH DEBUG: New tokens issued - access: {pair['access'][:20]}..., refresh: {pair['refresh'][:20]}...")
 
     response.set_cookie(
         key=settings.refresh_cookie_name,

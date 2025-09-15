@@ -39,6 +39,7 @@ export default function Settings({
   const [hydrating, setHydrating] = useState(true)
   const [userId, setUserId] = useState<string | null>(readUserId())
   const { t } = useTranslation()
+  const lastSentRef = useRef<string>('')  // JSON последней отправки
 
   const setHex = (hex: string) => {
     if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return
@@ -102,10 +103,15 @@ export default function Settings({
         banlist: settings.banlist,
         queue: settings.queue,
       }
-      patchMySettings(payload).catch(()=>{})
+      const snap = JSON.stringify(payload)
+      if (snap !== lastSentRef.current) {
+        lastSentRef.current = snap
+        patchMySettings(payload).catch(()=>{})
+      }
     }, 400)
     return () => clearTimeout(t)
-  }, [settings, hydrating])  
+  }, [settings, hydrating])
+ 
 
   return (
     <motion.div

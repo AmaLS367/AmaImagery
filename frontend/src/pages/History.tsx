@@ -35,6 +35,7 @@ export default function History() {
   const [items, setItems] = useState<GenerationItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [broken, setBroken] = useState<Record<string, true>>({})
 
   // Фильтры
   const [q, setQ] = useState('')
@@ -138,25 +139,35 @@ export default function History() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((it) => {
+            if (broken[it.id]) return null
+
+            const direct = (it as any).image_url
             const name = String(it.image_path || '').split(/[\\/]/).pop() || ''
-            const hasSig = (it as any).exp != null && (it as any).sig
-            const imgUrl = hasSig
-              ? `/file?path=${encodeURIComponent(name)}&exp=${String((it as any).exp)}&sig=${encodeURIComponent(String((it as any).sig))}`
-              : `/file?path=${encodeURIComponent(name)}`
+            const hasSig = typeof (it as any).exp === 'number' && typeof (it as any).sig === 'string' && (it as any).sig.length > 0
+
+            const imgUrl =
+              (typeof direct === 'string' && direct.length > 0)
+                ? direct
+                : (hasSig
+                    ? `/file?path=${encodeURIComponent(name)}&exp=${String((it as any).exp)}&sig=${encodeURIComponent(String((it as any).sig))}`
+                    : `/file?path=${encodeURIComponent(name)}`)
             const promptTxt = String(it.prompt?.prompt ?? '')
             const p = it.params || {}
 
             return (
               <div key={it.id} className="overflow-hidden rounded-xl border bg-card text-card-foreground">
-                <a href={imgUrl} target="_blank" rel="noreferrer">
-                  <img
-                    src={imgUrl}
-                    alt=""
-                    className="h-56 w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </a>
+                {imgUrl ? (
+                  <a href={imgUrl} target="_blank" rel="noreferrer">
+                    <img
+                      src={imgUrl}
+                      alt=""
+                      className="h-56 w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      onError={() => setBroken((prev) => ({ ...prev, [it.id]: true }))}
+                    />
+                  </a>
+                ) : null}
 
                 <div className="space-y-2 p-3">
                   <div className="line-clamp-3 text-sm text-muted-foreground">{promptTxt}</div>

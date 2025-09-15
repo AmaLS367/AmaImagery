@@ -5,13 +5,8 @@ This module contains the FastAPI application setup, middleware configuration,
 and route definitions for the AI image generation service.
 """
 
-import asyncio
-import gc
-import io
-import logging
-import os
-import re
-import time
+import asyncio, gc, io
+import logging, os, re, time
 from contextlib import asynccontextmanager, nullcontext
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
@@ -20,30 +15,32 @@ import base64
 import hashlib
 import hmac
 import numpy as np
-import redis.asyncio as redis
+import redis.asyncio as redis # type: ignore
 import torch
 from fastapi import FastAPI, HTTPException, Response, Request, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi_limiter import FastAPILimiter
-from fastapi_limiter.depends import RateLimiter
+from fastapi_limiter import FastAPILimiter # type: ignore
+from fastapi_limiter.depends import RateLimiter # type: ignore
 from PIL import Image, ImageOps
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-# Local imports
 from app.auth.deps import optional_user
 from app.auth.router import router as auth_router
 from app.auth.users.router import router as users_router
+
 from app.routes.generation import router as generation_router
 from app.routes.health import router as health_router
 from app.routes.files import router as files_router
+
 from app.config import settings
 from app.db import Base, engine, get_db
 from app.errors import install_error_handlers
+
 from app.files.signing import make_signature, verify_signature, consume_once
 from app.files.validators import safe_join, check_ext, check_mime
 from app.infer.net_guard import apply as apply_net_guard
@@ -66,34 +63,21 @@ from app.utils_01.spell import build_spell, correct_prompt
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application lifespan manager.
-    
-    Handles startup and shutdown events for the FastAPI application.
-    """
-    # Initialize database tables in non-production environments
     if not _is_production():
-        Base.metadata.create_all(bind=engine)
-    
-    # Initialize Redis and rate limiter
+        Base.metadata.create_all(bind=engine) 
     redis_client = await _initialize_redis()
-    
     try:
         yield
     finally:
-        # Cleanup
         if redis_client:
             await redis_client.aclose()
 
 
 def _is_production() -> bool:
-    """Check if running in production environment."""
     return os.getenv("ENV", "prod").lower() == "prod"
 
 
 async def _initialize_redis() -> Optional[redis.Redis]:
-    """Initialize Redis connection and rate limiter."""
-    # Skip Redis if NO_REDIS is set
     if os.getenv("NO_REDIS", "0") == "1":
         logger.info("Redis disabled via NO_REDIS environment variable")
         return None
@@ -212,7 +196,7 @@ def _add_middleware() -> None:
         allow_origins=[settings.frontend_origin],
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
-        allow_credentials=False,
+        allow_credentials=True,
     )
 
 
@@ -744,15 +728,6 @@ async def _generate_image_async(
 
 
 def _extract_image_from_result(result: Any) -> Image.Image:
-    """
-    Extract PIL Image from generation result.
-    
-    Args:
-        result: Generation result from the pipeline
-        
-    Returns:
-        PIL Image object
-    """
     try:
         # Try to get image from result.images
         if hasattr(result, "images"):
@@ -772,15 +747,6 @@ def _extract_image_from_result(result: Any) -> Image.Image:
 
 
 def _convert_to_pil_image(image_data: Any) -> Image.Image:
-    """
-    Convert various image formats to PIL Image.
-    
-    Args:
-        image_data: Image data in various formats
-        
-    Returns:
-        PIL Image object
-    """
     try:
         if isinstance(image_data, torch.Tensor):
             # Convert PyTorch tensor to numpy array
@@ -852,7 +818,6 @@ def _save_generation_metadata(
 # ==================== Routes Configuration ====================
 
 def _add_routes() -> None:
-    """Add all routes to the application."""
     # Authentication routes
     app.include_router(auth_router)
     app.include_router(users_router)
@@ -862,9 +827,5 @@ def _add_routes() -> None:
     app.include_router(health_router)
     app.include_router(files_router)
 
-
-
-
-# Add routes
 _add_routes()
 

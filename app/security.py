@@ -1,13 +1,13 @@
 from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from jwt import InvalidTokenError, ExpiredSignatureError
-from passlib.context import CryptContext
+from passlib.context import CryptContext # type: ignore
 from app.config import settings
 from uuid import UUID
 from typing import Any, cast
-import redis.asyncio as redis
-from redis.asyncio.client import Redis
-from redis.asyncio import Redis as AsyncRedis 
+import redis.asyncio as redis # type: ignore
+from redis.asyncio.client import Redis # type: ignore
+from redis.asyncio import Redis as AsyncRedis # type: ignore
 
 import re, jwt, uuid, time, secrets
 
@@ -47,7 +47,7 @@ def create_access_token(sub: str | int | UUID, extra: dict | None = None, expire
 
 def decode_access_token(token: str) -> dict:
   try:
-    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg])
+    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg], options={"verify_aud": False})
     if "sub" not in payload or "exp" not in payload:
       raise InvalidTokenError("malformed")
     if int(payload["exp"]) <= int(datetime.now(timezone.utc).timestamp()):
@@ -242,9 +242,8 @@ async def revoke_jti(jti: str, exp_ts: int) -> None:
 
 
 async def is_revoked(jti: str) -> bool:
-    """Check if a JTI is revoked."""
     r = await _get_redis()
-    return await r.exists(f"{REVOKE_PREFIX}{jti}") > 0
+    return bool(await r.exists(f"{REVOKE_PREFIX}{jti}"))
 
 
 async def mark_user_logged_out(user_id: str) -> None:
@@ -254,10 +253,8 @@ async def mark_user_logged_out(user_id: str) -> None:
 
 
 async def is_user_logged_out(user_id: str) -> bool:
-    """Check if user is marked as logged out."""
     r = await _get_redis()
-    return await r.exists(f"{LOGOUT_PREFIX}{user_id}") > 0
-
+    return bool(await r.exists(f"{LOGOUT_PREFIX}{user_id}"))
 
 async def clear_user_logged_out(user_id: str) -> None:
     """Clear user logged out status."""
