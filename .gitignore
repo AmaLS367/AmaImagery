@@ -90,6 +90,14 @@ checkpoints/
 *.pt
 *.pth
 *.ckpt
+models/
+outputs/
+*.safetensors
+*.onnx
+*.bin
+*.tar
+*.zip
+
 
 # === Misc ===
 *.orig
