@@ -59,6 +59,10 @@ from app.security import decode_access_token
 from app.utils import prompt_hash, out_path
 from app.utils_01.spell import build_spell, correct_prompt
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import logging
+
 # ==================== Application Lifecycle ====================
 
 @asynccontextmanager
@@ -158,12 +162,24 @@ setup_logging()
 app = FastAPI(
     title="AI Image Generator",
     version="0.2.0",
-    description="High-performance AI image generation service",
+    debug=True,
     lifespan=lifespan,
     docs_url=_get_docs_url(),
     redoc_url=_get_redoc_url(),
     openapi_url=_get_openapi_url(),
 )
+
+# ==================== LOGGER ====================
+
+log = logging.getLogger("uvicorn.error")
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    log.exception("UNHANDLED", extra={"path": str(request.url), "method": request.method})
+    return JSONResponse(
+        status_code=500,
+        content={"error": "http_error", "status": 500, "message": str(exc)},
+    )
 
 # ==================== Middleware Configuration ====================
 
@@ -201,8 +217,8 @@ def _add_middleware() -> None:
 
 
 def _setup_error_handlers() -> None:
-    """Setup error handlers and exception handlers."""
-    install_exception_handlers(app)
+    if not (getattr(settings, "env", "").lower() in ("dev", "development") or getattr(settings, "debug", 0) == 1):
+        install_exception_handlers(app)
     install_error_handlers(app)
 
 

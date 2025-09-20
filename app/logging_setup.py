@@ -123,74 +123,50 @@ def _mask_text(text: str) -> str:
 
 
 # -------- настройка sinks --------
-def setup_logging() -> None:
-    global logger  # объявляем до первого использования внутри функции
-    _logger.remove()
+def setup_logging(level: str = "INFO") -> None:
+    """
+    DEV (ENV=dev): печатаем traceback в консоль (backtrace/diagnose + {exception}).
+    PROD: без traceback в консоли.
+    Плюс: перехватываем stdlib logging в loguru.
+    """
+    global logger
 
-    base = Path(settings.log_dir)
-    rotation = settings.log_rotation
-    retention = settings.log_retention
-    compression = settings.log_compression
-    level = settings.log_level.upper()
+    # 1) Сбрасываем все sinks (важно при reload)
+    try:
+        _logger.remove()
+    except Exception:
+        pass
 
-    # консоль (dev)
-    def _console_sink(message):
-        print(_mask_text(message), end="")
+    is_dev = str(os.getenv("ENV", "")).lower() == "dev"
 
-    _logger.add(
-        sink=_console_sink,
-        level=level,
-        backtrace=False,
-        diagnose=False,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {message} | {extra}",
-    )
-
-    def _add_file(rel: str, filt: Optional[Callable[[Any], bool]] = None):
+    # 2) Консольный sink
+    if is_dev:
+        # DEV: максимум диагностики + traceback в выводе
         _logger.add(
-            str(base / rel / "{time:YYYY-MM-DD}.jsonl"),
-            level="DEBUG",
-            rotation=rotation,
-            retention=retention,
-            compression=compression,
-            serialize=True,
-            filter=filt,
+            sink=lambda m: print(_mask_text(m), end=""),
+            level=level,
+            backtrace=True,
+            diagnose=True,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+                   "<level>{level: <8}</level> | {message} | {extra}\n{exception}",
+        )
+    else:
+        # PROD: аккуратный вывод без traceback
+        _logger.add(
+            sink=lambda m: print(_mask_text(m), end=""),
+            level=level,
             backtrace=False,
             diagnose=False,
-            enqueue=True,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+                   "<level>{level: <8}</level> | {message} | {extra}",
         )
 
-    _add_file("access", _event_filter("access"))
-    _add_file("generations", _event_filter("generation"))
-    _add_file("prompts", _event_filter("prompt"))
-    _add_file("errors", _event_filter("error"))
-    _add_file("metrics", _event_filter("metrics"))
-    _add_file("security", _event_filter("security"))
-    _add_file("app", _app_filter)
-
-    # автодобавление контекста в extra
-    def _patch(record: Any) -> None:
-        rid = get_request_id()
-        gid = get_gen_id()
-        cip = get_client_ip()
-        if rid and "request_id" not in record["extra"]:
-            record["extra"]["request_id"] = rid
-        if gid and "gen_id" not in record["extra"]:
-            record["extra"]["gen_id"] = gid
-        if cip and "client_ip" not in record["extra"]:
-            record["extra"]["client_ip"] = cip
-        # Маскирование секретов/Authorization в сообщении
-        try:
-            msg = record["message"]
-            record["message"] = _SECRET_RX.sub(
-                lambda m: (m.group("bearer") or m.group("key") or "") + "***",
-                msg,
-            )
-        except Exception:
-            pass
-
-    # финально: все .bind()/.info() идут через уже пропатченный logger
-    logger = _logger.patch(_patch)
+    # 3) Проксируем стандартный logging → loguru, чтобы все логгеры (uvicorn, fastapi, и т.д.) шли через InterceptHandler
     _patch_std_logging()
+
+    # 4) Экспортируем выбранный логгер в глобал
+    logger = _logger
+
 
 # -------- Access middleware --------
 class AccessLogMiddleware(BaseHTTPMiddleware):
@@ -243,8 +219,21 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
 
 # -------- Exception handlers --------
 def install_exception_handlers(app: FastAPI) -> None:
+    """
+    DEV (ENV=dev): не перехватываем — стек отдадут ServerErrorMiddleware/run_dev.
+    PROD: скрываем детали, логируем стек, возвращаем компактный JSON.
+    """
+    if str(os.getenv("ENV", "")).lower() == "dev":
+        return
+
+    # PROD-хендлеры
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception):
+        # В DEV не глушим — даём полноценный traceback в консоль/uvicorn
+        if getattr(settings, "env", "").lower() in ("dev", "development") or getattr(settings, "debug", 0) == 1:
+            raise exc
+
+        # В prod логируем и возвращаем безопасный 500 без деталей
         logger.bind(
             event_type="error",
             scope="unhandled",
@@ -260,6 +249,7 @@ def install_exception_handlers(app: FastAPI) -> None:
             errors=exc.errors(),
         ).warning("Validation error")
         return JSONResponse({"detail": exc.errors()}, status_code=HTTP_422_UNPROCESSABLE_ENTITY)
+
 
 # -------- helper: логгер по типу --------
 def lg(kind: str):

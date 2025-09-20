@@ -7,7 +7,7 @@ Handles secure file downloads with signature verification.
 import time
 from pathlib import Path
 
-import redis.asyncio as redis
+from fastapi import Request
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 
@@ -21,6 +21,7 @@ router = APIRouter(tags=["files"])
 
 @router.get("/file")
 async def download_file(
+    request: Request,
     path: str = Query(..., min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._-]+$"),
     exp: int = Query(..., ge=0),
     sig: str = Query(..., min_length=64, max_length=64),
@@ -28,18 +29,6 @@ async def download_file(
 ) -> FileResponse:
     """
     Download a file with signature verification.
-    
-    Args:
-        path: File path/name
-        exp: Expiration timestamp
-        sig: Signature for verification
-        rate_limiter: Rate limiter dependency
-        
-    Returns:
-        FileResponse with the requested file
-        
-    Raises:
-        HTTPException: For invalid signatures, expired links, or file not found
     """
     # Validate signature
     if not verify_signature(path, exp, sig):
@@ -50,18 +39,10 @@ async def download_file(
     if ttl_left == 0:
         raise HTTPException(status_code=403, detail="Link expired")
     
-    # Check if link has been used
-    redis_client = redis.from_url(
-        settings.redis_url, 
-        encoding="utf-8", 
-        decode_responses=True
-    )
-    
-    try:
-        if not await consume_once(redis_client, sig, ttl_left):
-            raise HTTPException(status_code=403, detail="Link already used")
-    finally:
-        await redis_client.aclose()
+    redis_client = getattr(request.app.state, "redis_client", None)
+
+    if not await consume_once(redis_client, sig, ttl_left):
+        raise HTTPException(status_code=403, detail="Link already used")
     
     # Validate file path and extension
     file_path = safe_join(path)

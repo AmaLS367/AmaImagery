@@ -38,57 +38,65 @@ async def generate_image(
 ) -> GenResp:
     """
     Generate an AI image based on the provided prompt.
-    
-    Args:
-        request: Generation parameters including prompt and settings
-        db: Database session for storing generation metadata
-        user: Optional authenticated user
-        semaphore: Rate limiting semaphore
-        rate_limiter: Rate limiter dependency
-        
-    Returns:
-        GenerationResponse with generated image details
-        
-    Raises:
-        HTTPException: For validation errors or generation failures
+    DEV: пробрасывает исключения наверх для полного traceback.
+    PROD: возвращает компактные HTTP ошибки.
     """
+    import os, traceback
+    from app.logging_setup import lg
+
     generation_service = GenerationService(db)
-    
+
+    acquired = False
     try:
-        # Acquire semaphore with timeout
+        # очередь/таймаут на вход в генерацию
         gen_limit = float(settings.generation_timeout_sec)
         queue_timeout = max(20.0, min(gen_limit - 5.0, gen_limit / 2.0))
 
-        acquired = False
-        try:
-            await asyncio.wait_for(semaphore.acquire(), timeout=queue_timeout)
-            acquired = True
-            result = await generation_service.generate_image(request=request, user=user)
-            return result
-        except RuntimeError as e:
-            # Нормализуем таймаут в 504
-            if "timed out" in str(e).lower():
-                raise HTTPException(status_code=504, detail="Generation timed out")
-            raise
-        
+        await asyncio.wait_for(semaphore.acquire(), timeout=queue_timeout)
+        acquired = True
+
+        result = await generation_service.generate_image(request=request, user=user)
+        return result
+
     except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=429, 
-            detail="Service temporarily unavailable. Please try again later."
-        )
+        # очередь переполнена/ожидание слота
+        if os.getenv("ENV", "").lower() == "dev":
+            traceback.print_exc()
+        raise HTTPException(status_code=429, detail="Service temporarily unavailable. Please try again later.")
+
+    except RuntimeError as e:
+        # нормализуем таймаут пайплайна
+        msg = str(e)
+        if "timed out" in msg.lower():
+            if os.getenv("ENV", "").lower() == "dev":
+                traceback.print_exc()
+            raise HTTPException(status_code=504, detail="Generation timed out")
+        # остальное пусть пойдёт как 500/DEV traceback ниже
+        if os.getenv("ENV", "").lower() == "dev":
+            traceback.print_exc()
+            lg("app").exception("generate.runtime_error")
+            raise
+
+        raise HTTPException(status_code=500, detail=f"Generation failed: {msg}")
+
     except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
+        # валидации/oom и т.п.
+        if os.getenv("ENV", "").lower() == "dev":
+            traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Generation failed: {str(e)}"
-        )
+        # общее — DEV: проброс, PROD: компактный JSON
+        if os.getenv("ENV", "").lower() == "dev":
+            traceback.print_exc()
+            lg("app").exception("generate.failed")
+            raise
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+
     finally:
         if acquired:
             try:
                 semaphore.release()
             except Exception:
                 pass
+

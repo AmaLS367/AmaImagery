@@ -6,12 +6,13 @@ Handles the core business logic for AI image generation.
 
 import asyncio
 import gc
+import traceback
 import time
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 
-import torch
+import torch, os
 from PIL import Image
 from sqlalchemy.orm import Session
 
@@ -24,6 +25,96 @@ from app.services.safety_service import SafetyService
 from app.utils import out_path, prompt_hash
 from app.utils_01.spell import build_spell, correct_prompt
 
+def _encode_ref_on_cpu(pipeline, pil_image):
+    """
+    Кодирует PIL-изображение в эмбеддинги CLIP на CPU/FP32
+    и возвращает тензор на device/dtype UNet (обычно cuda/float16).
+    """
+    import os
+    import torch
+
+    # Куда привести эмбеддинги
+    dev = next(pipeline.unet.parameters()).device
+    dt  = next(pipeline.unet.parameters()).dtype
+
+    # --- НАЙТИ ЭНКОДЕР ---
+    encoder = getattr(pipeline, "image_encoder", None)
+    if encoder is None:
+        adapters = getattr(pipeline, "ip_adapter", None)
+        if adapters:
+            if isinstance(adapters, dict):
+                it = list(adapters.values())
+            elif isinstance(adapters, (list, tuple)):
+                it = list(adapters)
+            else:
+                it = [adapters]
+            for a in it:
+                e = getattr(a, "image_encoder", None)
+                if e is not None:
+                    encoder = e
+                    break
+
+    # --- ЗАГРУЗИТЬ ПРОЦЕССОР CLIP ИЛИ СДЕЛАТЬ РУЧНО ---
+    processor = None
+    enc_dir = getattr(settings, "ip_image_encoder_path", None) or os.path.join(
+        getattr(settings, "ip_adapter_dir", ""), "image_encoder"
+    )
+    try:
+        from transformers import AutoImageProcessor
+        processor = AutoImageProcessor.from_pretrained(enc_dir, local_files_only=True)
+    except Exception:
+        processor = None
+
+    if processor is not None:
+        try:
+            out = processor(images=pil_image.convert("RGB"), return_tensors="pt")
+            pixel_values = out["pixel_values"]
+        except Exception:
+            processor = None
+
+    if processor is None:
+        # Жёсткий fallback (тот же препроцесс OpenCLIP ViT-H/14)
+        from torchvision import transforms as T
+        tfm = T.Compose([
+            T.Resize(224, interpolation=T.InterpolationMode.BICUBIC),
+            T.CenterCrop(224),
+            T.ToTensor(),
+            T.Normalize(mean=[0.48145466, 0.4578275, 0.40821073],
+                        std=[0.26862954, 0.26130258, 0.27577711]),
+        ])
+        pixel_values = tfm(pil_image.convert("RGB")).unsqueeze(0)
+
+    pixel_values = pixel_values.to(device="cpu", dtype=torch.float32)
+
+    # --- ЕСЛИ ЭНКОДЕРА НЕТ ВООБЩЕ — ПОСЛЕДНИЙ ФОЛБЭК ---
+    if encoder is None and hasattr(pipeline, "encode_image"):
+        with torch.no_grad():
+            try:
+                emb = pipeline.encode_image(pil_image, device=str(dev), num_images_per_prompt=1)
+            except TypeError:
+                emb = pipeline.encode_image(pil_image)
+        return emb.to(device=dev, dtype=dt)
+    elif encoder is None:
+        raise RuntimeError("IP-Adapter: image encoder not found")
+
+    # --- ПРОГОН ЧЕРЕЗ ЭНКОДЕР НА CPU FP32 ---
+    encoder = encoder.to(device="cpu", dtype=torch.float32).eval()
+    with torch.no_grad():
+        enc_out = encoder(pixel_values)
+
+    if hasattr(enc_out, "image_embeds") and enc_out.image_embeds is not None:
+        emb = enc_out.image_embeds
+    elif hasattr(enc_out, "pooler_output") and enc_out.pooler_output is not None:
+        emb = enc_out.pooler_output
+    else:
+        if isinstance(enc_out, torch.Tensor):
+            emb = enc_out
+        elif isinstance(enc_out, (list, tuple)):
+            emb = next(v for v in enc_out if isinstance(v, torch.Tensor))
+        else:
+            raise RuntimeError("IP-Adapter: cannot extract image embeddings")
+
+    return emb.to(device=dev, dtype=dt)
 
 class GenerationService:
     """Service for handling image generation requests."""
@@ -45,78 +136,86 @@ class GenerationService:
         self.whitelist = {"sd15", "sdxl", "lcm", "lora", "vae"}
     
     async def generate_image(
-        self, 
-        request: GenReq, 
+        self,
+        request: GenReq,
         user: Optional[Any] = None
     ) -> GenResp:
         """
         Generate an image based on the request.
-        
-        Args:
-            request: Generation request parameters
-            user: Optional authenticated user
-            
-        Returns:
-            GenerationResponse with generated image details
         """
-        # Validate request parameters
-        self._validate_request(request)
-        
-        # Setup logging
-        gen_logger = lg("generation")
-        prompt_logger = lg("prompt")
-        
-        # Generate prompt hash
-        prompt_hash_value = prompt_hash(request.prompt, request.negative_prompt)
-        
-        # Log generation request
-        gen_logger.bind(
-            phase="requested",
-            model_id=settings.model_id,
-            size=[request.width, request.height],
-            steps=request.steps,
-            guidance_scale=request.guidance_scale,
-            ip_scale=request.ip_scale,
-            seed=request.seed,
-        ).info("generation.requested")
-        
-        # Check safety policies
-        self._check_safety_policies(request, user)
-        
-        # Process prompt
-        processed_prompt, corrections = self._process_prompt(request.prompt)
-        
-        # Prepare generation parameters
-        generation_params = self._prepare_generation_params(request, processed_prompt)
-        
-        # Generate the image
-        image = await self._generate_image_async(generation_params)
-        
-        # Save the image
-        output_path = self._save_image(image, prompt_hash_value)
-        
-        # Save generation metadata to database
-        self._save_generation_metadata(request, user, output_path, prompt_hash_value)
-        
-        # Log completion
-        gen_logger.bind(
-            phase="completed",
-            prompt_hash=prompt_hash_value,
-            output_path=output_path,
-            device=settings.device,
-        ).success("generation.completed")
-        
-        # Create signed URL if enabled
-        signed_url = self._create_signed_url(output_path) if settings.file_signing_enabled else None
-        
-        return GenResp(
-            ok=True,
-            path=Path(output_path).name,
-            prompt_hash=prompt_hash_value,
-            corrections=corrections,
-            exp=signed_url["exp"] if signed_url else None,
-            sig=signed_url["sig"] if signed_url else None,
-        )
+        try:
+            # Validate request parameters
+            self._validate_request(request)
+
+            # Setup logging
+            gen_logger = lg("generation")
+            prompt_logger = lg("prompt")
+
+            # Generate prompt hash
+            prompt_hash_value = prompt_hash(request.prompt, request.negative_prompt)
+
+            # Log generation request
+            gen_logger.bind(
+                phase="requested",
+                model_id=settings.model_id,
+                size=[request.width, request.height],
+                steps=request.steps,
+                guidance_scale=request.guidance_scale,
+                ip_scale=request.ip_scale,
+                seed=request.seed,
+            ).info("generation.requested")
+
+            # Check safety policies
+            self._check_safety_policies(request, user)
+
+            # Process prompt
+            processed_prompt, corrections = self._process_prompt(request.prompt)
+
+            # Prepare generation parameters
+            generation_params = self._prepare_generation_params(request, processed_prompt)
+
+            # Generate the image
+            image = await self._generate_image_async(generation_params)
+
+            # Save the image
+            output_path = self._save_image(image, prompt_hash_value)
+
+            # Save generation metadata to database
+            self._save_generation_metadata(request, user, output_path, prompt_hash_value)
+
+            # Log completion
+            gen_logger.bind(
+                phase="completed",
+                prompt_hash=prompt_hash_value,
+                output_path=output_path,
+                device=settings.device,
+            ).success("generation.completed")
+
+            # Create signed URL if enabled
+            signed_url = self._create_signed_url(output_path) if settings.file_signing_enabled else None
+
+            return GenResp(
+                ok=True,
+                path=Path(output_path).name,
+                prompt_hash=prompt_hash_value,
+                corrections=corrections,
+                exp=signed_url["exp"] if signed_url else None,
+                sig=signed_url["sig"] if signed_url else None,
+            )
+
+        except Exception:
+            # Печатаем полноценный traceback в dev и логируем всегда
+            traceback.print_exc()
+            logger.exception(
+                "generation.failed",
+                extra={
+                    "event_type": "app",
+                    "scope": "generation",
+                },
+            )
+            # Ничего не скрываем тут — пусть поднимется выше до dev middleware
+            raise
+
     
     def _validate_request(self, request: GenReq) -> None:
         """Validate generation request parameters."""
@@ -235,46 +334,146 @@ class GenerationService:
         }
     
     async def _generate_image_async(self, params: Dict[str, Any]) -> Image.Image:
-        """Generate the image asynchronously."""
-        from app.inference.pipeline import get_pipeline, get_pipeline_with_ip
-        
-        # Get the appropriate pipeline
-        use_ip = bool(params["ref_image_b64"])
-        pipeline = get_pipeline_with_ip() if use_ip else get_pipeline()
-        
-        # Setup device and generator
-        device = next(pipeline.unet.parameters()).device
-        generator = None
-        if params["seed"] is not None:
-            generator = torch.Generator(device=str(device)).manual_seed(int(params["seed"]))
-        
-        # Setup autocast context
-        ctx = (
-            torch.autocast("cuda", dtype=torch.float16) 
-            if device.type == "cuda" 
-            else nullcontext()
+        """ Asynchronously generate an image """
+        gen_log = lg("generation")
+        use_ip = bool(params.get("ref_image_b64"))
+        gen_log.debug(
+            "generate_async.start",
+            extra={
+                "use_ip": use_ip,
+                "w": int(params.get("width", 0)),
+                "h": int(params.get("height", 0)),
+                "steps": int(params.get("steps", 0)),
+                "gs": float(params.get("guidance_scale", 0.0)),
+                "ip_scale": params.get("ip_scale"),
+            },
         )
-        
-        # Prepare extra parameters
-        extra = {}
-        if use_ip and params["ref_image_b64"]:
-            ref_image = self.image_service.prepare_reference_image(
-                params["ref_image_b64"], 
-                target_size=512
-            )
-            extra["ip_adapter_image"] = ref_image
-            
-            # Clamp ip_scale to valid range
-            ip_scale = 0.6 if params["ip_scale"] is None else float(params["ip_scale"])
-            ip_scale = max(0.0, min(1.5, ip_scale))
-            extra["ip_adapter_scale"] = ip_scale
-        
-        # CPU-автосейф: если устройство CPU — снижаем требования, чтобы уложиться в лимит
-        use_width = int(params["width"])
-        use_height = int(params["height"])
-        use_steps = int(params["steps"])
+
+        # Получаем пайплайн
+        try:
+            from app.inference.pipeline import get_pipeline, get_pipeline_with_ip  # импорт локальной фабрики
+            pipeline = get_pipeline_with_ip() if use_ip else get_pipeline()
+        except Exception as e:
+            # если IP-адаптер не поднялся — даём фолбэк на обычный пайплайн
+            lg("app").bind(event="ip_adapter.unavailable", reason=str(e)).warning("ip_adapter.unavailable")
+            from app.inference.pipeline import get_pipeline
+            pipeline = get_pipeline()
+            use_ip = False
+
+        # Девайс/генератор
+        try:
+            device = next(pipeline.unet.parameters()).device  # type: ignore[attr-defined]
+        except Exception:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        gen_log.debug(
+            "pipeline.ready",
+            extra={"device": str(device), "dtype": str(getattr(pipeline, "dtype", None))},
+        )
+
+        generator = None
+        if params.get("seed") is not None:
+            try:
+                generator = torch.Generator(device=str(device)).manual_seed(int(params["seed"]))
+            except Exception:
+                generator = None
+
+        # autocast
+        ctx = (torch.autocast(device_type=device.type, dtype=torch.float16)
+            if device.type == "cuda" else nullcontext())
+
+        # Подготовка IP-эмбедов, если надо
+        extra: Dict[str, Any] = {}
+        if use_ip and params.get("ref_image_b64"):
+            try:
+                ref_image = self.image_service.prepare_reference_image(params["ref_image_b64"], target_size=512)
+
+                # масштаб влияния
+                ip_scale = 0.6 if params.get("ip_scale") is None else float(params["ip_scale"])
+                ip_scale = max(0.0, min(1.5, ip_scale))
+
+                if hasattr(pipeline, "set_ip_adapter_scale"):
+                    try:
+                        pipeline.set_ip_adapter_scale(ip_scale)  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+                    
+                # --- begin: guard devices before IP encoding ---
+                try:
+                    dev = next(pipeline.unet.parameters()).device
+                    setattr(pipeline, "_execution_device", dev)
+
+                    # text_encoder на том же девайсе, что и UNet
+                    if hasattr(pipeline, "text_encoder") and pipeline.text_encoder is not None:
+                        pipeline.text_encoder.to(dev)
+
+                    # vision encoder держим на CPU/fp32 (минимум VRAM, без микса типов)
+                    if hasattr(pipeline, "image_encoder") and pipeline.image_encoder is not None:
+                        pipeline.image_encoder.to(device="cpu", dtype=torch.float32)
+                except Exception:
+                    logger.exception("ip_adapter_device_guard_failed")
+                # --- end: guard devices before IP encoding ---
+
+                image_embeds = None
+
+                # Приоритет: нативный encode_image, чтобы у diffusers/ip-adapter не ломалась сигнатура
+                if hasattr(pipeline, "encode_image"):
+                    # diffusers>=0.24 IP-Adapter API
+                    image_embeds = pipeline.encode_image(  # type: ignore[attr-defined]
+                        ref_image, device=device, num_images_per_prompt=1
+                    )
+
+                # Фолбэк: прямой энкодер (CLIP)
+                elif hasattr(pipeline, "image_encoder"):
+                    enc = pipeline.image_encoder  # type: ignore[attr-defined]
+                    proc = getattr(pipeline, "image_processor", None) or getattr(pipeline, "feature_extractor", None)
+                    if proc is None:
+                        raise RuntimeError("IP-Adapter: image processor not found")
+                    with torch.inference_mode():
+                        proc_out = proc(images=ref_image, return_tensors="pt")
+                        # держим препроцесс и энкодер строго на CPU/FP32
+                        pixel = proc_out["pixel_values"].to(device="cpu", dtype=torch.float32)
+
+                        enc = enc.to(device="cpu", dtype=torch.float32).eval()
+                        with torch.inference_mode():
+                            image_embeds = enc(pixel)
+
+                        # а уже готовые эмбеды переносим к UNet (его девайс/тип)
+                        image_embeds = image_embeds.to(
+                            device=device,
+                            dtype=getattr(pipeline, "dtype", torch.float16)
+)
+
+
+                if image_embeds is None:
+                    raise RuntimeError("IP-Adapter: failed to prepare image embeddings")
+
+                gen_log.debug(
+                    "ip_adapter.embeds_ready",
+                    extra={
+                        "embeds_type": type(image_embeds).__name__,
+                        "has_cuda": torch.cuda.is_available(),
+                        "embeds_device": str(getattr(image_embeds, "device", "n/a")),
+                        "embeds_shape": tuple(getattr(image_embeds, "shape", ())),
+                        "ip_scale": ip_scale,
+                    },
+                )
+
+                # Используем современные ключи (image_embeds). Старые (ip_adapter_image/ip_adapter_scale) не суём.
+                extra["image_embeds"] = image_embeds
+
+            except Exception:
+                traceback.print_exc()
+                logger.exception("ip_adapter.prepare_failed", extra={"event_type": "app"})
+                # Если эмбеды не удалось — мягко откатываемся на генерацию без IP (чтобы получить стек дальше)
+                use_ip = False
+                extra.clear()
+
+        # Ограничения для CPU, если вдруг
+        use_width = int(params.get("width", 512))
+        use_height = int(params.get("height", 512))
+        use_steps = int(params.get("steps", 20))
         if device.type == "cpu":
-            # ограничиваем геометрию и шаги для CPU
             max_side = 640
             if max(use_width, use_height) > max_side:
                 ratio = max_side / float(max(use_width, use_height))
@@ -283,56 +482,99 @@ class GenerationService:
             if use_steps > 24:
                 use_steps = 22
 
-        # Setup timeout callback с мягким запасом
-        soft_deadline = time.time() + settings.generation_timeout_sec - 1.0
+        # Таймаут мягкий через callback
+        soft_deadline = time.time() + getattr(settings, "generation_timeout_sec", 60) - 1.0
 
         def timeout_callback(step, timestep=None, latents=None):
             if time.time() > soft_deadline:
                 raise RuntimeError("generation_timeout")
 
-        # Generate the image
+        # Вызов пайплайна
         def sync_generation():
             with torch.inference_mode(), ctx:
-                return pipeline(
-                    prompt=params["prompt"],
-                    negative_prompt=params["negative_prompt"],
-                    num_inference_steps=use_steps,
-                    width=use_width,
-                    height=use_height,
-                    guidance_scale=params["guidance_scale"],
-                    generator=generator,
-                    callback=timeout_callback,
-                    callback_steps=1,
-                    **extra,
-                )
-        
+                try:
+                    return pipeline(
+                        prompt=params.get("prompt"),
+                        negative_prompt=params.get("negative_prompt"),
+                        num_inference_steps=use_steps,
+                        width=use_width,
+                        height=use_height,
+                        guidance_scale=float(params.get("guidance_scale", 7.0)),
+                        generator=generator,
+                        callback=timeout_callback,
+                        callback_steps=1,
+                        **({} if not use_ip else extra),
+                    )
+                except TypeError as e:
+                    # На случай несовпадения сигнатур IP-адаптера — пробуем без extra
+                    if "ip_adapter" in str(e) or "image_embeds" in str(e):
+                        return pipeline(
+                            prompt=params.get("prompt"),
+                            negative_prompt=params.get("negative_prompt"),
+                            num_inference_steps=use_steps,
+                            width=use_width,
+                            height=use_height,
+                            guidance_scale=float(params.get("guidance_scale", 7.0)),
+                            generator=generator,
+                            callback=timeout_callback,
+                            callback_steps=1,
+                        )
+                    raise
+
+        gen_log.debug(
+            "pipeline.call",
+            extra={
+                "w": use_width,
+                "h": use_height,
+                "steps": use_steps,
+                "gs": float(params.get("guidance_scale", 7.0)),
+                "with_ip": use_ip,
+            },
+        )
+
         try:
             result = await asyncio.wait_for(
                 asyncio.to_thread(sync_generation),
-                timeout=settings.generation_timeout_sec + 2,
+                timeout=getattr(settings, "generation_timeout_sec", 60) + 2,
             )
-            
-            # Extract image from result
-            image = self.image_service.extract_image_from_result(result)
-            return image
-            
         except asyncio.TimeoutError:
-            raise RuntimeError("Generation timed out")
+            traceback.print_exc()
+            logger.exception("generation.timeout", extra={"event_type": "app"})
+            raise
         except RuntimeError as e:
+            traceback.print_exc()
+            logger.exception("generation.runtime_error", extra={"event_type": "app", "msg": str(e)})
             msg = str(e).lower()
             if "generation_timeout" in msg:
                 raise RuntimeError("Generation timed out")
-            if "out of memory" in msg or "cuda" in msg and "memory" in msg:
+            if "out of memory" in msg or ("cuda" in msg and "memory" in msg):
                 raise ValueError("CUDA out of memory: снизь width/height до 512 или уменьшай steps")
             raise
+        except Exception as e:
+            traceback.print_exc()
+            logger.exception("generation.exception", extra={"event_type": "app", "where": "pipeline.call", "msg": str(e)})
+            raise
         finally:
-            # Cleanup GPU memory
             try:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
             except Exception:
                 pass
             gc.collect()
+
+        # Извлекаем изображение
+        try:
+            image = self.image_service.extract_image_from_result(result)
+            gen_log.info(
+                "pipeline.ok",
+                extra={"mode": getattr(image, "mode", None), "size": getattr(image, "size", None)},
+            )
+            return image
+        except Exception as e:
+            traceback.print_exc()
+            logger.exception("generation.extract_failed", extra={"event_type": "app", "msg": str(e)})
+            raise
+
     
     def _save_image(self, image: Image.Image, prompt_hash_value: str) -> str:
         """Save the generated image to disk."""

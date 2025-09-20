@@ -19,11 +19,29 @@ def verify_signature(name: str, exp: int, sig: str) -> bool:
     except Exception:
         return False
 
-async def consume_once(redis, sig: str, ttl: int) -> bool:
-    if not settings.file_single_use:
+async def consume_once(redis: Optional["redis.asyncio.Redis"], sig: str, ttl: int) -> bool:
+    """
+    True → можно отдать файл и пометили токен как использованный.
+    False → ссылка уже была использована.
+    В dev (redis=None) или при сбоях Redis → не валим ручку, возвращаем True.
+    """
+    # одноразовость выключена настройкой → всегда разрешаем
+    if not getattr(settings, "file_single_use", False):
         return True
-    # setnx = True → первый доступ, False → повтор
-    ok = await redis.setnx(f"filedl:{sig}", "1")
-    if ok:
-        await redis.expire(f"filedl:{sig}", ttl)
-    return bool(ok)
+
+    # Redis отсутствует (dev) → пропускаем одноразовость
+    if redis is None:
+        return True
+
+    key = f"filedl:{sig}"
+    try:
+        # setnx: первый доступ → True, повтор → False
+        ok = await redis.setnx(key, "1")
+        if not ok:
+            return False
+        # ограничим TTL адекватным диапазоном
+        await redis.expire(key, max(1, min(ttl, 3600)))
+        return True
+    except Exception:
+        # при любой ошибке Redis не роняем выдачу файла в dev
+        return True

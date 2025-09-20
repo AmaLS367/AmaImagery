@@ -135,6 +135,9 @@ class Settings(BaseSettings):
     # --- Paths --
     root_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2])
     outputs_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "outputs", alias="OUTPUTS_DIR")
+    
+    ip_adapter_dir: str | None = Field(default=None, validation_alias="IP_ADAPTER_DIR")
+    ip_image_encoder_path: str | None = Field(default=None, validation_alias="IP_IMAGE_ENCODER_PATH")
 
     @field_validator("device", mode="before")
     @classmethod
