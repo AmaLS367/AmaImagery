@@ -85,11 +85,19 @@ docker/.env.local
 docker/.env.prod
 
 # === ML / heavy artifacts ===
+models/
+outputs/
 runs/
 checkpoints/
 *.pt
 *.pth
 *.ckpt
+*.safetensors
+*.onnx
+*.bin
+*.tar
+*.zip
+
 
 # === Misc ===
 *.orig
