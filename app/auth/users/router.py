@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 import time
 
-from app.db import get_db
+from app.infra.db import get_db
 from app.auth.deps import current_user
-from app.models import User, UserSettings, Generation
-from app.logging_setup import lg
+from app.domain.models import User, UserSettings, Generation
+from app.core.logging import lg
 from app.config import settings
 from app.files.signing import make_signature
 

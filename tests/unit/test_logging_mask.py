@@ -1,5 +1,5 @@
 import io, logging, pytest
-from app.logging_setup import setup_logging, logger
+from app.core.logging import setup_logging, logger
 
 def test_auth_header_masking(capsys):
     setup_logging()

@@ -1,56 +1,79 @@
-"""
-Rate limiting service.
+from __future__ import annotations
 
-Handles rate limiting configuration and dependencies.
-"""
+import time
+from typing import Callable, Optional, Tuple, List
 
-import os
-from typing import Union, Callable
-from fastapi import Depends
-from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis  # type: ignore
+from fastapi import Depends, HTTPException, Request, status
 
+from app.config import settings
 from app.auth.deps import get_user_or_ip_identifier
 
+_redis: Optional[redis.Redis] = None
 
-def create_rate_limiter(times: int = 60, seconds: int = 60) -> Union[RateLimiter, Callable]:
+async def _get_redis() -> redis.Redis:
     """
-    Create a rate limiter for generation endpoints.
-    
-    Args:
-        times: Number of requests allowed
-        seconds: Time window in seconds
-        
-    Returns:
-        RateLimiter dependency
+    Возвращает singleton Redis-клиента с проверкой доступности.
+    При LIMITS_ENABLED=true и недоступном Redis — 503.
     """
-    # If Redis is disabled, return a no-op limiter
-    if os.getenv("NO_REDIS", "0") == "1":
-        return lambda: None
-    
-    return RateLimiter(
-        times=times, 
-        seconds=seconds, 
-        identifier=get_user_or_ip_identifier
-    )
+    global _redis
+    if _redis is not None:
+        return _redis
+    try:
+        client = redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        # быстрый ping — гарантируем доступность backend'а до начала лимитов
+        await client.ping()
+        _redis = client
+        return _redis
+    except Exception as e:
+        if settings.limits_enabled:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail={"error": "rate_limit_backend_unavailable"}) from e
+        # Если лимиты выключены, зависимость использовать нельзя.
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail={"error": "rate_limiter_misconfigured"})
 
+def create_rate_limiter(limit: int, window_sec: int) -> Callable:
+    """
+    Скользящее окно по фиксированным бакетам: ключ = "ratelimit:{id}:{windowStart}".
+    Возвращает dependency для FastAPI-эндпоинтов.
+    """
 
-def create_file_rate_limiter(times: int = 60, seconds: int = 60) -> Union[RateLimiter, Callable]:
-    """
-    Create a rate limiter for file download endpoints.
-    
-    Args:
-        times: Number of requests allowed
-        seconds: Time window in seconds
-        
-    Returns:
-        RateLimiter dependency
-    """
-    # If Redis is disabled, return a no-op limiter
-    if os.getenv("NO_REDIS", "0") == "1":
-        return lambda: None
-    
-    return RateLimiter(
-        times=times, 
-        seconds=seconds, 
-        identifier=get_user_or_ip_identifier
-    )
+    async def _dep(
+        request: Request,
+        redis_client: redis.Redis = Depends(_get_redis),
+        user_key: str = Depends(get_user_or_ip_identifier),
+    ) -> None:
+        now = int(time.time())
+        bucket = now // window_sec
+        key = f"ratelimit:{user_key}:{bucket}"
+        # время до конца окна — полезно для Retry-After
+        retry_after = (bucket + 1) * window_sec - now
+
+        try:
+            # INCR + EXPIRE атомарно через пайплайн
+            pipe = redis_client.pipeline()
+            pipe.incr(key, 1)
+            pipe.expire(key, window_sec + 1)
+            count, _ = await pipe.execute()
+        except Exception as e:
+            # при включённых лимитах backend обязателен
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail={"error": "rate_limit_backend_unavailable"}) from e
+
+        try:
+            current = int(count) if not isinstance(count, int) else count
+        except Exception:
+            current = limit + 1  # страхуемся: лучше перелимитить, чем пропустить
+
+        if current > limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"error": "rate_limited", "key": user_key, "limit": limit, "window": window_sec},
+                headers={"Retry-After": str(max(retry_after, 1))},
+            )
+
+        # иначе — пропускаем запрос без возврата значения
+        return
+
+    return _dep

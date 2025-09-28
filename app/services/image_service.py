@@ -12,6 +12,7 @@ import numpy as np
 import torch
 from PIL import Image, ImageOps
 
+from app.core.logging import logger
 
 class ImageProcessingService:
     """Service for handling image processing operations."""
@@ -92,6 +93,9 @@ class ImageProcessingService:
                 # Convert PyTorch tensor to numpy array
                 array = image_data.detach().cpu().numpy()
                 
+                if array.ndim == 3 and array.shape[0] in (1, 3, 4):
+                    array = array.transpose(1, 2, 0)
+ 
                 # Normalize to 0-255 range if needed
                 if array.max() <= 1.0:
                     array = (array * 255).astype(np.uint8)
@@ -118,6 +122,5 @@ class ImageProcessingService:
                 return Image.new("RGB", (512, 512), color="black")
                 
         except Exception as e:
-            from app.logging_setup import logger
             logger.warning(f"Failed to convert image to PIL: {e}")
             return Image.new("RGB", (512, 512), color="black")

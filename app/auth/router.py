@@ -1,29 +1,27 @@
 from __future__ import annotations
 from typing import Literal, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
-from fastapi_limiter.depends import RateLimiter  # type: ignore
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.functions import user
 
-from app.db import get_db
-from app.models import User, UserSettings
-from app.logging_setup import lg, sec
+from app.infra.db import get_db
+from app.domain.models import User, UserSettings
+from app.core.logging import lg, sec
 from app.auth.deps import current_user
+from app.services.rate_limiting import create_rate_limiter
 
-from app.security import (
+from app.core.security import (
     normalize_email, hash_password, verify_password,
     create_reset_token, decode_reset_token, create_access_token
 )
-from app.security import (
+from app.core.security import (
     new_session_id, issue_tokens_rotating, check_family_current,
     rotate_refresh, revoke_family, revoke_family_all, revoke_jti, is_revoked,
     mark_user_logged_out, is_user_logged_out, clear_user_logged_out,
 )
 
-
-from app.mailer import send_mail
+from app.infra.mailer import send_mail
 from app.config import settings
 
 import jwt
@@ -68,7 +66,7 @@ def _set_refresh_cookie(resp: Response, token: str) -> None:
     "/register",
     response_model=RegisterOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(RateLimiter(times=3, seconds=3600))]
+    dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))]
 )
 def register(payload: RegisterIn, db: Session = Depends(get_db)):
     email = normalize_email(payload.email)
@@ -122,7 +120,7 @@ class LoginOut(BaseModel):
     token_type: Literal["bearer"] = "bearer"
     expires_in: int  # seconds
 
-@router.post("/me", response_model=LoginOut, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+@router.post("/me", response_model=LoginOut, dependencies=[Depends(create_rate_limiter(limit=5, window_sec=60))])
 async def login(payload: LoginIn, response: Response, db: Session = Depends(get_db)):
     ident = payload.identifier.strip()
     email_norm = normalize_email(ident)
@@ -200,7 +198,7 @@ class ForgotIn(BaseModel):
     "/forgot-password",
     status_code=status.HTTP_200_OK,
     response_class=Response,
-    dependencies=[Depends(RateLimiter(times=3, seconds=3600))]
+    dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))]
 )
 def forgot_password(payload: ForgotIn, db: Session = Depends(get_db)) -> None:
     ident = payload.identifier.strip()
@@ -268,7 +266,7 @@ class TokenOut(BaseModel):
     expires_in: int
 
 # ========= refresh token =========
-@router.post("/refresh", response_model=TokenOut, dependencies=[Depends(RateLimiter(times=30, seconds=60))])
+@router.post("/refresh", response_model=TokenOut, dependencies=[Depends(create_rate_limiter(limit=30, window_sec=60))])
 async def refresh(response: Response, request: Request):
     rt = request.cookies.get(settings.refresh_cookie_name)
     if not rt:

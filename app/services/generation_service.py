@@ -17,104 +17,13 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.logging_setup import lg, logger, save_prompt_raw
-from app.models import Generation
-from app.schemas import GenReq, GenResp
+from app.core.logging import lg, logger
+from app.domain.models import Generation
+from app.domain.schemas import GenReq, GenResp
 from app.services.image_service import ImageProcessingService
-from app.services.safety_service import SafetyService
 from app.utils import out_path, prompt_hash
 from app.utils_01.spell import build_spell, correct_prompt
-
-def _encode_ref_on_cpu(pipeline, pil_image):
-    """
-    Кодирует PIL-изображение в эмбеддинги CLIP на CPU/FP32
-    и возвращает тензор на device/dtype UNet (обычно cuda/float16).
-    """
-    import os
-    import torch
-
-    # Куда привести эмбеддинги
-    dev = next(pipeline.unet.parameters()).device
-    dt  = next(pipeline.unet.parameters()).dtype
-
-    # --- НАЙТИ ЭНКОДЕР ---
-    encoder = getattr(pipeline, "image_encoder", None)
-    if encoder is None:
-        adapters = getattr(pipeline, "ip_adapter", None)
-        if adapters:
-            if isinstance(adapters, dict):
-                it = list(adapters.values())
-            elif isinstance(adapters, (list, tuple)):
-                it = list(adapters)
-            else:
-                it = [adapters]
-            for a in it:
-                e = getattr(a, "image_encoder", None)
-                if e is not None:
-                    encoder = e
-                    break
-
-    # --- ЗАГРУЗИТЬ ПРОЦЕССОР CLIP ИЛИ СДЕЛАТЬ РУЧНО ---
-    processor = None
-    enc_dir = getattr(settings, "ip_image_encoder_path", None) or os.path.join(
-        getattr(settings, "ip_adapter_dir", ""), "image_encoder"
-    )
-    try:
-        from transformers import AutoImageProcessor
-        processor = AutoImageProcessor.from_pretrained(enc_dir, local_files_only=True)
-    except Exception:
-        processor = None
-
-    if processor is not None:
-        try:
-            out = processor(images=pil_image.convert("RGB"), return_tensors="pt")
-            pixel_values = out["pixel_values"]
-        except Exception:
-            processor = None
-
-    if processor is None:
-        # Жёсткий fallback (тот же препроцесс OpenCLIP ViT-H/14)
-        from torchvision import transforms as T
-        tfm = T.Compose([
-            T.Resize(224, interpolation=T.InterpolationMode.BICUBIC),
-            T.CenterCrop(224),
-            T.ToTensor(),
-            T.Normalize(mean=[0.48145466, 0.4578275, 0.40821073],
-                        std=[0.26862954, 0.26130258, 0.27577711]),
-        ])
-        pixel_values = tfm(pil_image.convert("RGB")).unsqueeze(0)
-
-    pixel_values = pixel_values.to(device="cpu", dtype=torch.float32)
-
-    # --- ЕСЛИ ЭНКОДЕРА НЕТ ВООБЩЕ — ПОСЛЕДНИЙ ФОЛБЭК ---
-    if encoder is None and hasattr(pipeline, "encode_image"):
-        with torch.no_grad():
-            try:
-                emb = pipeline.encode_image(pil_image, device=str(dev), num_images_per_prompt=1)
-            except TypeError:
-                emb = pipeline.encode_image(pil_image)
-        return emb.to(device=dev, dtype=dt)
-    elif encoder is None:
-        raise RuntimeError("IP-Adapter: image encoder not found")
-
-    # --- ПРОГОН ЧЕРЕЗ ЭНКОДЕР НА CPU FP32 ---
-    encoder = encoder.to(device="cpu", dtype=torch.float32).eval()
-    with torch.no_grad():
-        enc_out = encoder(pixel_values)
-
-    if hasattr(enc_out, "image_embeds") and enc_out.image_embeds is not None:
-        emb = enc_out.image_embeds
-    elif hasattr(enc_out, "pooler_output") and enc_out.pooler_output is not None:
-        emb = enc_out.pooler_output
-    else:
-        if isinstance(enc_out, torch.Tensor):
-            emb = enc_out
-        elif isinstance(enc_out, (list, tuple)):
-            emb = next(v for v in enc_out if isinstance(v, torch.Tensor))
-        else:
-            raise RuntimeError("IP-Adapter: cannot extract image embeddings")
-
-    return emb.to(device=dev, dtype=dt)
+from app.core.safety import is_blocked, is_blocked_forced
 
 class GenerationService:
     """Service for handling image generation requests."""
@@ -122,12 +31,39 @@ class GenerationService:
     def __init__(self, db: Session):
         self.db = db
         self.image_service = ImageProcessingService()
-        self.safety_service = SafetyService()
-        self._setup_autocorrect()
+        self._setup_autocorrect()    
+
+    def _set_quality_mode(self, pipeline) -> None:
+        if hasattr(pipeline, "enable_vae_tiling"):
+            pipeline.enable_vae_tiling()
+        if hasattr(pipeline, "enable_vae_slicing"):
+            pipeline.enable_vae_slicing()
+
+        try:
+            if hasattr(pipeline, "enable_model_cpu_offload"):
+                pipeline.enable_model_cpu_offload()
+        except Exception:
+            pass
+
+    def _choose_hq_scheduler(self, pipeline, steps: int) -> None:
+        """
+        DPM++ 2M Karras — даёт заметный прирост качества и чувствительность к количеству шагов.
+        """
+        try:
+            from diffusers import DPMSolverMultistepScheduler # type: ignore[reportMissingImports]
+            pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
+                pipeline.scheduler.config,
+                algorithm_type="sde-dpmsolver++",
+                use_karras_sigmas=True,
+                solver_order=2,
+            )
+        except Exception:
+            pass
+
+
     
     def _setup_autocorrect(self) -> None:
         """Setup autocorrect functionality."""
-        import os
         self.autocorrect_mode = os.getenv("AUTOCORRECT", "on")
         self.spell_checker = build_spell(extra_words=[
             "bokeh", "karras", "euler", "dpmsolver", "lora", "vae",
@@ -188,7 +124,6 @@ class GenerationService:
                 phase="completed",
                 prompt_hash=prompt_hash_value,
                 output_path=output_path,
-                device=settings.device,
             ).success("generation.completed")
 
             # Create signed URL if enabled
@@ -222,8 +157,9 @@ class GenerationService:
         if request.width > settings.max_gen_width or request.height > settings.max_gen_height:
             raise ValueError("Image size too large")
         
-        if request.steps > settings.max_gen_steps:
-            raise ValueError("Steps too large")
+        max_safe = 256
+        if int(request.steps) > max_safe:
+            raise ValueError(f"Steps too large (>{max_safe})")
         
         guidance = getattr(request, "guidance_scale", getattr(request, "guidance", 7.5))
         if float(guidance) > settings.max_guidance:
@@ -235,7 +171,6 @@ class GenerationService:
     
     def _check_safety_policies(self, request: GenReq, user: Optional[Any]) -> None:
         """Check safety policies for the request."""
-        from app.safety import is_blocked, is_blocked_forced
         
         # Determine if NSFW is allowed
         allow_global = settings.nsfw_allow
@@ -326,7 +261,7 @@ class GenerationService:
             "negative_prompt": negative_prompt,
             "width": w,
             "height": h,
-            "steps": min(request.steps, settings.max_gen_steps),
+            "steps": int(request.steps),
             "guidance_scale": request.guidance_scale,
             "seed": request.seed,
             "ref_image_b64": request.ref_image_b64,
@@ -353,6 +288,12 @@ class GenerationService:
         try:
             from app.inference.pipeline import get_pipeline, get_pipeline_with_ip  # импорт локальной фабрики
             pipeline = get_pipeline_with_ip() if use_ip else get_pipeline()
+            
+            self._set_quality_mode(pipeline)
+            steps = int(params.get("steps", 28) or 28)
+            style = params.get("style") or ""
+            self._choose_hq_scheduler(pipeline, steps)
+
         except Exception as e:
             # если IP-адаптер не поднялся — даём фолбэк на обычный пайплайн
             lg("app").bind(event="ip_adapter.unavailable", reason=str(e)).warning("ip_adapter.unavailable")
@@ -378,8 +319,27 @@ class GenerationService:
             except Exception:
                 generator = None
 
-        # autocast
-        ctx = (torch.autocast(device_type=device.type, dtype=torch.float16)
+        # Жёсткая синхронизация типов/девайсов перед вызовом
+        try:
+            unet_dtype = next(pipeline.unet.parameters()).dtype
+        except Exception:
+            unet_dtype = torch.float16 if device.type == "cuda" else torch.float32
+
+        if getattr(pipeline, "unet", None) is not None:
+            pipeline.unet.to(device=device, dtype=unet_dtype)
+        if getattr(pipeline, "vae", None) is not None:
+            pipeline.vae.to(device=device, dtype=unet_dtype)
+        if getattr(pipeline, "text_encoder", None) is not None:
+            pipeline.text_encoder.to(device=device, dtype=torch.float32)
+
+        # Если есть заранее подготовленные эмбеддинги IP-Adapter — привести к dtype UNet
+        if use_ip and "image_embeds" in locals():
+            try:
+                image_embeds = image_embeds.to(device=device, dtype=unet_dtype)
+            except Exception:
+                pass
+
+        ctx = (torch.autocast(device_type=device.type, dtype=unet_dtype)
             if device.type == "cuda" else nullcontext())
 
         # Подготовка IP-эмбедов, если надо
@@ -389,7 +349,7 @@ class GenerationService:
                 ref_image = self.image_service.prepare_reference_image(params["ref_image_b64"], target_size=512)
 
                 # масштаб влияния
-                ip_scale = 0.6 if params.get("ip_scale") is None else float(params["ip_scale"])
+                ip_scale = 0.55 if params.get("ip_scale") is None else float(params["ip_scale"])
                 ip_scale = max(0.0, min(1.5, ip_scale))
 
                 if hasattr(pipeline, "set_ip_adapter_scale"):
@@ -401,7 +361,6 @@ class GenerationService:
                 # --- begin: guard devices before IP encoding ---
                 try:
                     dev = next(pipeline.unet.parameters()).device
-                    setattr(pipeline, "_execution_device", dev)
 
                     # text_encoder на том же девайсе, что и UNet
                     if hasattr(pipeline, "text_encoder") and pipeline.text_encoder is not None:
@@ -418,10 +377,14 @@ class GenerationService:
 
                 # Приоритет: нативный encode_image, чтобы у diffusers/ip-adapter не ломалась сигнатура
                 if hasattr(pipeline, "encode_image"):
-                    # diffusers>=0.24 IP-Adapter API
-                    image_embeds = pipeline.encode_image(  # type: ignore[attr-defined]
+                    image_embeds = pipeline.encode_image(
                         ref_image, device=device, num_images_per_prompt=1
                     )
+                    # Приведение к dtype UNet гарантирует согласованность с attention-проекциями
+                    try:
+                        image_embeds = image_embeds.to(device=device, dtype=unet_dtype)
+                    except Exception:
+                        pass
 
                 # Фолбэк: прямой энкодер (CLIP)
                 elif hasattr(pipeline, "image_encoder"):
@@ -473,14 +436,23 @@ class GenerationService:
         use_width = int(params.get("width", 512))
         use_height = int(params.get("height", 512))
         use_steps = int(params.get("steps", 20))
+        
+        # фиксируем timesteps только если Karras-сигмы выключены
+        _fixed_timesteps = None
+        try:
+            if not bool(getattr(pipeline.scheduler.config, "use_karras_sigmas", False)):
+                pipeline.scheduler.set_timesteps(use_steps, device=device)
+                _fixed_timesteps = pipeline.scheduler.timesteps
+        except Exception:
+            _fixed_timesteps = None
+
+    
         if device.type == "cpu":
             max_side = 640
             if max(use_width, use_height) > max_side:
                 ratio = max_side / float(max(use_width, use_height))
                 use_width = int(round(use_width * ratio / 8) * 8)
                 use_height = int(round(use_height * ratio / 8) * 8)
-            if use_steps > 24:
-                use_steps = 22
 
         # Таймаут мягкий через callback
         soft_deadline = time.time() + getattr(settings, "generation_timeout_sec", 60) - 1.0
@@ -492,34 +464,55 @@ class GenerationService:
         # Вызов пайплайна
         def sync_generation():
             with torch.inference_mode(), ctx:
+                call_kwargs = dict(
+                    prompt=params.get("prompt"),
+                    negative_prompt=params.get("negative_prompt"),
+                    num_inference_steps=use_steps,
+                    width=use_width,
+                    height=use_height,
+                    guidance_scale=float(params.get("guidance_scale", 7.0)),
+                    generator=generator,
+                    noise_offset=0.02,
+                )
+
+                if _fixed_timesteps is not None:
+                    call_kwargs["timesteps"] = _fixed_timesteps
+
                 try:
-                    return pipeline(
-                        prompt=params.get("prompt"),
-                        negative_prompt=params.get("negative_prompt"),
-                        num_inference_steps=use_steps,
-                        width=use_width,
-                        height=use_height,
-                        guidance_scale=float(params.get("guidance_scale", 7.0)),
-                        generator=generator,
-                        callback=timeout_callback,
-                        callback_steps=1,
+                    _effective = {"n": 0}
+
+                    # deadline проверяем здесь, т.к. старый callback удаляем
+                    def _on_step_end(pipe, step, timestep, callback_kwargs):
+                        _effective["n"] += 1
+                        if time.time() > soft_deadline:
+                            raise RuntimeError("generation_timeout")
+                        return {}
+
+                    # убираем старые ключи
+                    call_kwargs.pop("callback", None)          # старый timeout_callback больше не нужен
+                    call_kwargs.pop("callback_steps", None)
+
+                    call_kwargs["callback_on_step_end"] = _on_step_end
+                    call_kwargs["callback_on_step_end_tensor_inputs"] = []
+
+                    res = pipeline(
+                        **call_kwargs,
                         **({} if not use_ip else extra),
                     )
-                except TypeError as e:
-                    # На случай несовпадения сигнатур IP-адаптера — пробуем без extra
-                    if "ip_adapter" in str(e) or "image_embeds" in str(e):
-                        return pipeline(
-                            prompt=params.get("prompt"),
-                            negative_prompt=params.get("negative_prompt"),
-                            num_inference_steps=use_steps,
-                            width=use_width,
-                            height=use_height,
-                            guidance_scale=float(params.get("guidance_scale", 7.0)),
-                            generator=generator,
-                            callback=timeout_callback,
-                            callback_steps=1,
-                        )
-                    raise
+
+                    # lg("generation").bind(phase="steps", asked=use_steps, effective=_effective["n"]).info("steps.effective")
+                    return res  # ← ВАЖНО: вернуть результат
+
+                except TypeError:
+                    # откат для старых версий diffusers без нового API
+                    call_kwargs.pop("noise_offset", None)
+                    call_kwargs.pop("timesteps", None)
+                    call_kwargs.pop("callback_on_step_end", None)
+                    call_kwargs.pop("callback_on_step_end_tensor_inputs", None)
+                    return pipeline(
+                        **call_kwargs,
+                        **({} if not use_ip else extra),
+                    )
 
         gen_log.debug(
             "pipeline.call",

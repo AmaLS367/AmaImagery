@@ -2,9 +2,9 @@
 from __future__ import annotations
 from sqlalchemy import select, or_
 from sqlalchemy.exc import IntegrityError
-from app.db import SessionLocal
-from app.models import User, UserSettings
-from app.security import normalize_email, hash_password
+from app.infra.db import SessionLocal
+from app.domain.models import User, UserSettings
+from app.core.security import normalize_email, hash_password
 
 DEFAULT_SETTINGS = {"style": "anime", "steps": 28, "size": 768, "negative": ""}
 

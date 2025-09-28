@@ -1,17 +1,16 @@
 from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import StableDiffusionPipeline # type: ignore
 from diffusers.pipelines.auto_pipeline import AutoPipelineForText2Image # type: ignore
 from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL # type: ignore
-from diffusers.schedulers.scheduling_euler_ancestral_discrete import EulerAncestralDiscreteScheduler # type: ignore
-from diffusers.schedulers.scheduling_dpmsolver_multistep import DPMSolverMultistepScheduler  # type: ignore
 from diffusers.models.attention_processor import AttnProcessor2_0, AttnProcessor # type: ignore 
+from diffusers import DPMSolverMultistepScheduler # type: ignore
 
 from app.config import settings
 from loguru import logger
-from app.logging_setup import lg
+from app.core.logging import lg
 
 import os
 import torch
-from inspect import signature
+from pathlib import Path
 
 os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -51,7 +50,6 @@ def _align_ip_encoders(pipe):
 
 
 def _move_ip_encoders_to_cpu(pipe):
-    import torch
     # Глобальный image_encoder → CPU FP32
     enc = getattr(pipe, "image_encoder", None)
     if enc is not None:
@@ -79,11 +77,6 @@ def _move_ip_encoders_to_cpu(pipe):
                 setattr(a, "image_encoder", enc2.to(device="cpu"))
 
 def _align_ipadapter_long_buffers_to_unet_device(pipe):
-    """
-    Переводит ВСЕ зарегистрированные буферы (особенно индексы dtype long) внутри IP-Adapter
-    на device UNet. image_encoder не трогаем (он уже на CPU).
-    """
-    import torch
     dev = next(pipe.unet.parameters()).device
 
     adapters = getattr(pipe, "ip_adapter", None)
@@ -128,93 +121,84 @@ def get_pipeline():
 
     want_cuda = str(getattr(settings, "device", "cuda")).lower() != "cpu"
     device = "cuda" if (torch.cuda.is_available() and want_cuda) else "cpu"
-    dtype = torch.float16 if device == "cuda" else torch.float32
+    _dtype_map = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}
+    dtype = _dtype_map.get(getattr(settings, "torch_dtype", "fp16").lower(), torch.float16)
 
     mid = settings.model_id
 
     # 1) DreamShaper .safetensors (локальный файл)
     if os.path.isfile(mid) and mid.lower().endswith((".safetensors", ".ckpt")):
         vae = None
-        if getattr(settings, "vae_id", None):
-            vae = AutoencoderKL.from_pretrained(settings.vae_id, torch_dtype=dtype, local_files_only=True)
+
+        vae = None
+        vid = getattr(settings, "vae_id", None)
+        if vid:
+            p = Path(vid)
+            if p.exists():
+                # Локальный VAE в формате diffusers-папки с config.json
+                vae = AutoencoderKL.from_pretrained(
+                    str(p),
+                    torch_dtype=dtype,
+                    local_files_only=True,
+                )
+            elif not bool(settings.no_network):
+                # Онлайн разрешён — тянем по id
+                vae = AutoencoderKL.from_pretrained(
+                    vid,
+                    torch_dtype=dtype,
+                    local_files_only=False,
+                )
+            else:
+                vae = None
+
+            
+        conf_path = (Path(mid).parent / "configs" / "v1-inference.yaml")
 
         pipe = StableDiffusionPipeline.from_single_file(
             mid,
             torch_dtype=dtype,
             vae=vae,                   # у версии "no vae" может быть None — это норм
             use_safetensors=True,
-            safety_checker=None,       # не подтягиваем safety_checker
+            safety_checker=None,
             feature_extractor=None,
+            original_config_file=str(conf_path),
+            local_files_only=bool(settings.no_network),
         )
-        
-        pipe = pipe.to(device)
-        if dtype is not None:
-            pipe.unet.to(dtype=dtype)
-            if getattr(pipe, "vae", None) is not None:
-                pipe.vae.to(dtype=dtype)
-            # текстовый энкодер — fp32, но на том же девайсе
-            if getattr(pipe, "text_encoder", None) is not None:
-                pipe.text_encoder.to(device=device, dtype=torch.float32)
-        return pipe
 
-    
     else:
         # 2) HF-репозиторий или локальная папка с model_index.json
         if settings.no_network and not os.path.exists(mid):
             raise RuntimeError("NO_NETWORK=1 и model_id не локальный путь")
         pipe = AutoPipelineForText2Image.from_pretrained(
-            mid, torch_dtype=dtype, use_safetensors=True, local_files_only=True
+            mid,
+            torch_dtype=dtype,
+            use_safetensors=True,
+            local_files_only=bool(settings.no_network),
         )
 
-    # --- шедулер: заменяем на Euler Ancestral (CFG > 3 работает корректно) ---
+
+    # --- шедулер: заменяем на DPMSolver++ (Karras, 2nd order) ---
     try:
-        pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, use_karras=True)
+        pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+            pipe.scheduler.config,
+            algorithm_type="sde-dpmsolver++",
+            use_karras_sigmas=True,
+            solver_order=2,
+        )
     except Exception:
         pass
 
     # --- экономия памяти ---
-    try:
-        pipe.unet.set_attn_processor(AttnProcessor2_0())
-    except Exception:
-        pass
-    try:
-        pipe.enable_attention_slicing()
-    except Exception:
-        pass
-    try:
-        pipe.enable_vae_slicing()
-    except Exception:
-        pass
-    try:
-        pipe.enable_vae_tiling()
-    except Exception:
-        pass
-    try:
-        pipe.enable_xformers_memory_efficient_attention()
-    except Exception:
-        pass
-
-
-    vae = getattr(pipe, "vae", None)
+    pipe.unet.set_attn_processor(AttnProcessor2_0())
+    pipe.enable_attention_slicing()
+    pipe.enable_vae_slicing()
+    pipe.enable_vae_tiling()
+    pipe.enable_xformers_memory_efficient_attention()
 
     pipe.set_progress_bar_config(disable=True)
 
-    pipe = pipe.to(device)
     if device == "cuda":
         pipe.unet.to(memory_format=torch.channels_last)
-
-    try:
-        pipe.enable_attention_slicing()
-    except Exception:
-        pass
-    try:
-        pipe.enable_vae_slicing()
-    except Exception:
-        pass
-    try:
-        pipe.enable_xformers_memory_efficient_attention()
-    except Exception:
-        pass
         
     # лог: базовая модель загружена и сконфигурирована
     lg("app").bind(
@@ -227,30 +211,78 @@ def get_pipeline():
     
     # --- begin: force device sync (exec device, text/image encoders) ---
     try:
-        dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        dev = torch.device(device)
 
-        # чтобы encode_prompt не уносил input_ids на CPU
-        setattr(pipe, "_execution_device", dev)
+        # базовый dtype всего пайпа: fp16 на CUDA, иначе fp32
+        pipe.to(device=dev, dtype=dtype)
+
+        # UNet/VAE строго в dtype пайпа
+        if getattr(pipe, "unet", None) is not None:
+            pipe.unet.to(device=dev, dtype=dtype)
+        if getattr(pipe, "vae", None) is not None:
+            pipe.vae.to(device=dev, dtype=dtype)
+
+        # text_encoder оставляем FP32 (на том же девайсе), image_encoder — всегда CPU/FP32
+        if getattr(pipe, "text_encoder", None) is not None:
+            pipe.text_encoder.to(device=dev, dtype=torch.float32)
+        if getattr(pipe, "image_encoder", None) is not None:
+            pipe.image_encoder.to(device="cpu", dtype=torch.float32)
         
-        if hasattr(pipe, "text_encoder"): pipe.text_encoder.to(dev)
-        if hasattr(pipe, "image_encoder"): pipe.image_encoder.to(device="cpu", dtype=torch.float32)
-        pipe.to(dev)
-
-        if hasattr(pipe, "unet") and pipe.unet is not None:
-            pipe.unet.to(dev)
-        if hasattr(pipe, "vae") and pipe.vae is not None:
-            pipe.vae.to(dev)
-        if hasattr(pipe, "text_encoder") and pipe.text_encoder is not None:
-            pipe.text_encoder.to(dev)
-
-        # vision-энкодер (CLIP) держим на том же девайсе, но в fp32 — это безопаснее
-        if hasattr(pipe, "image_encoder") and pipe.image_encoder is not None:
-            pipe.image_encoder.to(device=dev, dtype=torch.float32)
-
-        pipe.to(dev)
     except Exception:
         logger.exception("device_sync_failed")
     # --- end: force device sync ---
+    
+    # --- единый патч: синхронизируем dtype для sample/timestep и входа time_embedding ---
+    try:
+        unet = pipe.unet
+        unet_dtype = next(unet.parameters()).dtype
+
+        _old_unet_forward = unet.forward
+        def _unet_forward(sample, timestep, *args, **kwargs):
+            if isinstance(sample, torch.Tensor) and sample.dtype != unet_dtype:
+                sample = sample.to(dtype=unet_dtype)
+            if isinstance(timestep, torch.Tensor) and timestep.dtype != unet_dtype:
+                timestep = timestep.to(dtype=unet_dtype)
+
+            enc = kwargs.get("encoder_hidden_states", None)
+            if isinstance(enc, torch.Tensor) and enc.dtype != unet_dtype:
+                kwargs["encoder_hidden_states"] = enc.to(dtype=unet_dtype)
+            elif enc is None and len(args) >= 1 and isinstance(args[0], torch.Tensor) and args[0].dtype != unet_dtype:
+                args = (args[0].to(dtype=unet_dtype),) + args[1:]
+
+            return _old_unet_forward(sample, timestep, *args, **kwargs)
+        unet.forward = _unet_forward
+    except Exception:
+        logger.exception("unet_time_embedding_patch_failed")
+        
+    # --- П4: time_embedding.forward -> привести вход к dtype весов TE ---
+    try:
+        _unet2 = getattr(pipe, "unet", None)
+        te = getattr(_unet2, "time_embedding", None)
+        if te is not None and hasattr(te, "linear_1"):
+            _old_te_forward = te.forward
+            te_w_dtype = te.linear_1.weight.dtype
+            def _te_forward(x, *a, **kw):
+                if isinstance(x, torch.Tensor) and x.dtype != te_w_dtype:
+                    x = x.to(dtype=te_w_dtype)
+                return _old_te_forward(x, *a, **kw)
+            te.forward = _te_forward
+    except Exception:
+        logger.exception("time_embedding_patch_failed")
+
+    # --- П5: VAE.decode -> привести z к dtype VAE перед post_quant_conv ---
+    try:
+        vae = getattr(pipe, "vae", None)
+        if vae is not None:
+            vae_dtype = next(vae.parameters()).dtype
+            _old_decode = vae.decode
+            def _decode(z, *a, **kw):
+                if isinstance(z, torch.Tensor) and z.dtype != vae_dtype:
+                    z = z.to(dtype=vae_dtype)
+                return _old_decode(z, *a, **kw)
+            vae.decode = _decode
+    except Exception:
+        logger.exception("vae_decode_patch_failed")
 
 
     _pipe = pipe
@@ -312,10 +344,17 @@ def get_pipeline_with_ip():
     _align_ip_encoders(pipe)
     _move_ip_encoders_to_cpu(pipe)
     _align_ipadapter_long_buffers_to_unet_device(pipe)
+    
+    # Синхронизация dtype всех слоёв UNet (включая добавленные IP-Adapter)
+    try:
+        _unet_dtype = next(pipe.unet.parameters()).dtype
+        pipe.unet.to(dtype=_unet_dtype)
+    except Exception as e:
+        logger.warning(f"UNet dtype sync failed: {e}")
+
 
     try:
-        dev = next(pipe.unet.parameters()).device
-        setattr(pipe, "_execution_device", dev)
+        dev = next(pipe.unet.parameters()).device        
 
         if hasattr(pipe, "text_encoder") and pipe.text_encoder is not None:
             pipe.text_encoder.to(dev)
@@ -329,27 +368,9 @@ def get_pipeline_with_ip():
     lg("app").bind(
         event="ip_adapter.loaded",
         model_id=settings.model_id,
-        device=str(settings.device),
+        device=str(dev),
     ).info("ip_adapter.loaded")
 
-
-    # вернуть экономию памяти после загрузки IP-Adapter
-    try:
-        pipe.enable_attention_slicing()
-    except Exception:
-        pass
-    try:
-        pipe.enable_vae_slicing()
-    except Exception:
-        pass
-    try:
-        pipe.enable_vae_tiling()
-    except Exception:
-        pass
-    try:
-        pipe.enable_xformers_memory_efficient_attention()
-    except Exception:
-        pass
 
     _ip_ready = True
     return pipe

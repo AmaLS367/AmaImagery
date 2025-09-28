@@ -9,4 +9,5 @@ def prompt_hash(prompt: str, negative: str | None) -> str:
 def out_path(stem: str) -> str:
     name = f"{stem}_{int(time())}.png"
     p = Path(settings.out_dir) / name
+    p.parent.mkdir(parents=True, exist_ok=True)
     return str(p)

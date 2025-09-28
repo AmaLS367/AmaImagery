@@ -2,7 +2,7 @@ from email.message import EmailMessage
 import smtplib, ssl
 from typing import Iterable
 from app.config import settings
-from app.logging_setup import lg
+from app.core.logging import lg
 
 def _make_message(subject: str, to: str | Iterable[str], text: str, html: str | None = None) -> EmailMessage:
     msg = EmailMessage()

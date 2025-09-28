@@ -1,7 +1,7 @@
 import re
 from symspellpy import SymSpell, Verbosity # type: ignore
 from wordfreq import top_n_list # type: ignore
-from app.logging_setup import lg
+from app.core.logging import lg
 
 
 _TOKEN = re.compile(r"[A-Za-z][A-Za-z\-']{2,}")  # слова ≥3 символов

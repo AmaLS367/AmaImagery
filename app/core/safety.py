@@ -1,22 +1,15 @@
-# app/safety.py
 from __future__ import annotations
 
-import json, re, threading
+import json
+import re
+import threading
 from pathlib import Path
 from typing import Iterable, List, Pattern
 
 from app.config import settings
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.orm import Session
 
-from app.db import get_db
-from app.auth.deps import current_user
-
-
-router = APIRouter(prefix="/nsfw", tags=["nsfw"])
 # Базовые паттерны на случай отсутствия файла (минимум, без излишеств)
-# Включится только когда NSFW_ALLOW=false и файл не найден/пуст.
+# Включается только когда список пуст и/или файл не найден.
 _FALLBACK_PATTERNS: list[str] = [
     r"\bbestiality\b",
     r"\bzoophil(e|ia)\b",
@@ -32,9 +25,11 @@ _FALLBACK_PATTERNS: list[str] = [
 _cache_lock = threading.Lock()
 _cache_compiled: list[Pattern] | None = None
 _cache_mtime: float | None = None
+
 _cache_forced_lock = threading.Lock()
 _cache_forced_compiled: list[Pattern] | None = None
 _cache_forced_mtime: float | None = None
+
 
 def _normalize_entries(items: Iterable[str]) -> List[str]:
     out: list[str] = []
@@ -42,18 +37,16 @@ def _normalize_entries(items: Iterable[str]) -> List[str]:
         s = (raw or "").strip()
         if not s:
             continue
-        # поддержка 're:' для явных регэкспов
         if s.lower().startswith("re:"):
             s = s[3:].strip()
             if s:
                 out.append(s)
             continue
-        # по умолчанию — слово/фраза, экранируем и ставим word boundary
         escaped = re.escape(s)
-        # допускаем дефисы/пробелы как разделители
         escaped = escaped.replace(r"\ ", r"\s+").replace(r"\-", r"[-\s]?")
         out.append(rf"\b{escaped}\b")
     return out
+
 
 def _read_blocklist_file(p: Path) -> list[str]:
     try:
@@ -66,8 +59,8 @@ def _read_blocklist_file(p: Path) -> list[str]:
             if isinstance(arr, list):
                 return [str(x) for x in arr]
             return []
-        # TXT/любое: разделители — новая строка или запятая
-        parts = []
+        # TXT/прочее: разделители — новая строка или запятая
+        parts: list[str] = []
         for line in text.splitlines():
             if "," in line:
                 parts.extend([s.strip() for s in line.split(",")])
@@ -77,14 +70,33 @@ def _read_blocklist_file(p: Path) -> list[str]:
     except Exception:
         return []
 
+
 def _compile_patterns(entries: Iterable[str]) -> list[Pattern]:
     return [re.compile(e, re.IGNORECASE) for e in _normalize_entries(entries)]
 
+
+def _rules_path() -> Path:
+    return Path(settings.nsfw_blocklist_path).expanduser().resolve()
+
+
+def get_rules() -> list[str]:
+    """
+    Сырые записи из файла правил (или fallback, если файла нет/пуст).
+    Без нормализации и компиляции.
+    """
+    entries = _read_blocklist_file(_rules_path())
+    return entries if entries else list(_FALLBACK_PATTERNS)
+
+
 def _get_compiled() -> list[Pattern]:
-    if settings.nsfw_allow:
+    """
+    Обычная проверка (учитывает флаг settings.nsfw_allow).
+    Если nsfw_allow=True — список пуст, ничего не блокируем.
+    """
+    if getattr(settings, "nsfw_allow", False):
         return []
 
-    path = Path(settings.nsfw_blocklist_path).expanduser().resolve()
+    path = _rules_path()
     mtime = path.stat().st_mtime if path.exists() else -1.0
 
     global _cache_compiled, _cache_mtime
@@ -100,16 +112,22 @@ def _get_compiled() -> list[Pattern]:
         _cache_mtime = mtime
         return _cache_compiled
 
+
 def is_blocked(text: str | None) -> bool:
     if not text:
         return False
     pats = _get_compiled()
-    if not pats:  # NSFW_ALLOW=True
+    if not pats:  # nsfw_allow=True → ничего не блокируем
         return False
     return any(rx.search(text) for rx in pats)
 
+
 def _get_compiled_forced() -> list[Pattern]:
-    path = Path(settings.nsfw_blocklist_path).expanduser().resolve()
+    """
+    Принудительная проверка — игнорирует nsfw_allow.
+    Используется для административных/системных проверок.
+    """
+    path = _rules_path()
     mtime = path.stat().st_mtime if path.exists() else -1.0
 
     global _cache_forced_compiled, _cache_forced_mtime
@@ -125,16 +143,21 @@ def _get_compiled_forced() -> list[Pattern]:
         _cache_forced_mtime = mtime
         return _cache_forced_compiled
 
+
 def is_blocked_forced(text: str | None) -> bool:
     if not text:
         return False
     return any(rx.search(text) for rx in _get_compiled_forced())
 
-class NSFWToggle(BaseModel):
-    allow: bool
 
-@router.patch("/users/me/nsfw")
-def set_nsfw(toggle: NSFWToggle, db: Session = Depends(get_db), user=Depends(current_user)):
-    user.nsfw_allow = bool(toggle.allow)
-    db.add(user); db.commit()
-    return {"ok": True, "nsfw_allow": user.nsfw_allow}
+def reload_rules() -> None:
+    """
+    Сбросить кэш правил. Подхватит изменения файла без рестарта.
+    """
+    global _cache_compiled, _cache_mtime, _cache_forced_compiled, _cache_forced_mtime
+    with _cache_lock:
+        _cache_compiled = None
+        _cache_mtime = None
+    with _cache_forced_lock:
+        _cache_forced_compiled = None
+        _cache_forced_mtime = None

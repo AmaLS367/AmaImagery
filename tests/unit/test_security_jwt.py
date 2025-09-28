@@ -1,7 +1,7 @@
 import pytest
 def test_jwt_roundtrip():
     try:
-        from app.security import create_access_token, decode_access_token
+        from app.core.security import create_access_token, decode_access_token
     except Exception:
         pytest.skip("security helpers недоступны")
     payload = {"sub": "user@example.com"}

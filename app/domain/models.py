@@ -4,7 +4,7 @@ from sqlalchemy import String, Text, func, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.types import TIMESTAMP
-from app.db import Base
+from app.infra.db import Base
 from datetime import datetime as dt
 
 class User(Base):

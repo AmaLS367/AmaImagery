@@ -6,43 +6,32 @@ Handles AI image generation requests and responses.
 
 import asyncio
 from typing import Optional, Any
+import os, traceback
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.deps import optional_user
-from app.db import get_db
-from app.limits import get_gen_semaphore
+from app.infra.db import get_db
+from app.core.logging import lg
+from app.core.limits import get_gen_semaphore
 from app.config import settings
-from app.schemas import GenReq, GenResp
+from app.domain.schemas import GenReq, GenResp
 from app.services.generation_service import GenerationService
-try:
-    from app.services.rate_limiting import create_rate_limiter 
-    _RATE_DEP = Depends(create_rate_limiter())
-except Exception:
-    from fastapi import Depends as _Depends 
-    async def _noop(): 
-        return None
-    _RATE_DEP = _Depends(_noop)
+from app.services.rate_limiting import create_rate_limiter
 
 router = APIRouter(tags=["generation"])
 
+# Подключаем лимитер только если включён флаг
+_generation_deps = [Depends(create_rate_limiter(settings.gen_per_user_per_min, 60))] if getattr(settings, "limits_enabled", False) else []
 
-@router.post("/generate", response_model=GenResp)
+@router.post("/generate", response_model=GenResp, dependencies=_generation_deps)
 async def generate_image(
     request: GenReq,
     db: Session = Depends(get_db),
     user: Optional[Any] = Depends(optional_user),
     semaphore: asyncio.Semaphore = Depends(get_gen_semaphore),
-    rate_limiter=_RATE_DEP,
 ) -> GenResp:
-    """
-    Generate an AI image based on the provided prompt.
-    DEV: пробрасывает исключения наверх для полного traceback.
-    PROD: возвращает компактные HTTP ошибки.
-    """
-    import os, traceback
-    from app.logging_setup import lg
 
     generation_service = GenerationService(db)
 
@@ -71,7 +60,7 @@ async def generate_image(
             if os.getenv("ENV", "").lower() == "dev":
                 traceback.print_exc()
             raise HTTPException(status_code=504, detail="Generation timed out")
-        # остальное пусть пойдёт как 500/DEV traceback ниже
+        # остальное — как 500/DEV traceback ниже
         if os.getenv("ENV", "").lower() == "dev":
             traceback.print_exc()
             lg("app").exception("generate.runtime_error")
@@ -99,4 +88,3 @@ async def generate_image(
                 semaphore.release()
             except Exception:
                 pass
-

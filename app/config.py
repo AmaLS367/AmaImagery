@@ -8,10 +8,13 @@ import warnings, json, os
 class Settings(BaseSettings):
     model_id: str = "models/dreamshaper_6NoVae.safetensors"
     device: str = "cuda"              
-    max_steps: int = 32
-    max_size: int = 768
+    max_steps: int = 128
+    max_size: int = 2048
     out_dir: str = "outputs"
     vae_id: str | None = None
+    torch_dtype: str = Field("fp16", alias="TORCH_DTYPE")  # fp16|bf16|fp32
+    scheduler: str | None = Field(None, alias="SCHEDULER")
+    seed_strict: bool = Field(False, alias="SEED_STRICT")
 
     # --- auth/db ---
     database_url: str = Field("sqlite:///./genai.db", alias="DATABASE_URL")
@@ -116,16 +119,13 @@ class Settings(BaseSettings):
     no_network: bool = Field(True, alias="NO_NETWORK")                  
     max_gen_width: int = Field(1024, alias="MAX_GEN_WIDTH")
     max_gen_height: int = Field(1024, alias="MAX_GEN_HEIGHT")
-    max_gen_steps: int = Field(50, alias="MAX_GEN_STEPS")
+    max_gen_steps: int = Field(128, alias="MAX_GEN_STEPS")
     max_guidance: float = Field(20.0, alias="MAX_GUIDANCE")
     max_batch: int = Field(4, alias="MAX_BATCH")
 
     # --- Torch ресурсы ---
     torch_threads: int = Field(2, alias="TORCH_THREADS")                # CPU threads
     cuda_vram_fraction: float = Field(0.95, alias="CUDA_VRAM_FRACTION") # 0..1, если CUDA есть
-
-    # --- Ip adapter path --
-    ip_adapter_dir: str | None = Field(None, alias="IP_ADAPTER_DIR")
 
     # --- Metrics --
     metrics_enabled: bool = Field(True, alias="METRICS_ENABLED")
@@ -135,15 +135,36 @@ class Settings(BaseSettings):
     # --- Paths --
     root_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2])
     outputs_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "outputs", alias="OUTPUTS_DIR")
-    
-    ip_adapter_dir: str | None = Field(default=None, validation_alias="IP_ADAPTER_DIR")
-    ip_image_encoder_path: str | None = Field(default=None, validation_alias="IP_IMAGE_ENCODER_PATH")
+    ip_adapter_dir: str | None = Field(default=None, alias="IP_ADAPTER_DIR", validation_alias="IP_ADAPTER_DIR")
+    ip_image_encoder_path: str | None = Field(default=None, alias="IP_IMAGE_ENCODER_PATH", validation_alias="IP_IMAGE_ENCODER_PATH")
 
     @field_validator("device", mode="before")
     @classmethod
     def _norm_device(cls, v):
         s = (str(v) if v is not None else "cuda").strip().lower()
         return "cuda" if s not in ("cpu", "cuda") else s
+    
+    @field_validator("torch_dtype", mode="before")
+    @classmethod
+    def _norm_dtype(cls, v):
+        s = str(v or "fp16").lower().strip()
+        if s not in ("fp16", "bf16", "fp32"):
+            raise ValueError("TORCH_DTYPE must be fp16|bf16|fp32")
+        return s
+
+    @field_validator("model_id", "vae_id", mode="after")
+    @classmethod
+    def _check_local_when_offline(cls, v, info):
+        try:
+            no_net = bool(info.data.get("no_network"))
+        except Exception:
+            no_net = True
+        if no_net and v:
+            p = Path(str(v))
+            if not p.exists():
+                raise ValueError(f"{info.field_name} not found locally: {p}")
+        return v
+
 
     model_config = SettingsConfigDict(
         env_prefix="",
