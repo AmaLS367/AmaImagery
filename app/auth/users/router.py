@@ -17,7 +17,6 @@ router = APIRouter(prefix="/users", tags=["users🤵"])
 
 class SettingsOut(BaseModel):
     data: dict[str, Any]
-
 class SettingsIn(BaseModel):
     data: dict[str, Any]
 
@@ -38,7 +37,6 @@ def patch_settings(payload: SettingsIn, user: User = Depends(current_user), db: 
     db.commit()
     lg("app").bind(scope="users", action="patch_settings").info("users.settings.patch")
     return SettingsOut(data=us.data)
-
 class GenItem(BaseModel):
     id: str
     image_path: str

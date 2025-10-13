@@ -8,8 +8,7 @@ from typing import Iterable, List, Pattern
 
 from app.config import settings
 
-# Базовые паттерны на случай отсутствия файла (минимум, без излишеств)
-# Включается только когда список пуст и/или файл не найден.
+# Base paterns
 _FALLBACK_PATTERNS: list[str] = [
     r"\bbestiality\b",
     r"\bzoophil(e|ia)\b",

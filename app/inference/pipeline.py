@@ -3,6 +3,7 @@ from diffusers.pipelines.auto_pipeline import AutoPipelineForText2Image # type: 
 from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL # type: ignore
 from diffusers.models.attention_processor import AttnProcessor2_0, AttnProcessor # type: ignore 
 from diffusers import DPMSolverMultistepScheduler # type: ignore
+from huggingface_hub import snapshot_download
 
 from app.config import settings
 from loguru import logger
@@ -18,6 +19,62 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 _pipe = None
 _ip_ready = False
+
+# --- online/offline switch & cache helpers ---
+def _flag(name: str) -> bool:
+    return os.getenv(name, "0").strip().lower() in ("1", "true", "yes", "on")
+
+def _is_offline() -> bool:
+    return _flag("HF_HUB_OFFLINE") or _flag("TRANSFORMERS_OFFLINE") or _flag("DIFFUSERS_OFFLINE") or _flag("NO_NETWORK")
+
+def _project_root() -> Path:
+    # from app/inference/pipeline.py -> project root
+    return Path(__file__).resolve().parents[2]
+
+def _hub_candidates() -> list[Path]:
+    # Priority: explicit env -> HF_HOME/hub -> project cache -> CWD cache -> user home
+    c: list[Path] = []
+    env_hub = os.getenv("HUGGINGFACE_HUB_CACHE")
+    if env_hub:
+        c.append(Path(env_hub))
+    hf_home = os.getenv("HF_HOME")
+    if hf_home:
+        c.append(Path(hf_home) / "hub")
+    c.append(_project_root() / "models" / ".cache" / "huggingface" / "hub")
+    c.append(Path.cwd() / "models" / ".cache" / "huggingface" / "hub")
+    c.append(Path.home() / ".cache" / "huggingface" / "hub")
+    # de-duplicate while keeping order
+    seen: set[str] = set()
+    uniq: list[Path] = []
+    for p in c:
+        s = str(p)
+        if s not in seen:
+            seen.add(s)
+            uniq.append(p)
+    return uniq
+
+def _find_snapshot(repo: str) -> Path | None:
+    repo_dir = f"models--{repo.replace('/', '--')}"
+    for hub in _hub_candidates():
+        snaps_root = hub / repo_dir / "snapshots"
+        if snaps_root.exists():
+            snaps = sorted(snaps_root.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if snaps:
+                lg("app").bind(event="hf_cache", hub=str(hub), repo=repo).info("Using HF hub cache")
+                return snaps[0]
+    return None
+
+def _ensure_snapshot(repo: str, offline: bool) -> Path:
+    snap = _find_snapshot(repo)
+    if snap:
+        return snap
+    if offline:
+        raise RuntimeError(f"Missing local snapshot '{repo}'. Warm the cache online once.")
+    snapshot_download(repo, local_files_only=False)
+    snap = _find_snapshot(repo)
+    if not snap:
+        raise RuntimeError(f"Snapshot '{repo}' not found after download")
+    return snap
 
 def _align_ip_encoders(pipe):
     dev = next(pipe.unet.parameters()).device
@@ -125,57 +182,94 @@ def get_pipeline():
     dtype = _dtype_map.get(getattr(settings, "torch_dtype", "fp16").lower(), torch.float16)
 
     mid = settings.model_id
+    offline = _is_offline() 
 
-    # 1) DreamShaper .safetensors (локальный файл)
+    # 1) LDM .safetensors (локальный файл)
     if os.path.isfile(mid) and mid.lower().endswith((".safetensors", ".ckpt")):
-        vae = None
+        # Resolve SD1.5 config first (used also as VAE fallback)
+        sd15_cfg = _ensure_snapshot("runwayml/stable-diffusion-v1-5", offline)
+
+        def _pick_local_vae_dir(sd15: Path) -> Path | None:
+            """Prefer explicit project VAE dir, else SD1.5 VAE, else None."""
+            proj = Path("models/vae")
+            if proj.exists():
+                return proj
+            sd15_vae = sd15 / "vae"
+            return sd15_vae if sd15_vae.exists() else None
 
         vae = None
-        vid = getattr(settings, "vae_id", None)
-        if vid:
-            p = Path(vid)
-            if p.exists():
-                # Локальный VAE в формате diffusers-папки с config.json
+        vid_raw = getattr(settings, "vae_id", None)
+        vid = str(vid_raw).strip() if vid_raw else ""
+
+        if offline:
+            # OFFLINE: ignore HF repo ids; use only local dirs
+            if vid and Path(vid).exists():
                 vae = AutoencoderKL.from_pretrained(
-                    str(p),
-                    torch_dtype=dtype,
-                    local_files_only=True,
-                )
-            elif not bool(settings.no_network):
-                # Онлайн разрешён — тянем по id
-                vae = AutoencoderKL.from_pretrained(
-                    vid,
-                    torch_dtype=dtype,
-                    local_files_only=False,
+                    str(Path(vid)), 
+                    torch_dtype=dtype, 
+                    local_files_only=True
                 )
             else:
-                vae = None
+                local_vae_dir = _pick_local_vae_dir(sd15_cfg)
+                if not local_vae_dir:
+                    raise RuntimeError("Offline mode: no local VAE found (VAE_ID path missing, models/vae missing, SD1.5 VAE missing)")
+                vae = AutoencoderKL.from_pretrained(
+                    str(local_vae_dir), 
+                    torch_dtype=dtype, 
+                    local_files_only=True
+                )
+        else:
+            # ONLINE: local dir wins; otherwise treat VAE_ID as repo id and fetch/cache
+            if vid and Path(vid).exists():
+                vae = AutoencoderKL.from_pretrained(
+                    str(Path(vid)), 
+                    torch_dtype=dtype, 
+                    local_files_only=True
+                )
+            elif vid:
+                vae_snap = _ensure_snapshot(vid, offline=False)
+                vae = AutoencoderKL.from_pretrained(
+                    str(Path(vae_snap)),  # normalize to str path
+                    torch_dtype=dtype,
+                    local_files_only=offline,
+                )
+            else:
+                # default to SD1.5 VAE
+                vae_dir = _pick_local_vae_dir(sd15_cfg)
+                if vae_dir:
+                    vae = AutoencoderKL.from_pretrained(
+                        str(vae_dir), 
+                        torch_dtype=dtype, 
+                        local_files_only=False
+                    )
 
-            
-        conf_path = (Path(mid).parent / "configs" / "v1-inference.yaml")
+        sd15_cfg = _ensure_snapshot("runwayml/stable-diffusion-v1-5", offline)
+        cfg_dir = Path(sd15_cfg)  
+        mi = cfg_dir / "model_index.json"
+        if not mi.exists():
+            raise RuntimeError(f"SD1.5 config repo is invalid: missing {mi}")
 
         pipe = StableDiffusionPipeline.from_single_file(
             mid,
+            config=str(cfg_dir),  
             torch_dtype=dtype,
-            vae=vae,                   # у версии "no vae" может быть None — это норм
+            vae=vae,
             use_safetensors=True,
             safety_checker=None,
             feature_extractor=None,
-            original_config_file=str(conf_path),
-            local_files_only=bool(settings.no_network),
+            local_files_only=offline,
         )
 
     else:
         # 2) HF-репозиторий или локальная папка с model_index.json
-        if settings.no_network and not os.path.exists(mid):
-            raise RuntimeError("NO_NETWORK=1 и model_id не локальный путь")
+        if offline and not os.path.exists(mid):
+            raise RuntimeError("OFFLINE и model_id не локальный путь")
         pipe = AutoPipelineForText2Image.from_pretrained(
             mid,
             torch_dtype=dtype,
             use_safetensors=True,
-            local_files_only=bool(settings.no_network),
+            local_files_only=offline,  
         )
-
 
     # --- шедулер: заменяем на DPMSolver++ (Karras, 2nd order) ---
     try:
@@ -318,9 +412,9 @@ def get_pipeline_with_ip():
 
     plus = os.path.join(ip_dir, "ip-adapter-plus_sd15.safetensors")
     base = os.path.join(ip_dir, "ip-adapter_sd15.safetensors")
-    if settings.no_network and not (os.path.exists(plus) or os.path.exists(base)):
+    if _is_offline() and not (os.path.exists(plus) or os.path.exists(base)):
         lg("app").bind(event="ip_adapter.disabled", reason="weights_missing", dir=ip_dir).warning("ip_adapter.disabled")
-        return pipe  # без весов не подключаем
+        return pipe 
 
     try:
         pipe.load_ip_adapter(

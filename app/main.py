@@ -1,9 +1,4 @@
-"""
-Main FastAPI application module.
-
-This module contains the FastAPI application setup, middleware configuration,
-and route definitions for the AI image generation service.
-"""
+""" Main FastAPI application module. """
 
 import asyncio
 import logging, os, re
@@ -11,7 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional, Any
 
-import redis.asyncio as redis # type: ignore
+import redis.asyncio as redis
 import torch
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,13 +43,21 @@ from app.api.v1.nsfw import router as nsfw_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not _is_production():
-        Base.metadata.create_all(bind=engine) 
+        Base.metadata.create_all(bind=engine)
     redis_client = await _initialize_redis()
+
+    # make redis visible for routers
+    app.state.redis_client = redis_client
+
     try:
         yield
     finally:
+        # drop from state and close
+        if hasattr(app.state, "redis_client"):
+            app.state.redis_client = None
         if redis_client:
             await redis_client.aclose()
+
 
 
 def _is_production() -> bool:
@@ -83,13 +86,11 @@ async def _initialize_redis() -> Optional[redis.Redis]:
 # ==================== Application Setup ====================
 
 def _configure_network_security() -> None:
-    """Configure network security settings."""
     if settings.no_network:
         apply_net_guard()
 
 
 def _configure_pytorch() -> None:
-    """Configure PyTorch settings for optimal performance."""
     try:
         torch.set_num_threads(max(1, int(settings.torch_threads)))
         
@@ -147,8 +148,6 @@ async def rate_limit_logging_middleware(request: Request, call_next):
 
 
 def _add_middleware() -> None:
-    """Add all middleware to the application."""
-    
     # Security middleware
     app.add_middleware(
         TrustedHostMiddleware, 
@@ -184,7 +183,6 @@ _setup_error_handlers()
 # ==================== Security Configuration ====================
 
 def _setup_logging_filters() -> None:
-    """Setup logging filters for security."""
     AUTH_PATTERN = re.compile(
         r"(Authorization:\s*Bearer\s+)([A-Za-z0-9\-\._]+)", 
         re.IGNORECASE
@@ -234,6 +232,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # ==================== Static Files Configuration ====================
 
+# Это поменять на точный путь, никакие проверки не нужны, мы точно знаем, где фронт
 def _resolve_ui_directory() -> Optional[Path]:
     repo_root = Path(__file__).resolve().parents[1]
     

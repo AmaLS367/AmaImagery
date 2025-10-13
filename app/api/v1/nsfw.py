@@ -17,11 +17,8 @@ from app.core.safety import (
 )
 
 router = APIRouter(prefix="/nsfw", tags=["nsfw"])
-
-
 class NSFWToggle(BaseModel):
     allow: bool
-
 
 class NSFWCheckRequest(BaseModel):
     text: Optional[str] = None
@@ -32,7 +29,6 @@ class NSFWCheckResponse(BaseModel):
     blocked: bool
     forced: bool
 
-
 @router.patch("/users/me/nsfw")
 def set_nsfw(toggle: NSFWToggle, db: Session = Depends(get_db), user=Depends(current_user)):
     user.nsfw_allow = bool(toggle.allow)
@@ -40,19 +36,16 @@ def set_nsfw(toggle: NSFWToggle, db: Session = Depends(get_db), user=Depends(cur
     db.commit()
     return {"ok": True, "nsfw_allow": user.nsfw_allow}
 
-
 @router.post("/check", response_model=NSFWCheckResponse)
 def check_text(req: NSFWCheckRequest):
     if req.forced:
         return NSFWCheckResponse(blocked=is_blocked_forced(req.text), forced=True)
     return NSFWCheckResponse(blocked=is_blocked(req.text), forced=False)
 
-
 @router.get("/rules")
 def list_rules():
     path = str(getattr(settings, "nsfw_blocklist_path", ""))
     return {"path": path, "rules": get_rules(), "count": len(get_rules())}
-
 
 @router.post("/reload")
 def reload_rules_cache():

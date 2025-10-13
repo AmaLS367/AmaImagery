@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import time
-from typing import Callable, Optional, Tuple, List
-
-import redis.asyncio as redis  # type: ignore
+from typing import Callable, Optional
+import redis.asyncio as redis 
 from fastapi import Depends, HTTPException, Request, status
 
 from app.config import settings
@@ -12,10 +11,6 @@ from app.auth.deps import get_user_or_ip_identifier
 _redis: Optional[redis.Redis] = None
 
 async def _get_redis() -> redis.Redis:
-    """
-    Возвращает singleton Redis-клиента с проверкой доступности.
-    При LIMITS_ENABLED=true и недоступном Redis — 503.
-    """
     global _redis
     if _redis is not None:
         return _redis
@@ -34,11 +29,6 @@ async def _get_redis() -> redis.Redis:
                             detail={"error": "rate_limiter_misconfigured"})
 
 def create_rate_limiter(limit: int, window_sec: int) -> Callable:
-    """
-    Скользящее окно по фиксированным бакетам: ключ = "ratelimit:{id}:{windowStart}".
-    Возвращает dependency для FastAPI-эндпоинтов.
-    """
-
     async def _dep(
         request: Request,
         redis_client: redis.Redis = Depends(_get_redis),

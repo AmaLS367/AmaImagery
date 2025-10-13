@@ -1,4 +1,4 @@
-# NSFW Image Generator
+# Image Generator
 
 ## Install
 ```bash

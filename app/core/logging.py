@@ -16,7 +16,7 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import settings
 
-# -------- контекст --------
+# -------- context --------
 _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
 _gen_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("gen_id", default=None)
 _client_ip: contextvars.ContextVar[str | None] = contextvars.ContextVar("client_ip", default=None)
@@ -39,7 +39,7 @@ def new_gen_id() -> str:
 def set_client_ip(v: str | None) -> None: _client_ip.set(v)
 def get_client_ip() -> str | None: return _client_ip.get()
 
-# -------- санитайзер секретов --------
+# -------- санитайзер секретов  --------
 _SECRET_RX = re.compile(
     r"(?P<bearer>Authorization:\s*Bearer\s+)[A-Za-z0-9\-\._~\+/]+=*|(?P<key>(?:api|token|secret|password)\s*=\s*)[^,\s]+",
     re.IGNORECASE,
@@ -251,11 +251,10 @@ def install_exception_handlers(app: FastAPI) -> None:
         return JSONResponse({"detail": exc.errors()}, status_code=HTTP_422_UNPROCESSABLE_ENTITY)
 
 
-# -------- helper: логгер по типу --------
+# -------- helpers --------
 def lg(kind: str):
     return logger.bind(event_type=kind)
 
-# -------- helper: сохранение raw-промпта (по флагу) --------
 def save_prompt_raw(prompt_hash: str, original: str, negative: str | None) -> None:
     if int(settings.prompts_raw or 0) != 1:
         return
@@ -266,7 +265,6 @@ def save_prompt_raw(prompt_hash: str, original: str, negative: str | None) -> No
     except Exception:
         logger.bind(event_type="app").warning("Failed to save raw prompt", extra={"prompt_hash": prompt_hash})
 
-# -------- helper для security-событий --------
 def sec(event: str, **fields):
     payload = {"event": event}
     payload.update(fields)

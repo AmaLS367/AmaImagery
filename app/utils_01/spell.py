@@ -1,10 +1,9 @@
 import re
-from symspellpy import SymSpell, Verbosity # type: ignore
-from wordfreq import top_n_list # type: ignore
+from symspellpy import SymSpell, Verbosity 
+from wordfreq import top_n_list 
 from app.core.logging import lg
 
-
-_TOKEN = re.compile(r"[A-Za-z][A-Za-z\-']{2,}")  # слова ≥3 символов
+_TOKEN = re.compile(r"[A-Za-z][A-Za-z\-']{2,}")  # words ≥3 characters
 
 def build_spell(extra_words: list[str] | None = None) -> SymSpell:
     sym = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)

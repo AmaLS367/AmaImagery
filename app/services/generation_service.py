@@ -212,10 +212,11 @@ class GenerationService:
         if vram == 0:
             return min(cfg_cap, 768)
         if vram <= 4608:
-            return min(cfg_cap, 512)
+            return min(cfg_cap, 704)
         if vram <= 7168:
-            return min(cfg_cap, 640)
-        return min(cfg_cap, 768)
+            return min(cfg_cap, 896)
+        return min(cfg_cap, 1024)
+
 
     def _snap64(self, x: int) -> int:
         return max(256, (int(x) // 64) * 64)
@@ -239,34 +240,54 @@ class GenerationService:
     
     def _prepare_generation_params(self, request: GenReq, processed_prompt: str) -> Dict[str, Any]:
         """Prepare parameters for image generation."""
-        # Apply style
         style = getattr(request, 'style', 'anime')
+
+        quality_prefix = "masterpiece, best quality, ultra-detailed"
         if style == 'anime':
-            final_prompt = f"anime, illustration, clean lineart, cel shading, vibrant colors, key visual, {processed_prompt}"
+            style_prefix = "anime style, clean lineart, detailed shading, vibrant colors"
         else:
-            final_prompt = f"photorealistic, natural lighting, detailed film look, {processed_prompt}"
-        
-        # Prepare negative prompt
+            style_prefix = "photorealistic, cinematic lighting, detailed skin, depth of field"
+
+        final_prompt = f"{quality_prefix}, {style_prefix}, {processed_prompt}"
+
         negative_prompt = request.negative_prompt or (
-            "close-up, cropped, zoomed in, out of frame, bad composition, "
-            "lowres, blurry, jpeg artifacts, extra fingers, extra limbs, bad hands, worst quality, low quality"
+            "bad anatomy, bad hands, missing fingers, extra fingers, extra limbs, poorly drawn face, "
+            "deformed, body out of frame, cropped, lowres, blurry, jpeg artifacts, watermark, signature, text, "
+            "worst quality, low quality"
         )
 
+        # желаемое базовое соотношение 2:3 по умолчанию
+        req_w = int(request.width or 768)
+        req_h = int(request.height or 1152)
+
         cap = self._effective_max_size()
-        w = self._snap64(min(request.width, cap))
-        h = self._snap64(min(request.height, cap))
+        # масштабирование по длинной стороне с сохранением пропорций
+        long_side = max(req_w, req_h)
+        if long_side > cap:
+            scale = cap / float(long_side)
+            req_w = int(round(req_w * scale))
+            req_h = int(round(req_h * scale))
+
+        w = self._snap64(req_w)
+        h = self._snap64(req_h)
+
+        # шаги и гайд
+        use_steps = max(24, int(request.steps or 28))
+        use_gs = float(request.guidance_scale if request.guidance_scale is not None else 7.5)
 
         return {
             "prompt": final_prompt,
             "negative_prompt": negative_prompt,
             "width": w,
             "height": h,
-            "steps": int(request.steps),
-            "guidance_scale": request.guidance_scale,
+            "steps": use_steps,
+            "guidance_scale": use_gs,
             "seed": request.seed,
             "ref_image_b64": request.ref_image_b64,
             "ip_scale": request.ip_scale,
+            "style": style,
         }
+
     
     async def _generate_image_async(self, params: Dict[str, Any]) -> Image.Image:
         """ Asynchronously generate an image """
@@ -330,7 +351,11 @@ class GenerationService:
         if getattr(pipeline, "vae", None) is not None:
             pipeline.vae.to(device=device, dtype=unet_dtype)
         if getattr(pipeline, "text_encoder", None) is not None:
-            pipeline.text_encoder.to(device=device, dtype=torch.float32)
+            if torch.cuda.is_available():
+                pipeline.text_encoder.to(device="cpu", dtype=torch.float32)
+            else:
+                pipeline.text_encoder.to(device=device, dtype=torch.float32)
+
 
         # Если есть заранее подготовленные эмбеддинги IP-Adapter — привести к dtype UNet
         if use_ip and "image_embeds" in locals():
