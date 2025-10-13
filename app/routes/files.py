@@ -61,19 +61,22 @@ async def download_file(
 )
 
     
-    redis_client = getattr(request.app.state, "redis_client", None)
-    if redis_client is None:
-        logger.error("file.redis_missing", extra=_LOG_CTX)
-        raise HTTPException(status_code=500, detail="Server misconfigured")
+    # Optional single-use links
+    if settings.file_single_use:
+        redis_client = getattr(request.app.state, "redis_client", None)
+        if redis_client is None:
+            logger.error("file.redis_missing", extra=_LOG_CTX)
+            raise HTTPException(status_code=500, detail="Server misconfigured")
 
-    used = await consume_once(redis_client, sig, ttl_left)
-    if not used:
-        logger.warning(
-            "file.signature_reuse",
-            extra={**_LOG_CTX, "path": path}
-        )
-        raise HTTPException(status_code=410, detail="Link already used")
-    logger.info("file.signature_consumed", extra=_LOG_CTX)
+        consumed = await consume_once(redis_client, sig, ttl_left)
+        if not consumed:
+            logger.warning(
+                "file.signature_reuse",
+                extra={**_LOG_CTX, "path": path}
+            )
+            raise HTTPException(status_code=410, detail="Link already used")
+        logger.info("file.signature_consumed", extra=_LOG_CTX)
+
     
     # Validate file path and extension
     file_path = safe_join(path)
