@@ -17,7 +17,7 @@ from app.files.validators import check_ext, check_mime, safe_join
 from app.services.rate_limiting import create_rate_limiter
 from app.core.logging import sec, logger
 
-router = APIRouter(tags=["files"])
+router = APIRouter(tags=["files📃"])
 _LOG_CTX = {"event_type": "app", "scope": "files"}
 
 @router.get("/file")
@@ -28,15 +28,11 @@ async def download_file(
     sig: str = Query(..., min_length=64, max_length=64),
     rate_limiter=Depends(create_rate_limiter(limit=5, window_sec=10))
 ) -> FileResponse:
-    """
-    Download a file with signature verification.
-    """
     logger.info(
         "file.request",
         extra={**_LOG_CTX, "path": path, "exp": exp, "has_sig": bool(sig)}
     )
     
-    # Validate signature
     if not verify_signature(path, exp, sig):
         logger.warning(
             "file.signature_invalid",
@@ -60,8 +56,6 @@ async def download_file(
         extra={**_LOG_CTX, "ttl_left": ttl_left}
 )
 
-    
-    # Optional single-use links
     if settings.file_single_use:
         redis_client = getattr(request.app.state, "redis_client", None)
         if redis_client is None:
@@ -101,7 +95,6 @@ async def download_file(
     )
     check_mime(mime_type)
     
-    # Check if file exists
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     

@@ -1,22 +1,20 @@
 """ Main FastAPI application module. """
 
-import asyncio
 import logging, os, re
+import subprocess
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
-import redis.asyncio as redis
 import torch
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from app.auth.deps import optional_user
 from app.auth.router import router as auth_router
 from app.auth.users.router import router as users_router
 
@@ -25,17 +23,13 @@ from app.routes.health import router as health_router
 from app.routes.files import router as files_router
 
 from app.config import settings
-from app.infra.db import Base, engine, get_db
+from sqlalchemy.engine.url import make_url
 from app.middleware.request_id import RequestIDMiddleware
 from app.core.errors import install_error_handlers
 
 from app.inference.net_guard import apply as apply_net_guard
-from app.core.limits import get_gen_semaphore
 from app.core.logging import setup_logging, AccessLogMiddleware, install_exception_handlers, logger, sec
 from app.middleware.request_limits import RequestLimitsMiddleware
-from app.domain.schemas import GenReq, GenResp
-from app.services.rate_limiting import create_rate_limiter
-from app.services.generation_service import GenerationService
 from app.api.v1.nsfw import router as nsfw_router
 
 # ==================== Application Lifecycle ====================
@@ -43,45 +37,20 @@ from app.api.v1.nsfw import router as nsfw_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not _is_production():
-        Base.metadata.create_all(bind=engine)
-    redis_client = await _initialize_redis()
-
-    # make redis visible for routers
-    app.state.redis_client = redis_client
+        backend = make_url(settings.database_url).get_backend_name()
+        if backend not in ("postgresql", "postgresql+psycopg", "postgresql+psycopg2"):
+            raise RuntimeError("Only PostgreSQL is supported for dev. Set DATABASE_URL to Postgres.")
+        r = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(f"Alembic failed: {r.stdout}\n{r.stderr}")
 
     try:
         yield
     finally:
-        # drop from state and close
-        if hasattr(app.state, "redis_client"):
-            app.state.redis_client = None
-        if redis_client:
-            await redis_client.aclose()
-
-
+        pass
 
 def _is_production() -> bool:
     return not bool(getattr(settings, "debug", False))
-
-async def _initialize_redis() -> Optional[redis.Redis]:
-    if os.getenv("NO_REDIS", "0") == "1":
-        logger.info("Redis disabled via NO_REDIS environment variable")
-        return None
-        
-    try:
-        redis_client = redis.from_url(
-            settings.redis_url, 
-            encoding="utf-8", 
-            decode_responses=True
-        )
-        logger.info("Redis client initialized")
-        return redis_client
-    except Exception as e:
-        if _is_production():
-            logger.error(f"Failed to initialize rate limiter in production: {e}")
-            raise
-        logger.warning(f"Rate limiter disabled in development: {e}")
-        return None
 
 # ==================== Application Setup ====================
 
@@ -113,13 +82,7 @@ def _configure_pytorch() -> None:
 
 
 def _get_docs_url() -> Optional[str]:
-    return None if not bool(getattr(settings, "debug", False)) else "/docs"
-
-def _get_redoc_url() -> Optional[str]:
-    return None if not bool(getattr(settings, "debug", False)) else "/redoc"
-
-def _get_openapi_url() -> Optional[str]:
-    return None if not bool(getattr(settings, "debug", False)) else "/openapi.json"
+    return settings.docs_url
 
 # Initialize application
 _configure_network_security()
@@ -132,8 +95,6 @@ app = FastAPI(
     debug=bool(getattr(settings, "debug", False)),
     lifespan=lifespan,
     docs_url=_get_docs_url(),
-    redoc_url=_get_redoc_url(),
-    openapi_url=_get_openapi_url(),
 )
 
 # ==================== Middleware Configuration ====================
@@ -277,34 +238,11 @@ _mount_static_files()
 
 @app.get("/", include_in_schema=False)
 def root():
-    return RedirectResponse(url="/ui/")
+    return RedirectResponse(url="/admin/")
 
-# ==================== Generation Functions ====================
-
-@app.post(
-    "/generate_legacy",
-    response_model=GenResp,
-    dependencies=[Depends(create_rate_limiter(limit=settings.gen_per_user_per_min, window_sec=60))]
-)
-async def generate_legacy(
-    request: GenReq,
-    db: Session = Depends(get_db),
-    user: Optional[Any] = Depends(optional_user),
-    semaphore: asyncio.Semaphore = Depends(get_gen_semaphore),
-) -> GenResp:
-    queue_timeout = min(
-        max(15.0, settings.keepalive_timeout_seconds + 10),
-        float(getattr(settings, "generation_timeout_sec", 120)) / 2,
-    )
-    await asyncio.wait_for(semaphore.acquire(), timeout=queue_timeout)
-    try:
-        service = GenerationService(db)
-        return await service.generate_image(request, user)
-    finally:
-        try:
-            semaphore.release()
-        except Exception:
-            pass
+@app.post("/generate_legacy", include_in_schema=False)
+async def generate_legacy_redirect(_: Request):
+    return RedirectResponse(url="/generate", status_code=308)
 
 # ==================== Routes Configuration ====================
 

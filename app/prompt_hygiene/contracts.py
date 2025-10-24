@@ -1,0 +1,1 @@
+# типы/DTO: Suggestion/Report/HygieneResult/Mode

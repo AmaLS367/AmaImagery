@@ -265,7 +265,6 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
     expires_in: int
 
-# ========= refresh token =========
 @router.post("/refresh", response_model=TokenOut, dependencies=[Depends(create_rate_limiter(limit=30, window_sec=60))])
 async def refresh(response: Response, request: Request):
     rt = request.cookies.get(settings.refresh_cookie_name)

@@ -25,7 +25,7 @@ class GenResp(BaseModel):
     corrections: List[Tuple[str, str]] = Field(default=[], description="List of prompt corrections made")
     exp: Optional[int] = Field(None, description="Expiration timestamp for signed URL")
     sig: Optional[str] = Field(None, description="Signature for file download")
-
+    
 class HealthResponse(BaseModel):
     """Health check response model."""
     ok: bool = Field(description="Service health status")
@@ -36,3 +36,4 @@ class ErrorResponse(BaseModel):
     error: str = Field(description="Error type")
     message: str = Field(description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
+

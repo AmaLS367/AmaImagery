@@ -86,7 +86,6 @@ docker/.env.local
 docker/.env.prod
 
 # === ML / heavy artifacts ===
-models/
 outputs/
 runs/
 checkpoints/

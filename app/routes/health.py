@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 
-router = APIRouter(tags=["health"])
+router = APIRouter(tags=["health❤️‍🩹"])
 
 @router.options("/health")
 async def health_options():

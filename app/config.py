@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # --- auth/db ---
     database_url: str = Field("sqlite:///./genai.db", alias="DATABASE_URL")
-    secret_key: str = Field("CHANGE_ME_LONG_RANDOM", alias="SECRET_KEY")
+    secret_key: str = Field("", alias="SECRET_KEY")
     jwt_alg: str = Field("HS256", alias="JWT_ALG")
     
     # --- logging ---
@@ -171,6 +171,10 @@ class Settings(BaseSettings):
     metrics_enabled: bool = Field(True, alias="METRICS_ENABLED")
     gpu_metrics_enabled: bool = Field(True, alias="GPU_METRICS_ENABLED")
     metrics_path: str = Field("/metrics", alias="METRICS_PATH")
+    
+    # --- Docs and debug
+    debug: bool = Field(False, alias="DEBUG")
+    docs_url: str | None = Field("/docs", alias="DOCS_URL")
 
     # --- Paths --
     root_dir: Path = Field(

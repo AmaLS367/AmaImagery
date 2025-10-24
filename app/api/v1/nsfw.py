@@ -16,7 +16,7 @@ from app.core.safety import (
     reload_rules,
 )
 
-router = APIRouter(prefix="/nsfw", tags=["nsfw"])
+router = APIRouter(prefix="/nsfw", tags=["nsfw🔞"])
 class NSFWToggle(BaseModel):
     allow: bool
 

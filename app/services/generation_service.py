@@ -22,7 +22,7 @@ from app.domain.models import Generation
 from app.domain.schemas import GenReq, GenResp
 from app.services.image_service import ImageProcessingService
 from app.utils import out_path, prompt_hash
-from app.utils_01.spell import build_spell, correct_prompt
+from app.prompt_hygiene.spell import build_spell, correct_prompt
 from app.core.safety import is_blocked, is_blocked_forced
 
 class GenerationService:
@@ -64,7 +64,7 @@ class GenerationService:
     
     def _setup_autocorrect(self) -> None:
         """Setup autocorrect functionality."""
-        self.autocorrect_mode = os.getenv("AUTOCORRECT", "on")
+        self.autocorrect_mode = settings.autocorrect  
         self.spell_checker = build_spell(extra_words=[
             "bokeh", "karras", "euler", "dpmsolver", "lora", "vae",
             "anime", "photorealistic", "cinematic", "volumetric",
@@ -157,7 +157,7 @@ class GenerationService:
         if request.width > settings.max_gen_width or request.height > settings.max_gen_height:
             raise ValueError("Image size too large")
         
-        max_safe = 256
+        max_safe = int(settings.max_steps)
         if int(request.steps) > max_safe:
             raise ValueError(f"Steps too large (>{max_safe})")
         
@@ -272,7 +272,11 @@ class GenerationService:
         h = self._snap64(req_h)
 
         # шаги и гайд
-        use_steps = max(24, int(request.steps or 28))
+        max_safe = int(settings.max_steps)
+        if int(request.steps) > max_safe:
+            raise ValueError(f"steps exceeds settings.max_steps ({max_safe})")
+        
+        use_steps = min(max_safe, max(24, int(request.steps or 28)))
         use_gs = float(request.guidance_scale if request.guidance_scale is not None else 7.5)
 
         return {
@@ -355,14 +359,6 @@ class GenerationService:
                 pipeline.text_encoder.to(device="cpu", dtype=torch.float32)
             else:
                 pipeline.text_encoder.to(device=device, dtype=torch.float32)
-
-
-        # Если есть заранее подготовленные эмбеддинги IP-Adapter — привести к dtype UNet
-        if use_ip and "image_embeds" in locals():
-            try:
-                image_embeds = image_embeds.to(device=device, dtype=unet_dtype)
-            except Exception:
-                pass
 
         ctx = (torch.autocast(device_type=device.type, dtype=unet_dtype)
             if device.type == "cuda" else nullcontext())
@@ -620,7 +616,7 @@ class GenerationService:
             "guidance_scale": request.guidance_scale,
             "ip_scale": request.ip_scale,
             "seed": request.seed,
-            "model_id": getattr(request, "model_id", None),
+            "model_id": settings.model_id,
         }
         
         generation = Generation(
@@ -634,7 +630,6 @@ class GenerationService:
         self.db.commit()
     
     def _create_signed_url(self, output_path: str) -> Dict[str, Any]:
-        """Create a signed URL for the generated image."""
         from app.files.signing import make_signature
         import time
         

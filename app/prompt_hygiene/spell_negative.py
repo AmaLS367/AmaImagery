@@ -1,0 +1,1 @@
+# автокоррекция negative-prompt
