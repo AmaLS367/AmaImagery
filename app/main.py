@@ -1,8 +1,6 @@
 """ Main FastAPI application module. """
 
 import logging, os, re
-import subprocess
-import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -23,7 +21,6 @@ from app.routes.health import router as health_router
 from app.routes.files import router as files_router
 
 from app.config import settings
-from sqlalchemy.engine.url import make_url
 from app.middleware.request_id import RequestIDMiddleware
 from app.core.errors import install_error_handlers
 
@@ -31,19 +28,15 @@ from app.inference.net_guard import apply as apply_net_guard
 from app.core.logging import setup_logging, AccessLogMiddleware, install_exception_handlers, logger, sec
 from app.middleware.request_limits import RequestLimitsMiddleware
 from app.api.v1.nsfw import router as nsfw_router
+from app.services.rate_limiting import RateLimitLoggingMiddleware
+from app.infra.db import run_dev_migrations
 
 # ==================== Application Lifecycle ====================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not _is_production():
-        backend = make_url(settings.database_url).get_backend_name()
-        if backend not in ("postgresql", "postgresql+psycopg", "postgresql+psycopg2"):
-            raise RuntimeError("Only PostgreSQL is supported for dev. Set DATABASE_URL to Postgres.")
-        r = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], capture_output=True, text=True)
-        if r.returncode != 0:
-            raise RuntimeError(f"Alembic failed: {r.stdout}\n{r.stderr}")
-
+        run_dev_migrations()
     try:
         yield
     finally:
@@ -98,16 +91,6 @@ app = FastAPI(
 )
 
 # ==================== Middleware Configuration ====================
-
-@app.middleware("http")
-async def rate_limit_logging_middleware(request: Request, call_next):
-    """Log rate limiting events."""
-    response = await call_next(request)
-    if response.status_code == 429:
-        sec("rate_limited", path=str(request.url.path))
-    return response
-
-
 def _add_middleware() -> None:
     # Security middleware
     app.add_middleware(
@@ -119,6 +102,7 @@ def _add_middleware() -> None:
     app.add_middleware(RequestLimitsMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(RateLimitLoggingMiddleware)
     
     # CORS middleware
     app.add_middleware(
@@ -134,8 +118,6 @@ def _setup_error_handlers() -> None:
     if not (getattr(settings, "env", "").lower() in ("dev", "development") or getattr(settings, "debug", 0) == 1):
         install_exception_handlers(app)
     install_error_handlers(app)
-
-
 
 # Apply middleware and error handlers
 _add_middleware()
@@ -192,8 +174,6 @@ _setup_logging_filters()
 app.add_middleware(SecurityHeadersMiddleware)
 
 # ==================== Static Files Configuration ====================
-
-# Это поменять на точный путь, никакие проверки не нужны, мы точно знаем, где фронт
 def _resolve_ui_directory() -> Optional[Path]:
     repo_root = Path(__file__).resolve().parents[1]
     

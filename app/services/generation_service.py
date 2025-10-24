@@ -24,7 +24,7 @@ from app.services.image_service import ImageProcessingService
 from app.utils import out_path, prompt_hash
 from app.prompt_hygiene.spell import build_spell, correct_prompt
 from app.core.safety import is_blocked, is_blocked_forced
-
+from app.core.limits import get_gen_semaphore
 class GenerationService:
     """Service for handling image generation requests."""
     
@@ -64,13 +64,13 @@ class GenerationService:
     
     def _setup_autocorrect(self) -> None:
         """Setup autocorrect functionality."""
-        self.autocorrect_mode = settings.autocorrect  
+        self.autocorrect_mode = settings.autocorrect
         self.spell_checker = build_spell(extra_words=[
             "bokeh", "karras", "euler", "dpmsolver", "lora", "vae",
             "anime", "photorealistic", "cinematic", "volumetric",
         ])
         self.whitelist = {"sd15", "sdxl", "lcm", "lora", "vae"}
-    
+
     async def generate_image(
         self,
         request: GenReq,
@@ -79,7 +79,14 @@ class GenerationService:
         """
         Generate an image based on the request.
         """
+        semaphore = get_gen_semaphore()
+        acquired = False
         try:
+            gen_limit = float(getattr(settings, "generation_timeout_sec", 60))
+            queue_timeout = max(20.0, min(gen_limit - 5.0, gen_limit / 2.0))
+            await asyncio.wait_for(semaphore.acquire(), timeout=queue_timeout)
+            acquired = True
+
             # Validate request parameters
             self._validate_request(request)
 
@@ -139,7 +146,6 @@ class GenerationService:
             )
 
         except Exception:
-            # Печатаем полноценный traceback в dev и логируем всегда
             traceback.print_exc()
             logger.exception(
                 "generation.failed",
@@ -148,9 +154,13 @@ class GenerationService:
                     "scope": "generation",
                 },
             )
-            # Ничего не скрываем тут — пусть поднимется выше до dev middleware
             raise
-
+        finally:
+            if acquired:
+                try:
+                    semaphore.release()
+                except Exception:
+                    pass
     
     def _validate_request(self, request: GenReq) -> None:
         """Validate generation request parameters."""

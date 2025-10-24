@@ -1,35 +1,25 @@
 from __future__ import annotations
 
 import time
-from typing import Callable, Optional
+from typing import Callable
 import redis.asyncio as redis # type: ignore
 from fastapi import Depends, HTTPException, Request, status
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import settings
 from app.auth.deps import get_user_or_ip_identifier
-
-_redis: Optional[redis.Redis] = None
-
-async def _get_redis() -> redis.Redis:
-    global _redis
-    if _redis is not None:
-        return _redis
-    try:
-        client = redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
-        await client.ping()
-        _redis = client
-        return _redis
-    except Exception as e:
-        if settings.limits_enabled:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                                detail={"error": "rate_limit_backend_unavailable"}) from e
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail={"error": "rate_limiter_misconfigured"})
+from app.infra.redis import get_redis
+from app.core.logging import sec
+class RateLimitLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            sec("rate_limited", path=str(request.url.path))
+        return response
 
 def create_rate_limiter(limit: int, window_sec: int) -> Callable:
     async def _dep(
         request: Request,
-        redis_client: redis.Redis = Depends(_get_redis),
+        redis_client: redis.Redis = Depends(get_redis),
         user_key: str = Depends(get_user_or_ip_identifier),
     ) -> None:
         now = int(time.time())

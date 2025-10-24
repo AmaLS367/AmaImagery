@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from app.auth.deps import optional_user
 from app.infra.db import get_db
 from app.core.logging import lg
-from app.core.limits import get_gen_semaphore
 from app.config import settings
 from app.domain.schemas import GenReq, GenResp
 from app.services.generation_service import GenerationService
@@ -29,19 +28,11 @@ async def generate_image(
     request: GenReq,
     db: Session = Depends(get_db),
     user: Optional[Any] = Depends(optional_user),
-    semaphore: asyncio.Semaphore = Depends(get_gen_semaphore),
 ) -> GenResp:
 
     generation_service = GenerationService(db)
 
-    acquired = False
     try:
-        gen_limit = float(settings.generation_timeout_sec)
-        queue_timeout = max(20.0, min(gen_limit - 5.0, gen_limit / 2.0))
-
-        await asyncio.wait_for(semaphore.acquire(), timeout=queue_timeout)
-        acquired = True
-
         result = await generation_service.generate_image(request=request, user=user)
         return result
 
@@ -75,9 +66,3 @@ async def generate_image(
             raise
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
-    finally:
-        if acquired:
-            try:
-                semaphore.release()
-            except Exception:
-                pass

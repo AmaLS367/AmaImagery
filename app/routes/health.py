@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Response, HTTPException
+from app.config import settings 
 
 router = APIRouter(tags=["health❤️‍🩹"])
 
@@ -12,4 +13,6 @@ async def health_check():
 
 @router.get("/healthz")
 async def healthz():
+    if getattr(settings, "limits_enabled", None) is None:
+        raise HTTPException(status_code=503, detail="Misconfigured")
     return {"ok": True, "status": "ready"}

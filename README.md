@@ -45,6 +45,7 @@ pip install "diffusers==0.29.2"
 pip install -r requirements.txt
 ```
 
+## Run
 ```bash
 python run.py
 ```
