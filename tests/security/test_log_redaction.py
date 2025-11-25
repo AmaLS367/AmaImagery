@@ -1,4 +1,4 @@
-from app.logging_setup import logger
+from app.core.logging import logger
 from io import StringIO
 import sys, re
 

@@ -48,7 +48,7 @@ def upgrade():
       ) THEN
         BEGIN
           ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_email_len_ck;
-          ALTER TABLE public.users ADD CONSTRAINT users_email_len_ck CHECK (length(email) <= 255);
+          ALTER TABLE public.users ADD CONSTRAINT users_email_len_ck CHECK (char_length(email) <= 255);
         EXCEPTION WHEN duplicate_object THEN
           NULL;
         END;
@@ -60,7 +60,14 @@ def upgrade():
       ) THEN
         BEGIN
           ALTER TABLE public.generations DROP CONSTRAINT IF EXISTS generations_prompt_len_ck;
-          ALTER TABLE public.generations ADD CONSTRAINT generations_prompt_len_ck CHECK (length(prompt) <= 2000);
+          ALTER TABLE public.generations ADD CONSTRAINT generations_prompt_len_ck CHECK (
+            -- нет ключа 'prompt' в JSONB — ограничение пропускаем
+            (NOT (prompt ? 'prompt'))
+            OR (
+              jsonb_typeof(prompt->'prompt') = 'string'
+              AND char_length(prompt->>'prompt') <= 2000
+            )
+          );
         EXCEPTION WHEN duplicate_object THEN
           NULL;
         END;

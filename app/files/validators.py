@@ -3,7 +3,7 @@ from typing import Iterable
 from starlette.responses import JSONResponse
 from app.config import settings
 
-BASE = Path(settings.out_dir).resolve()
+BASE = Path(settings.outputs_dir).resolve()
 ALLOWED_EXTS = {e.lower() for e in settings.file_allowed_exts}
 ALLOWED_MIMES = set(settings.file_allowed_mimes)
 
