@@ -1,7 +1,7 @@
 import hmac, time
 from hashlib import sha256
-from typing import Optional
 from app.config import settings
+from app.infra.redis import get_redis
 
 def _payload(name: str, exp: int) -> bytes:
     return f"{name}.{exp}".encode("utf-8")
@@ -11,19 +11,28 @@ def make_signature(name: str, exp: int) -> str:
     return hmac.new(key, _payload(name, exp), sha256).hexdigest()
 
 def verify_signature(name: str, exp: int, sig: str) -> bool:
-    if exp < int(time.time()):
-        return False
     expected = make_signature(name, exp)
     try:
         return hmac.compare_digest(expected, sig)
     except Exception:
         return False
 
-async def consume_once(redis, sig: str, ttl: int) -> bool:
-    if not settings.file_single_use:
+async def consume_once(sig: str, exp: int, skew: int = 0) -> bool:
+    if not getattr(settings, "file_single_use", False):
         return True
-    # setnx = True → первый доступ, False → повтор
-    ok = await redis.setnx(f"filedl:{sig}", "1")
-    if ok:
-        await redis.expire(f"filedl:{sig}", ttl)
-    return bool(ok)
+
+    redis = get_redis()
+    if redis is None:
+        return True
+
+    now = int(time.time())
+    ttl = max(1, min(max(0, exp - now), 3600))
+    key = f"filedl:{sig}"
+    try:
+        ok = await redis.setnx(key, "1")
+        if not ok:
+            return False
+        await redis.expire(key, ttl)
+        return True
+    except Exception:
+        return True

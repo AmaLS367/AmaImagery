@@ -78,6 +78,7 @@ outputs/
 .env
 .env.*
 .env.local
+.env.dev
 .env.development.local
 .env.test.local
 .env.production.local
@@ -85,13 +86,13 @@ docker/.env.local
 docker/.env.prod
 
 # === ML / heavy artifacts ===
+outputs/
 runs/
 checkpoints/
 *.pt
 *.pth
 *.ckpt
 models/
-outputs/
 *.safetensors
 *.onnx
 *.bin
