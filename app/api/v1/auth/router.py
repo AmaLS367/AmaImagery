@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.infra.db import get_db
 from app.domain.models import User, UserSettings
 from app.core.logging import lg, sec
-from app.auth.deps import current_user
+from app.api.v1.auth.deps import current_user
 from app.services.rate_limiting import create_rate_limiter
 
 from app.core.security import (
@@ -26,7 +26,7 @@ from app.config import settings
 
 import jwt
 
-router = APIRouter(prefix="/auth", tags=["auth🥷"])
+router = APIRouter()
 
 # ========= Registration =========
 
@@ -41,7 +41,7 @@ class RegisterOut(BaseModel):
     username: str
     access_token: str
     token_type: Literal["bearer"] = "bearer"
-    expires_in: int  
+    expires_in: int
 
 class MeOut(BaseModel):
   id: str
@@ -49,17 +49,19 @@ class MeOut(BaseModel):
   username: str
   settings: dict[str, Any] = {}
 
-# ======== Helper ========
+# ======== Helpers ========
+
 def _set_refresh_cookie(resp: Response, token: str) -> None:
     resp.set_cookie(
         key=settings.refresh_cookie_name,
         value=token,
         httponly=True,
-        secure=settings.refresh_cookie_secure,   # в проде True
+        secure=settings.refresh_cookie_secure,
         samesite="lax",
         max_age=settings.refresh_ttl_days * 86400,
         path="/auth",
     )
+    
 # ========================
 
 @router.post(
@@ -78,11 +80,10 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
 
     user = User(email=email, username=username, password_hash=hash_password(payload.password))
     db.add(user)
-    db.flush()  # получаем user.id
+    db.flush()
     db.add(UserSettings(user_id=user.id, data={}))
     db.commit()
 
-    # минимальный лог без PII
     lg("app").bind(scope="auth", action="register").info("auth.registered")
 
     token, ttl = create_access_token(sub=user.id, extra={"username": username})
@@ -105,10 +106,10 @@ def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
         settings=(us.data if us else {}),
     )
 
-# ========= Логин =========
+# ========= login =========
 
 class LoginIn(BaseModel):
-    identifier: str = Field(min_length=2)  # email или username
+    identifier: str = Field(min_length=2)  # email or username
     password: str = Field(min_length=8, max_length=256)
 
 class LoginOut(BaseModel):
@@ -150,7 +151,7 @@ async def login(payload: LoginIn, response: Response, db: Session = Depends(get_
 
     resp = JSONResponse(content=body)
     
-    # Clear old refresh cookie first - use same path as setting
+    # Clear old refresh cookie
     resp.set_cookie(
         settings.refresh_cookie_name,
         "",
@@ -192,7 +193,7 @@ async def logout(request: Request) -> Response:
 
 # ========= Forgot password =========
 class ForgotIn(BaseModel):
-    identifier: str = Field(min_length=2)  # email или username
+    identifier: str = Field(min_length=2)
 
 @router.post(
     "/forgot-password",
@@ -206,7 +207,6 @@ def forgot_password(payload: ForgotIn, db: Session = Depends(get_db)) -> None:
         (User.email == normalize_email(ident)) | (User.username == ident)
     ).first()
 
-    # одинаковый ответ в любом случае (без утечки существования)
     if not user:
         lg("app").bind(scope="auth", action="forgot").info("auth.forgot.unknown")
         return
@@ -247,7 +247,7 @@ class ChangePwdIn(BaseModel):
     old_password: str = Field(min_length=8, max_length=256)
     new_password: str = Field(min_length=8, max_length=256)
 
-from app.auth.deps import current_user  # импорт после определения схем
+from app.api.v1.auth.deps import current_user
 
 @router.post("/change-password", status_code=status.HTTP_200_OK, response_class=Response)
 def change_password(payload: ChangePwdIn, user: User = Depends(current_user), db: Session = Depends(get_db)) -> None:

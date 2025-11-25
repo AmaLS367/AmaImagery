@@ -6,6 +6,7 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import settings
 
+
 engine = create_engine(settings.database_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 class Base(DeclarativeBase):

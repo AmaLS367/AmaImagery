@@ -1,8 +1,7 @@
 from __future__ import annotations
-import json, logging, re, uuid, time
-import os, contextvars, sys
+import logging, re, uuid, time
+import os, contextvars
 from pathlib import Path
-from typing import Any, Callable, Optional, Dict, Union
 from loguru import logger as _logger
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,13 +20,6 @@ _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("reques
 _gen_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("gen_id", default=None)
 _client_ip: contextvars.ContextVar[str | None] = contextvars.ContextVar("client_ip", default=None)
 
-_MASK_PATTERNS = (
-    (re.compile(r'(?i)(Authorization:\s*Bearer\s+)[A-Za-z0-9._-]+'), r'\1***'),
-    (re.compile(r'(?i)(\bBearer\s+)[A-Za-z0-9._-]+'), r'\1***'),
-    (re.compile(r'(?i)(api[-_ ]?key\s*[:=]\s*)[A-Za-z0-9._-]+'), r'\1***'),
-    (re.compile(r'(?i)(secret[_-]?key\s*[:=]\s*)[A-Za-z0-9._-]+'), r'\1***'),
-)
-
 def get_request_id() -> str | None: return _request_id.get()
 def set_request_id(v: str | None) -> None: _request_id.set(v)
 def get_gen_id() -> str | None: return _gen_id.get()
@@ -39,42 +31,19 @@ def new_gen_id() -> str:
 def set_client_ip(v: str | None) -> None: _client_ip.set(v)
 def get_client_ip() -> str | None: return _client_ip.get()
 
-# -------- санитайзер секретов  --------
+def _console_sink(message: str) -> None:
+    print(_mask_text(message), end="")
+
+# -------- secret sanitizer --------
 _SECRET_RX = re.compile(
     r"(?P<bearer>Authorization:\s*Bearer\s+)[A-Za-z0-9\-\._~\+/]+=*|(?P<key>(?:api|token|secret|password)\s*=\s*)[^,\s]+",
     re.IGNORECASE,
 )
-def _sanitize(obj: Any) -> Any:
-    try:
-        s = json.dumps(obj, ensure_ascii=False)
 
-        def _repl(m: re.Match) -> str:
-            if m.group("bearer"):
-                return m.group("bearer") + "***"
-            if m.group("key"):
-                return m.group("key") + "***"
-            return "***"
-
-        s = _SECRET_RX.sub(_repl, s)
-        return json.loads(s)
-    except Exception:
-        return obj
-
-# -------- фильтры --------
-def _event_filter(expected: str) -> Callable[[Any], bool]:
-    def _f(rec: Any) -> bool:
-        return rec["extra"].get("event_type") == expected
-    return _f
-
-def _app_filter(rec: Any) -> bool:
-    et = rec["extra"].get("event_type")
-    return et not in {"access","generation","prompt","metrics"} or et == "error"
-
-# публичный логгер (будет пропатчен в setup_logging)
+# public logger (will be patched in setup_logging)
 logger = _logger
 
-# -------- перехват стандартного logging -> loguru --------
-# ПОСЛЕ
+# -------- intercept standard logging -> loguru --------
 class InterceptHandler(logging.Handler):
     @staticmethod
     def _safe_message(record):
@@ -115,35 +84,34 @@ def _patch_std_logging():
         
 # ==============================================
 def _mask_text(text: str) -> str:
-    # использует уже объявленный _SECRET_RX
     try:
         return _SECRET_RX.sub(lambda m: (m.group("bearer") or m.group("key") or "") + "***", str(text))
     except Exception:
         return str(text)
 
 
-# -------- настройка sinks --------
+# -------- setup sinks --------
 def setup_logging(level: str = "INFO") -> None:
     """
-    DEV (ENV=dev): печатаем traceback в консоль (backtrace/diagnose + {exception}).
-    PROD: без traceback в консоли.
-    Плюс: перехватываем stdlib logging в loguru.
+    DEV (ENV=dev): print traceback to console (backtrace/diagnose + {exception}).
+    PROD: no traceback in console.
+    Plus: intercept stdlib logging into loguru.
     """
     global logger
 
-    # 1) Сбрасываем все sinks (важно при reload)
+    # Reset all sinks
     try:
         _logger.remove()
     except Exception:
         pass
 
-    is_dev = str(os.getenv("ENV", "")).lower() == "dev"
+    is_dev = bool(getattr(settings, "debug", False))
 
-    # 2) Консольный sink
+    # Console sink
     if is_dev:
-        # DEV: максимум диагностики + traceback в выводе
+        # DEV: maximum diagnostics + traceback in output
         _logger.add(
-            sink=lambda m: print(_mask_text(m), end=""),
+            sink=_console_sink,
             level=level,
             backtrace=True,
             diagnose=True,
@@ -151,9 +119,9 @@ def setup_logging(level: str = "INFO") -> None:
                    "<level>{level: <8}</level> | {message} | {extra}\n{exception}",
         )
     else:
-        # PROD: аккуратный вывод без traceback
+        # PROD: clean output without traceback
         _logger.add(
-            sink=lambda m: print(_mask_text(m), end=""),
+            sink=_console_sink,
             level=level,
             backtrace=False,
             diagnose=False,
@@ -161,15 +129,13 @@ def setup_logging(level: str = "INFO") -> None:
                    "<level>{level: <8}</level> | {message} | {extra}",
         )
 
-    # 3) Проксируем стандартный logging → loguru, чтобы все логгеры (uvicorn, fastapi, и т.д.) шли через InterceptHandler
     _patch_std_logging()
-
-    # 4) Экспортируем выбранный логгер в глобал
     logger = _logger
 
 
 # -------- Access middleware --------
 class AccessLogMiddleware(BaseHTTPMiddleware):
+    """Middleware that logs all incoming HTTP requests with duration, status, and size."""
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
         rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
@@ -180,16 +146,16 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             duration_ms = int((time.perf_counter() - start) * 1000)
 
-            # Получаем тело ответа для подсчета байтов
+            # Get response body for byte counting
             body = []
             try:
-                # Используем getattr для безопасного доступа к body_iterator
+                # Use getattr for safe access to body_iterator
                 body_iterator = getattr(response, 'body_iterator', None)
                 if body_iterator is not None:
                     body = [section async for section in body_iterator]
                     setattr(response, 'body_iterator', iterate_in_threadpool(iter(body)))
             except (AttributeError, TypeError):
-                # Если body_iterator недоступен, пропускаем подсчет байтов
+                # If body_iterator is unavailable, skip byte counting
                 pass
             bytes_out = sum(len(b) for b in body) if body else 0
 
@@ -220,20 +186,20 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
 # -------- Exception handlers --------
 def install_exception_handlers(app: FastAPI) -> None:
     """
-    DEV (ENV=dev): не перехватываем — стек отдадут ServerErrorMiddleware/run_dev.
-    PROD: скрываем детали, логируем стек, возвращаем компактный JSON.
+    DEV (ENV=dev): don't intercept stack will be provided by ServerErrorMiddleware/run_dev.
+    PROD: hide details, log stack, return compact JSON.
     """
-    if str(os.getenv("ENV", "")).lower() == "dev":
+    if bool(getattr(settings, "debug", False)):
         return
 
-    # PROD-хендлеры
+    # PROD handlers
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception):
-        # В DEV не глушим — даём полноценный traceback в консоль/uvicorn
+        # In DEV don't suppress provide full traceback to console/uvicorn
         if getattr(settings, "env", "").lower() in ("dev", "development") or getattr(settings, "debug", 0) == 1:
             raise exc
 
-        # В prod логируем и возвращаем безопасный 500 без деталей
+        # In prod log and return safe 500 without details
         logger.bind(
             event_type="error",
             scope="unhandled",

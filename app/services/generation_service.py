@@ -10,9 +10,9 @@ import traceback
 import time
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List, Dict, Any, cast
 
-import torch, os
+import torch
 from PIL import Image
 from sqlalchemy.orm import Session
 
@@ -21,10 +21,15 @@ from app.core.logging import lg, logger
 from app.domain.models import Generation
 from app.domain.schemas import GenReq, GenResp
 from app.services.image_service import ImageProcessingService
-from app.utils import out_path, prompt_hash
-from app.prompt_hygiene.spell import build_spell, correct_prompt
+from app.utils import prompt_hash
+from app.prompt_hygiene.facade import run_hygiene
+
 from app.core.safety import is_blocked, is_blocked_forced
 from app.core.limits import get_gen_semaphore
+from app.inference.pipeline import get_unet_dtype, align_to_unet_dtype
+
+cfg = cast(Any, settings)
+
 class GenerationService:
     """Service for handling image generation requests."""
     
@@ -44,32 +49,9 @@ class GenerationService:
                 pipeline.enable_model_cpu_offload()
         except Exception:
             pass
-
-    def _choose_hq_scheduler(self, pipeline, steps: int) -> None:
-        """
-        DPM++ 2M Karras — даёт заметный прирост качества и чувствительность к количеству шагов.
-        """
-        try:
-            from diffusers import DPMSolverMultistepScheduler # type: ignore[reportMissingImports]
-            pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
-                pipeline.scheduler.config,
-                algorithm_type="sde-dpmsolver++",
-                use_karras_sigmas=True,
-                solver_order=2,
-            )
-        except Exception:
-            pass
-
-
     
     def _setup_autocorrect(self) -> None:
-        """Setup autocorrect functionality."""
-        self.autocorrect_mode = settings.autocorrect
-        self.spell_checker = build_spell(extra_words=[
-            "bokeh", "karras", "euler", "dpmsolver", "lora", "vae",
-            "anime", "photorealistic", "cinematic", "volumetric",
-        ])
-        self.whitelist = {"sd15", "sdxl", "lcm", "lora", "vae"}
+        pass
 
     async def generate_image(
         self,
@@ -82,7 +64,7 @@ class GenerationService:
         semaphore = get_gen_semaphore()
         acquired = False
         try:
-            gen_limit = float(getattr(settings, "generation_timeout_sec", 60))
+            gen_limit = float(cfg.generation_timeout_seconds)
             queue_timeout = max(20.0, min(gen_limit - 5.0, gen_limit / 2.0))
             await asyncio.wait_for(semaphore.acquire(), timeout=queue_timeout)
             acquired = True
@@ -100,7 +82,7 @@ class GenerationService:
             # Log generation request
             gen_logger.bind(
                 phase="requested",
-                model_id=settings.model_id,
+                model_id=cfg.model_id,
                 size=[request.width, request.height],
                 steps=request.steps,
                 guidance_scale=request.guidance_scale,
@@ -112,7 +94,11 @@ class GenerationService:
             self._check_safety_policies(request, user)
 
             # Process prompt
-            processed_prompt, corrections = self._process_prompt(request.prompt)
+            processed_prompt, corrections = self._process_prompt(
+                prompt=request.prompt,
+                negative=request.negative_prompt or "",
+                user=user,
+            )
 
             # Prepare generation parameters
             generation_params = self._prepare_generation_params(request, processed_prompt)
@@ -121,7 +107,7 @@ class GenerationService:
             image = await self._generate_image_async(generation_params)
 
             # Save the image
-            output_path = self._save_image(image, prompt_hash_value)
+            output_path = self.image_service.save_image(image, prompt_hash_value)
 
             # Save generation metadata to database
             self._save_generation_metadata(request, user, output_path, prompt_hash_value)
@@ -134,7 +120,7 @@ class GenerationService:
             ).success("generation.completed")
 
             # Create signed URL if enabled
-            signed_url = self._create_signed_url(output_path) if settings.file_signing_enabled else None
+            signed_url = self._create_signed_url(output_path) if cfg.file_signing_enabled else None
 
             return GenResp(
                 ok=True,
@@ -164,26 +150,26 @@ class GenerationService:
     
     def _validate_request(self, request: GenReq) -> None:
         """Validate generation request parameters."""
-        if request.width > settings.max_gen_width or request.height > settings.max_gen_height:
+        if request.width > cfg.max_gen_width or request.height > cfg.max_gen_height:
             raise ValueError("Image size too large")
         
-        max_safe = int(settings.max_steps)
+        max_safe = int(cfg.max_steps)
         if int(request.steps) > max_safe:
             raise ValueError(f"Steps too large (>{max_safe})")
         
         guidance = getattr(request, "guidance_scale", getattr(request, "guidance", 7.5))
-        if float(guidance) > settings.max_guidance:
+        if float(guidance) > cfg.max_guidance:
             raise ValueError("Guidance too large")
         
         batch_size = getattr(request, "batch", 1)
-        if batch_size > settings.max_batch:
+        if batch_size > cfg.max_batch:
             raise ValueError("Batch too large")
     
     def _check_safety_policies(self, request: GenReq, user: Optional[Any]) -> None:
         """Check safety policies for the request."""
         
         # Determine if NSFW is allowed
-        allow_global = settings.nsfw_allow
+        allow_global = cfg.nsfw_allow
         allow_user = True
         
         if user is not None and hasattr(user, "nsfw_allow"):
@@ -201,12 +187,12 @@ class GenerationService:
         
         # Check regular blocklist
         if is_blocked(request.prompt) or is_blocked(request.negative_prompt):
-            lg("error").bind(
-                scope="safety",
+            lg("safety").bind(
                 prompt_hash=prompt_hash(request.prompt, request.negative_prompt),
                 reason="blocked_by_rules",
             ).error("safety.blocked")
             raise ValueError("Blocked by safety policy.")
+
     
     def _device_vram_mb(self) -> int:
         if torch.cuda.is_available():
@@ -218,7 +204,7 @@ class GenerationService:
 
     def _effective_max_size(self) -> int:
         vram = self._device_vram_mb()
-        cfg_cap = int(getattr(settings, "max_size", 768))
+        cfg_cap = int(getattr(cfg, "max_size", 768))
         if vram == 0:
             return min(cfg_cap, 768)
         if vram <= 4608:
@@ -230,23 +216,17 @@ class GenerationService:
 
     def _snap64(self, x: int) -> int:
         return max(256, (int(x) // 64) * 64)
-
-
     
-    def _process_prompt(self, prompt: str) -> Tuple[str, List[Tuple[str, str]]]:
-        """Process and correct the prompt."""
-        corrections = []
-        
-        if self.autocorrect_mode != "off":
-            fixed, corrections = correct_prompt(
-                prompt, 
-                self.spell_checker, 
-                whitelist=self.whitelist
-            )
-            if self.autocorrect_mode == "on":
-                prompt = fixed
-        
-        return prompt, corrections
+    def _process_prompt(self, prompt: str, negative: str, user: Optional[Any]) -> Tuple[str, List[Tuple[str, str]]]:
+        """
+        Run prompt hygiene via facade.
+        Returns: (possibly updated prompt, list of (before, after) corrections)
+        """
+        user_id = str(getattr(user, "id", "anon"))
+        res = run_hygiene(user_id=user_id, prompt=prompt, negative=negative, mode=None)
+        fixed = res.prompt
+        corr = [(c.before, c.after) for c in res.report.corrections]
+        return fixed, corr
     
     def _prepare_generation_params(self, request: GenReq, processed_prompt: str) -> Dict[str, Any]:
         """Prepare parameters for image generation."""
@@ -266,12 +246,10 @@ class GenerationService:
             "worst quality, low quality"
         )
 
-        # желаемое базовое соотношение 2:3 по умолчанию
         req_w = int(request.width or 768)
         req_h = int(request.height or 1152)
 
         cap = self._effective_max_size()
-        # масштабирование по длинной стороне с сохранением пропорций
         long_side = max(req_w, req_h)
         if long_side > cap:
             scale = cap / float(long_side)
@@ -281,11 +259,7 @@ class GenerationService:
         w = self._snap64(req_w)
         h = self._snap64(req_h)
 
-        # шаги и гайд
-        max_safe = int(settings.max_steps)
-        if int(request.steps) > max_safe:
-            raise ValueError(f"steps exceeds settings.max_steps ({max_safe})")
-        
+        max_safe = int(cfg.max_steps)
         use_steps = min(max_safe, max(24, int(request.steps or 28)))
         use_gs = float(request.guidance_scale if request.guidance_scale is not None else 7.5)
 
@@ -319,24 +293,21 @@ class GenerationService:
             },
         )
 
-        # Получаем пайплайн
         try:
-            from app.inference.pipeline import get_pipeline, get_pipeline_with_ip  # импорт локальной фабрики
+            from app.inference.pipeline import get_pipeline, get_pipeline_with_ip
             pipeline = get_pipeline_with_ip() if use_ip else get_pipeline()
             
             self._set_quality_mode(pipeline)
             steps = int(params.get("steps", 28) or 28)
             style = params.get("style") or ""
-            self._choose_hq_scheduler(pipeline, steps)
 
         except Exception as e:
-            # если IP-адаптер не поднялся — даём фолбэк на обычный пайплайн
+            # if IP-adapter failed to load fallback to regular pipeline
             lg("app").bind(event="ip_adapter.unavailable", reason=str(e)).warning("ip_adapter.unavailable")
             from app.inference.pipeline import get_pipeline
             pipeline = get_pipeline()
             use_ip = False
 
-        # Девайс/генератор
         try:
             device = next(pipeline.unet.parameters()).device  # type: ignore[attr-defined]
         except Exception:
@@ -354,11 +325,7 @@ class GenerationService:
             except Exception:
                 generator = None
 
-        # Жёсткая синхронизация типов/девайсов перед вызовом
-        try:
-            unet_dtype = next(pipeline.unet.parameters()).dtype
-        except Exception:
-            unet_dtype = torch.float16 if device.type == "cuda" else torch.float32
+        unet_dtype = get_unet_dtype(pipeline)
 
         if getattr(pipeline, "unet", None) is not None:
             pipeline.unet.to(device=device, dtype=unet_dtype)
@@ -373,13 +340,11 @@ class GenerationService:
         ctx = (torch.autocast(device_type=device.type, dtype=unet_dtype)
             if device.type == "cuda" else nullcontext())
 
-        # Подготовка IP-эмбедов, если надо
         extra: Dict[str, Any] = {}
         if use_ip and params.get("ref_image_b64"):
             try:
                 ref_image = self.image_service.prepare_reference_image(params["ref_image_b64"], target_size=512)
 
-                # масштаб влияния
                 ip_scale = 0.55 if params.get("ip_scale") is None else float(params["ip_scale"])
                 ip_scale = max(0.0, min(1.5, ip_scale))
 
@@ -393,11 +358,11 @@ class GenerationService:
                 try:
                     dev = next(pipeline.unet.parameters()).device
 
-                    # text_encoder на том же девайсе, что и UNet
+                    # text_encoder on same device as UNet
                     if hasattr(pipeline, "text_encoder") and pipeline.text_encoder is not None:
                         pipeline.text_encoder.to(dev)
 
-                    # vision encoder держим на CPU/fp32 (минимум VRAM, без микса типов)
+                    # keep vision encoder on CPU/fp32 (minimum VRAM, no mixed types)
                     if hasattr(pipeline, "image_encoder") and pipeline.image_encoder is not None:
                         pipeline.image_encoder.to(device="cpu", dtype=torch.float32)
                 except Exception:
@@ -406,18 +371,18 @@ class GenerationService:
 
                 image_embeds = None
 
-                # Приоритет: нативный encode_image, чтобы у diffusers/ip-adapter не ломалась сигнатура
+                # Priority: native encode_image to avoid breaking diffusers/ip-adapter signature
                 if hasattr(pipeline, "encode_image"):
                     image_embeds = pipeline.encode_image(
                         ref_image, device=device, num_images_per_prompt=1
                     )
-                    # Приведение к dtype UNet гарантирует согласованность с attention-проекциями
+                    # Make embeds consistent with UNet precision
                     try:
-                        image_embeds = image_embeds.to(device=device, dtype=unet_dtype)
+                        image_embeds = align_to_unet_dtype(image_embeds.to(device=device), pipeline)
                     except Exception:
                         pass
 
-                # Фолбэк: прямой энкодер (CLIP)
+                # Fallback: direct encoder (CLIP)
                 elif hasattr(pipeline, "image_encoder"):
                     enc = pipeline.image_encoder  # type: ignore[attr-defined]
                     proc = getattr(pipeline, "image_processor", None) or getattr(pipeline, "feature_extractor", None)
@@ -425,18 +390,18 @@ class GenerationService:
                         raise RuntimeError("IP-Adapter: image processor not found")
                     with torch.inference_mode():
                         proc_out = proc(images=ref_image, return_tensors="pt")
-                        # держим препроцесс и энкодер строго на CPU/FP32
+                        # keep preprocessor and encoder strictly on CPU/FP32
                         pixel = proc_out["pixel_values"].to(device="cpu", dtype=torch.float32)
 
                         enc = enc.to(device="cpu", dtype=torch.float32).eval()
                         with torch.inference_mode():
                             image_embeds = enc(pixel)
 
-                        # а уже готовые эмбеды переносим к UNet (его девайс/тип)
+                        # align embeds with UNet device and dtype to avoid mixed precision issues
                         image_embeds = image_embeds.to(
                             device=device,
-                            dtype=getattr(pipeline, "dtype", torch.float16)
-)
+                            dtype=unet_dtype
+                        )
 
 
                 if image_embeds is None:
@@ -453,22 +418,20 @@ class GenerationService:
                     },
                 )
 
-                # Используем современные ключи (image_embeds). Старые (ip_adapter_image/ip_adapter_scale) не суём.
+                # Use modern keys (image_embeds). Don't use old ones (ip_adapter_image/ip_adapter_scale).
                 extra["image_embeds"] = image_embeds
 
             except Exception:
                 traceback.print_exc()
                 logger.exception("ip_adapter.prepare_failed", extra={"event_type": "app"})
-                # Если эмбеды не удалось — мягко откатываемся на генерацию без IP (чтобы получить стек дальше)
+                # If embeddings failed softly fallback to generation without IP (to get stack further)
                 use_ip = False
                 extra.clear()
 
-        # Ограничения для CPU, если вдруг
         use_width = int(params.get("width", 512))
         use_height = int(params.get("height", 512))
         use_steps = int(params.get("steps", 20))
         
-        # фиксируем timesteps только если Karras-сигмы выключены
         _fixed_timesteps = None
         try:
             if not bool(getattr(pipeline.scheduler.config, "use_karras_sigmas", False)):
@@ -485,14 +448,12 @@ class GenerationService:
                 use_width = int(round(use_width * ratio / 8) * 8)
                 use_height = int(round(use_height * ratio / 8) * 8)
 
-        # Таймаут мягкий через callback
-        soft_deadline = time.time() + getattr(settings, "generation_timeout_sec", 60) - 1.0
+        soft_deadline = time.time() + float(cfg.generation_timeout_seconds) - 1.0
 
         def timeout_callback(step, timestep=None, latents=None):
             if time.time() > soft_deadline:
                 raise RuntimeError("generation_timeout")
 
-        # Вызов пайплайна
         def sync_generation():
             with torch.inference_mode(), ctx:
                 call_kwargs = dict(
@@ -512,35 +473,32 @@ class GenerationService:
                 try:
                     _effective = {"n": 0}
 
-                    # deadline проверяем здесь, т.к. старый callback удаляем
                     def _on_step_end(pipe, step, timestep, callback_kwargs):
                         _effective["n"] += 1
                         if time.time() > soft_deadline:
                             raise RuntimeError("generation_timeout")
                         return {}
 
-                    # убираем старые ключи
-                    call_kwargs.pop("callback", None)          # старый timeout_callback больше не нужен
+                    call_kwargs.pop("callback", None)
                     call_kwargs.pop("callback_steps", None)
 
                     call_kwargs["callback_on_step_end"] = _on_step_end
                     call_kwargs["callback_on_step_end_tensor_inputs"] = []
 
-                    res = pipeline(
+                    res = cast(Any, pipeline)(
                         **call_kwargs,
                         **({} if not use_ip else extra),
                     )
 
-                    # lg("generation").bind(phase="steps", asked=use_steps, effective=_effective["n"]).info("steps.effective")
-                    return res  # ← ВАЖНО: вернуть результат
+                    return res
 
                 except TypeError:
-                    # откат для старых версий diffusers без нового API
+                    # fallback for old diffusers versions without new API
                     call_kwargs.pop("noise_offset", None)
                     call_kwargs.pop("timesteps", None)
                     call_kwargs.pop("callback_on_step_end", None)
                     call_kwargs.pop("callback_on_step_end_tensor_inputs", None)
-                    return pipeline(
+                    return cast(Any, pipeline)(
                         **call_kwargs,
                         **({} if not use_ip else extra),
                     )
@@ -559,7 +517,7 @@ class GenerationService:
         try:
             result = await asyncio.wait_for(
                 asyncio.to_thread(sync_generation),
-                timeout=getattr(settings, "generation_timeout_sec", 60) + 2,
+                timeout=float(cfg.generation_timeout_seconds) + 2.0,
             )
         except asyncio.TimeoutError:
             traceback.print_exc()
@@ -572,7 +530,7 @@ class GenerationService:
             if "generation_timeout" in msg:
                 raise RuntimeError("Generation timed out")
             if "out of memory" in msg or ("cuda" in msg and "memory" in msg):
-                raise ValueError("CUDA out of memory: снизь width/height до 512 или уменьшай steps")
+                raise ValueError("CUDA out of memory: reduce width/height to 512 or decrease steps")
             raise
         except Exception as e:
             traceback.print_exc()
@@ -586,7 +544,6 @@ class GenerationService:
                 pass
             gc.collect()
 
-        # Извлекаем изображение
         try:
             image = self.image_service.extract_image_from_result(result)
             gen_log.info(
@@ -599,13 +556,6 @@ class GenerationService:
             logger.exception("generation.extract_failed", extra={"event_type": "app", "msg": str(e)})
             raise
 
-    
-    def _save_image(self, image: Image.Image, prompt_hash_value: str) -> str:
-        """Save the generated image to disk."""
-        output_path = out_path(prompt_hash_value)
-        image.save(output_path)
-        return output_path
-    
     def _save_generation_metadata(
         self, 
         request: GenReq, 
@@ -626,7 +576,7 @@ class GenerationService:
             "guidance_scale": request.guidance_scale,
             "ip_scale": request.ip_scale,
             "seed": request.seed,
-            "model_id": settings.model_id,
+            "model_id": cfg.model_id,
         }
         
         generation = Generation(
@@ -643,7 +593,7 @@ class GenerationService:
         from app.files.signing import make_signature
         import time
         
-        exp = int(time.time()) + int(settings.file_download_ttl_sec)
+        exp = int(time.time()) + int(cfg.file_download_ttl_sec)
         sig = make_signature(Path(output_path).name, exp)
         
         return {

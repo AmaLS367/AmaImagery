@@ -26,6 +26,24 @@ class GenResp(BaseModel):
     exp: Optional[int] = Field(None, description="Expiration timestamp for signed URL")
     sig: Optional[str] = Field(None, description="Signature for file download")
     
+class ResizeReq(BaseModel):
+    pass
+
+class ResizeResp(BaseModel):
+    pass
+
+class UpscaleReq(BaseModel):
+    pass
+
+class UpscaleResp(BaseModel):
+    pass
+
+class EditReq(BaseModel):
+    pass
+
+class EditResp(BaseModel):
+    pass
+    
 class HealthResponse(BaseModel):
     """Health check response model."""
     ok: bool = Field(description="Service health status")
@@ -36,4 +54,3 @@ class ErrorResponse(BaseModel):
     error: str = Field(description="Error type")
     message: str = Field(description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
-

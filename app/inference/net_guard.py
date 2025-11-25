@@ -9,6 +9,8 @@ _OrigCreateConn = socket.create_connection
 def _blocked_connect(self, address):
     host = address[0] if isinstance(address, (tuple, list)) and address else address
     if isinstance(host, str) and host in {"127.0.0.1", "localhost", "::1"}:
+        if isinstance(address, list):
+            address = tuple(address)
         return _OrigConnect(self, address)
     raise OSError("Outbound network is disabled")
 

@@ -18,11 +18,11 @@ def current_user(
 ) -> User:
     token: Optional[str] = None
 
-    # 1) Bearer
+    # Bearer
     if cred and cred.scheme.lower() == "bearer" and cred.credentials:
         token = cred.credentials
 
-    # 2) Cookie
+    # Cookie
     if not token:
         token = (
             request.cookies.get("access_token")
@@ -30,14 +30,13 @@ def current_user(
             or request.cookies.get("token")
         )
 
-    # 3) Query
+    # Query Param
     if not token:
         token = (
             request.query_params.get("access_token")
             or request.query_params.get("token")
         )
 
-    # 4) Заголовки-валидайты без схемы
     if not token:
         raw = request.headers.get("authorization", "").strip()
         if raw and " " not in raw:
@@ -60,7 +59,6 @@ def current_user(
 
     return user
 
-# Функция, чтобы в /generate можно было сохранить user_id, но не требовать токен.
 def optional_user(
   cred: HTTPAuthorizationCredentials | None = Depends(bearer),
   db: Session = Depends(get_db),

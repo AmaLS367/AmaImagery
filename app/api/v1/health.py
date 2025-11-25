@@ -1,18 +1,20 @@
-from fastapi import APIRouter, Response, HTTPException
-from app.config import settings 
+from __future__ import annotations
 
-router = APIRouter(tags=["health❤️‍🩹"])
+from fastapi import APIRouter, Response, HTTPException
+from app.config import settings
+
+router = APIRouter()
 
 @router.options("/health")
-async def health_options():
+async def health_options() -> Response:
     return Response(status_code=200)
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> dict:
     return {"ok": True, "status": "healthy"}
 
 @router.get("/healthz")
-async def healthz():
+async def healthz() -> dict:
     if getattr(settings, "limits_enabled", None) is None:
-        raise HTTPException(status_code=503, detail="Misconfigured")
+        raise HTTPException(status_code=503, detail="misconfigured")
     return {"ok": True, "status": "ready"}

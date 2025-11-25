@@ -29,6 +29,40 @@ _cache_forced_lock = threading.Lock()
 _cache_forced_compiled: list[Pattern] | None = None
 _cache_forced_mtime: float | None = None
 
+def _load_rules_cache(force: bool = False) -> list[Pattern]:
+    """
+    Load and compile blocklist patterns with caching.
+    force=True ignores nsfw_allow flag.
+    """
+    if not force and getattr(settings, "nsfw_allow", False):
+        return []
+
+    path = _rules_path()
+    mtime = path.stat().st_mtime if path.exists() else -1.0
+
+    global _cache_compiled, _cache_mtime, _cache_forced_compiled, _cache_forced_mtime
+    lock = _cache_forced_lock if force else _cache_lock
+    cache_compiled = _cache_forced_compiled if force else _cache_compiled
+    cache_mtime = _cache_forced_mtime if force else _cache_mtime
+
+    with lock:
+        if cache_compiled is not None and cache_mtime == mtime:
+            return cache_compiled
+
+        entries = _read_blocklist_file(path)
+        if not entries:
+            entries = _FALLBACK_PATTERNS
+
+        compiled = _compile_patterns(entries)
+
+        if force:
+            _cache_forced_compiled = compiled
+            _cache_forced_mtime = mtime
+        else:
+            _cache_compiled = compiled
+            _cache_mtime = mtime
+
+        return compiled
 
 def _normalize_entries(items: Iterable[str]) -> List[str]:
     out: list[str] = []
@@ -52,13 +86,13 @@ def _read_blocklist_file(p: Path) -> list[str]:
         if not p.exists() or not p.is_file():
             return []
         text = p.read_text(encoding="utf-8", errors="ignore")
-        # JSON-массив строк
+        # JSON array of strings
         if p.suffix.lower() == ".json":
             arr = json.loads(text)
             if isinstance(arr, list):
                 return [str(x) for x in arr]
             return []
-        # TXT/прочее: разделители — новая строка или запятая
+        # TXT or other: separators are newline or comma
         parts: list[str] = []
         for line in text.splitlines():
             if "," in line:
@@ -79,69 +113,26 @@ def _rules_path() -> Path:
 
 
 def get_rules() -> list[str]:
-    """
-    Сырые записи из файла правил (или fallback, если файла нет/пуст).
-    Без нормализации и компиляции.
-    """
     entries = _read_blocklist_file(_rules_path())
     return entries if entries else list(_FALLBACK_PATTERNS)
 
 
 def _get_compiled() -> list[Pattern]:
-    """
-    Обычная проверка (учитывает флаг settings.nsfw_allow).
-    Если nsfw_allow=True — список пуст, ничего не блокируем.
-    """
-    if getattr(settings, "nsfw_allow", False):
-        return []
+    return _load_rules_cache(force=False)
 
-    path = _rules_path()
-    mtime = path.stat().st_mtime if path.exists() else -1.0
-
-    global _cache_compiled, _cache_mtime
-    with _cache_lock:
-        if _cache_compiled is not None and _cache_mtime == mtime:
-            return _cache_compiled
-
-        entries = _read_blocklist_file(path)
-        if not entries:
-            entries = _FALLBACK_PATTERNS
-
-        _cache_compiled = _compile_patterns(entries)
-        _cache_mtime = mtime
-        return _cache_compiled
 
 
 def is_blocked(text: str | None) -> bool:
     if not text:
         return False
     pats = _get_compiled()
-    if not pats:  # nsfw_allow=True → ничего не блокируем
+    if not pats:
         return False
     return any(rx.search(text) for rx in pats)
 
 
 def _get_compiled_forced() -> list[Pattern]:
-    """
-    Принудительная проверка — игнорирует nsfw_allow.
-    Используется для административных/системных проверок.
-    """
-    path = _rules_path()
-    mtime = path.stat().st_mtime if path.exists() else -1.0
-
-    global _cache_forced_compiled, _cache_forced_mtime
-    with _cache_forced_lock:
-        if _cache_forced_compiled is not None and _cache_forced_mtime == mtime:
-            return _cache_forced_compiled
-
-        entries = _read_blocklist_file(path)
-        if not entries:
-            entries = _FALLBACK_PATTERNS
-
-        _cache_forced_compiled = _compile_patterns(entries)
-        _cache_forced_mtime = mtime
-        return _cache_forced_compiled
-
+    return _load_rules_cache(force=True)
 
 def is_blocked_forced(text: str | None) -> bool:
     if not text:
@@ -150,9 +141,6 @@ def is_blocked_forced(text: str | None) -> bool:
 
 
 def reload_rules() -> None:
-    """
-    Сбросить кэш правил. Подхватит изменения файла без рестарта.
-    """
     global _cache_compiled, _cache_mtime, _cache_forced_compiled, _cache_forced_mtime
     with _cache_lock:
         _cache_compiled = None

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import time
 from typing import Callable
-import redis.asyncio as redis # type: ignore
+import redis.asyncio as redis
 from fastapi import Depends, HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.auth.deps import get_user_or_ip_identifier
+from app.api.v1.auth.deps import get_user_or_ip_identifier
 from app.infra.redis import get_redis
 from app.core.logging import sec
 class RateLimitLoggingMiddleware(BaseHTTPMiddleware):

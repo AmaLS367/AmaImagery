@@ -21,5 +21,6 @@ def out_path(stem: str, ext: str = "png") -> str:
     suffix = f"{time_ns()}_{uuid4().hex[:8]}"
     name = f"{safe}_{suffix}.{ext}"
     base = Path(settings.outputs_dir)
+    
     base.mkdir(parents=True, exist_ok=True)
     return str(base / name)

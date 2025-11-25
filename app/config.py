@@ -117,10 +117,6 @@ class Settings(BaseSettings):
     access_ttl_min: int = Field(15, alias="ACCESS_TTL_MIN")
     revoke_prefix: str = Field("jwt:bl:", alias="REVOKE_PREFIX")
 
-    # --- Web UI ---
-    ui_mount_enabled: bool = Field(True, alias="UI_MOUNT_ENABLED")
-    ui_static_dir: Path | None = Field(None, alias="UI_STATIC_DIR")
-
     # --- NSFW ---
     nsfw_allow: bool = Field(False, alias="NSFW_ALLOW")
     nsfw_blocklist_path: Path = Field(

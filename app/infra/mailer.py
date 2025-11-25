@@ -35,4 +35,3 @@ def send_mail(subject: str, to: str, text: str, html: str | None = None) -> None
         lg("app").bind(scope="mail").info("mail.sent")
     except Exception as e:
         lg("app").bind(scope="mail", err=type(e).__name__).error(f"mail.error: {e}")
-        # в дев-режиме достаточно логов; не роняем запрос

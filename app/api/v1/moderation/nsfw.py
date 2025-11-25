@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.infra.db import get_db
-from app.auth.deps import current_user
+from app.api.v1.auth.deps import current_user
 from app.core.safety import (
     is_blocked,
     is_blocked_forced,
@@ -16,14 +16,14 @@ from app.core.safety import (
     reload_rules,
 )
 
-router = APIRouter(prefix="/nsfw", tags=["nsfw🔞"])
+router = APIRouter()
+
 class NSFWToggle(BaseModel):
     allow: bool
 
 class NSFWCheckRequest(BaseModel):
     text: Optional[str] = None
     forced: bool = False
-
 
 class NSFWCheckResponse(BaseModel):
     blocked: bool

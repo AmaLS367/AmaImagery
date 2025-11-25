@@ -3,7 +3,9 @@ import os
 import socket
 import logging
 import uvicorn
+from fastapi.responses import JSONResponse
 from starlette.middleware.errors import ServerErrorMiddleware
+from app.config import settings
 
 os.environ["ENV"] = "dev"
 
@@ -12,13 +14,13 @@ def _apply_dev_env():
     os.environ.setdefault("PYTHONUNBUFFERED", "1")
     os.environ.setdefault("LOG_LEVEL", "DEBUG")
     os.environ.setdefault("PROMPTS_RAW", "1")
-    os.environ.setdefault("DISABLE_RATE_LIMITER", "1")
     os.environ.setdefault("NO_REDIS", "1")
     os.environ.setdefault("TORCH_SHOW_CPP_STACKTRACES", "1")
     os.environ.setdefault("CUDA_LAUNCH_BLOCKING", "1")
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
     os.environ.setdefault("SECRET_KEY", "dev_" + "x"*48)
-    os.environ.setdefault("DATABASE_URL", "sqlite:///./genai_dev.db")
+    os.environ.setdefault("DATABASE_URL", settings.database_url)
+    
     os.environ.setdefault("REDIS_URL", "redis://:devpass@localhost:6379/0")
 
 def _patch_outbound_network():
@@ -34,22 +36,6 @@ def _patch_outbound_network():
                 return socket._orig_connect(self, address)  # type: ignore[attr-defined]
             raise OSError("Outbound network is disabled (dev runner)")
         socket.socket.connect = _dev_socket_connect  # type: ignore[assignment]
-
-def _patch_rate_limiter():
-    try:
-        from fastapi_limiter import FastAPILimiter
-        from fastapi_limiter import depends as fl_dep
-        async def _noop_init(*_a, **_k):
-            setattr(FastAPILimiter, "redis", object())
-            setattr(FastAPILimiter, "identifier", lambda req: "dev")
-            setattr(FastAPILimiter, "lua_sha", "dev")
-        FastAPILimiter.init = _noop_init  # type: ignore[attr-defined]
-        class _NoopRateLimiter:
-            def __init__(self, *a, **k): ...
-            async def __call__(self, *a, **k): return None
-        fl_dep.RateLimiter = _NoopRateLimiter  # type: ignore[assignment]
-    except Exception:
-        pass
 
 def _patch_sqlalchemy_types():
     """
@@ -89,7 +75,6 @@ def _patch_sqlalchemy_types():
 def _apply_dev_patches():
     _apply_dev_env()
     _patch_outbound_network()
-    _patch_rate_limiter()
     _patch_sqlalchemy_types()
 
 def get_app():
@@ -125,15 +110,15 @@ def get_app():
             extra={"event_type": "app", "path": str(request.url), "method": request.method},
         )
         # возвращаем текст ошибки в dev, чтобы быстрее починить
-        return m.JSONResponse(
+        return JSONResponse(
             status_code=500,
             content={"error": "http_error", "status": 500, "message": str(exc)},
         )
 
-    # 5) на всякий – выключаем лимитер логикой конфига
+    # 5) выключаем лимитёры в dev режиме через настройки
     if hasattr(m, "settings"):
         try:
-            setattr(m.settings, "disable_rate_limiter", True)
+            setattr(m.settings, "limits_enabled", False)
         except Exception:
             pass
 

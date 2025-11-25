@@ -18,12 +18,6 @@ def verify_signature(name: str, exp: int, sig: str) -> bool:
         return False
 
 async def consume_once(sig: str, exp: int, skew: int = 0) -> bool:
-    """
-    True → можно отдать файл и пометили токен как использованный.
-    False → ссылка уже была использована.
-    При отсутствии Redis или ошибках → возвращаем True, чтобы не ломать выдачу.
-    TTL рассчитывается по exp.
-    """
     if not getattr(settings, "file_single_use", False):
         return True
 

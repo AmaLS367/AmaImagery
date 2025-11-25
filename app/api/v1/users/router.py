@@ -7,13 +7,13 @@ from pathlib import Path
 import time
 
 from app.infra.db import get_db
-from app.auth.deps import current_user
+from app.api.v1.auth.deps import current_user
 from app.domain.models import User, UserSettings, Generation
 from app.core.logging import lg
 from app.config import settings
 from app.files.signing import make_signature
 
-router = APIRouter(prefix="/users", tags=["users🤵"])
+router = APIRouter()
 
 class SettingsOut(BaseModel):
     data: dict[str, Any]
@@ -29,7 +29,7 @@ def get_settings(user: User = Depends(current_user), db: Session = Depends(get_d
 @router.patch("/me/settings", response_model=SettingsOut)
 def patch_settings(payload: SettingsIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     us = db.get(UserSettings, user.id) or UserSettings(user_id=user.id, data={})
-    if us.user_id is None:  # только если создаём
+    if us.user_id is None:
         db.add(us)
     new_data = dict(us.data or {})
     new_data.update(payload.data or {})

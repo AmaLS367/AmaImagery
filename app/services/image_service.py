@@ -13,8 +13,14 @@ import torch
 from PIL import Image, ImageOps
 
 from app.core.logging import logger
+from app.utils import out_path
 
 class ImageProcessingService:  
+    def save_image(self, image: Image.Image, stem: str) -> str:
+        path = out_path(stem)
+        image.save(path)
+        return path
+
     def prepare_reference_image(self, ref_image_b64: str, target_size: int = 512) -> Image.Image:
         # Decode base64 image
         image_data = base64.b64decode(ref_image_b64.split(",")[-1])

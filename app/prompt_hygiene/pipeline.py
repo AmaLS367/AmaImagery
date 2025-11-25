@@ -1,1 +1,0 @@
-# run_hygiene(prompt, negative, mode, user_id)

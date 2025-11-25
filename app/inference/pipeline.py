@@ -1,7 +1,7 @@
-from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import StableDiffusionPipeline # type: ignore
-from diffusers.pipelines.auto_pipeline import AutoPipelineForText2Image # type: ignore
-from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL # type: ignore
-from diffusers.models.attention_processor import AttnProcessor2_0, AttnProcessor # type: ignore 
+from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import StableDiffusionPipeline
+from diffusers.pipelines.auto_pipeline import AutoPipelineForText2Image 
+from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL 
+from diffusers.models.attention_processor import AttnProcessor2_0, AttnProcessor 
 from diffusers import DPMSolverMultistepScheduler # type: ignore
 from huggingface_hub import snapshot_download
 
@@ -19,6 +19,20 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 _pipe = None
 _ip_ready = False
+
+# --- dtype alignment helpers ---
+def get_unet_dtype(pipe) -> torch.dtype:
+    try:
+        return next(pipe.unet.parameters()).dtype
+    except Exception:
+        return torch.float16 if getattr(pipe, "device", None) and getattr(pipe.device, "type", "") == "cuda" else torch.float32
+
+def align_to_unet_dtype(tensor: torch.Tensor, pipe) -> torch.Tensor:
+    try:
+        return tensor.to(dtype=get_unet_dtype(pipe), device=pipe.device)
+    except Exception:
+        return tensor
+
 
 # --- online/offline switch & cache helpers ---
 def _flag(name: str) -> bool:
@@ -184,7 +198,7 @@ def get_pipeline():
     mid = settings.model_id
     offline = _is_offline() 
 
-    # 1) LDM .safetensors (локальный файл)
+    # 1) LDM .safetensors
     if os.path.isfile(mid) and mid.lower().endswith((".safetensors", ".ckpt")):
         # Resolve SD1.5 config first (used also as VAE fallback)
         sd15_cfg = _ensure_snapshot("runwayml/stable-diffusion-v1-5", offline)
@@ -392,7 +406,6 @@ def get_pipeline_with_ip():
     if _ip_ready:
         return pipe
 
-    # временно убрать SlicedAttnProcessor на время загрузки
     try:
         if hasattr(pipe, "disable_attention_slicing"):
             pipe.disable_attention_slicing()
@@ -403,8 +416,6 @@ def get_pipeline_with_ip():
     except Exception:
         pass
 
-
-    # загрузка IP-Adapter (SD1.5 веса)
     ip_dir = getattr(settings, "ip_adapter_dir", None)
     if not ip_dir:
         lg("app").bind(event="ip_adapter.disabled", reason="no_ip_adapter_dir").warning("ip_adapter.disabled")
@@ -458,7 +469,6 @@ def get_pipeline_with_ip():
     except Exception:
         logger.exception("post_ip_adapter_device_sync_failed")
 
-    # лог: IP-Adapter подключен
     lg("app").bind(
         event="ip_adapter.loaded",
         model_id=settings.model_id,

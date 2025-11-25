@@ -4,10 +4,7 @@ from jwt import InvalidTokenError, ExpiredSignatureError
 from passlib.context import CryptContext 
 from app.config import settings
 from uuid import UUID
-from typing import Any, cast
-import redis.asyncio as redis 
-from redis.asyncio.client import Redis 
-from redis.asyncio import Redis as AsyncRedis 
+from app.infra.redis import get_redis
 
 import re, jwt, uuid, time, secrets
 
@@ -50,9 +47,12 @@ def decode_access_token(token: str) -> dict:
     payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg], options={"verify_aud": False})
     if "sub" not in payload or "exp" not in payload:
       raise InvalidTokenError("malformed")
-    if int(payload["exp"]) <= int(datetime.now(timezone.utc).timestamp()):
-      raise ExpiredSignatureError()
+
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    if int(payload["exp"]) <= now_ts:
+        raise ExpiredSignatureError()
     return payload
+
   except ExpiredSignatureError as e:
     raise e
   except Exception as e:
@@ -80,25 +80,11 @@ def decode_reset_token(token: str) -> dict:
 
 
 # ==================== Extended Security Functions ====================
-
-# Redis connection for token management
-_rcl: Redis | None = None
-
-async def _get_redis() -> Redis:
-    """Get Redis connection for token management."""
-    global _rcl
-    if _rcl is None:
-        _rcl = redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
-    return _rcl
-
-
 def _now_ts() -> int:
-    """Get current timestamp."""
     return int(time.time())
 
 
 def _now_dt() -> datetime:
-    """Get current datetime in UTC."""
     return datetime.now(timezone.utc)
 
 
@@ -107,7 +93,15 @@ ACCESS_TTL_MIN = settings.access_ttl_min
 FAMILY_PREFIX = "rtfam:"
 REVOKE_PREFIX = settings.revoke_prefix
 LOGOUT_PREFIX = "logout:"
+REFRESH_TTL_SEC = settings.refresh_ttl_days * 86400
 
+def _family_record(new_jti: str, exp_ts: int) -> dict[str, int | str]:
+    """Build family record for Redis with unified structure."""
+    return {
+        "current_jti": new_jti,
+        "exp": exp_ts,
+        "created": _now_ts(),
+    }
 
 def _family_key(user_id: str, session_id: str) -> str:
     """Generate family key for token management."""
@@ -158,7 +152,7 @@ def _issue_refresh_token(user_id: str, session_id: str) -> tuple[str, str, int]:
 
 async def issue_tokens_rotating(user_id: str, session_id: str) -> dict[str, str]:
     """Issue rotating tokens for a user session."""
-    r = await _get_redis()
+    r = get_redis()
     
     # Revoke old family if exists
     await revoke_family_all(user_id)
@@ -169,32 +163,27 @@ async def issue_tokens_rotating(user_id: str, session_id: str) -> dict[str, str]
     
     # Store family info
     family_key = _family_key(user_id, session_id)
-    family_data = {
-        "current_jti": rjti,
-        "exp": exp_ts,
-        "created": _now_ts(),
-    }
-    await r.hset(family_key, mapping=family_data) # type: ignore
-    await r.expire(family_key, settings.refresh_ttl_days * 86400)
+    await r.hset(family_key, mapping=_family_record(rjti, exp_ts))
+    await r.expire(family_key, REFRESH_TTL_SEC)
     
     return {"access": access, "refresh": refresh}
 
 
 async def check_family_current(user_id: str, session_id: str, jti: str) -> bool:
     """Check if the JTI is current for the family."""
-    r = await _get_redis()
+    r = get_redis()
     family_key = _family_key(user_id, session_id)
-    current_jti = await r.hget(family_key, "current_jti") # type: ignore
+    current_jti = await r.hget(family_key, "current_jti")
     return current_jti == jti
 
 
 async def rotate_refresh(user_id: str, session_id: str, old_jti: str) -> dict[str, str]:
     """Rotate refresh token for a session."""
-    r = await _get_redis()
+    r = get_redis()
     family_key = _family_key(user_id, session_id)
     
     # Verify old JTI is current
-    current_jti = await r.hget(family_key, "current_jti") # type: ignore
+    current_jti = await r.hget(family_key, "current_jti")
     if current_jti != old_jti:
         raise ValueError("Invalid old JTI")
     
@@ -206,27 +195,22 @@ async def rotate_refresh(user_id: str, session_id: str, old_jti: str) -> dict[st
     refresh, new_jti, exp_ts = _issue_refresh_token(user_id, session_id)
     
     # Update family
-    family_data = {
-        "current_jti": new_jti,
-        "exp": exp_ts,
-        "created": _now_ts(),
-    }
-    await r.hset(family_key, mapping=family_data) # type: ignore
-    await r.expire(family_key, settings.refresh_ttl_days * 86400)
+    await r.hset(family_key, mapping=_family_record(new_jti, exp_ts))
+    await r.expire(family_key, REFRESH_TTL_SEC)
     
     return {"access": access, "refresh": refresh}
 
 
 async def revoke_family(user_id: str, session_id: str) -> None:
     """Revoke a specific family of tokens."""
-    r = await _get_redis()
+    r = get_redis()
     family_key = _family_key(user_id, session_id)
     await r.delete(family_key)
 
 
 async def revoke_family_all(user_id: str) -> None:
     """Revoke all families for a user."""
-    r = await _get_redis()
+    r = get_redis()
     pattern = f"{FAMILY_PREFIX}{user_id}:*"
     keys = await r.keys(pattern)
     if keys:
@@ -235,28 +219,28 @@ async def revoke_family_all(user_id: str) -> None:
 
 async def revoke_jti(jti: str, exp_ts: int) -> None:
     """Revoke a specific JTI."""
-    r = await _get_redis()
+    r = get_redis()
     ttl = max(0, exp_ts - _now_ts())
     if ttl > 0:
        await r.setex(f"{REVOKE_PREFIX}{jti}", ttl, "1")
 
 
 async def is_revoked(jti: str) -> bool:
-    r = await _get_redis()
+    r = get_redis()
     return bool(await r.exists(f"{REVOKE_PREFIX}{jti}"))
 
 
 async def mark_user_logged_out(user_id: str) -> None:
     """Mark user as logged out."""
-    r = await _get_redis()
+    r = get_redis()
     await r.setex(f"{LOGOUT_PREFIX}{user_id}", 86400, "1")
 
 
 async def is_user_logged_out(user_id: str) -> bool:
-    r = await _get_redis()
+    r = get_redis()
     return bool(await r.exists(f"{LOGOUT_PREFIX}{user_id}"))
 
 async def clear_user_logged_out(user_id: str) -> None:
     """Clear user logged out status."""
-    r = await _get_redis()
+    r = get_redis()
     await r.delete(f"{LOGOUT_PREFIX}{user_id}")

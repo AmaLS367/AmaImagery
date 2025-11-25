@@ -16,7 +16,7 @@ from app.files.validators import check_ext, check_mime, safe_join
 from app.services.rate_limiting import create_rate_limiter
 from app.core.logging import sec, logger
 
-router = APIRouter(tags=["files📃"])
+router = APIRouter()
 _LOG_CTX = {"event_type": "app", "scope": "files"}
 
 @router.get("/file")

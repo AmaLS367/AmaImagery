@@ -6,12 +6,12 @@ Handles AI image generation requests and responses.
 
 import asyncio
 from typing import Optional, Any
-import os, traceback
+import traceback
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth.deps import optional_user
+from app.api.v1.auth.deps import optional_user
 from app.infra.db import get_db
 from app.core.logging import lg
 from app.config import settings
@@ -19,7 +19,7 @@ from app.domain.schemas import GenReq, GenResp
 from app.services.generation_service import GenerationService
 from app.services.rate_limiting import create_rate_limiter
 
-router = APIRouter(tags=["generation🧬"])
+router = APIRouter()
 
 _generation_deps = [Depends(create_rate_limiter(settings.gen_per_user_per_min, 60))] if getattr(settings, "limits_enabled", False) else []
 
@@ -37,17 +37,17 @@ async def generate_image(
         return result
 
     except asyncio.TimeoutError:
-        if os.getenv("ENV", "").lower() == "dev":
+        if settings.debug:
             traceback.print_exc()
         raise HTTPException(status_code=429, detail="Service temporarily unavailable. Please try again later.")
 
     except RuntimeError as e:
         msg = str(e)
         if "timed out" in msg.lower():
-            if os.getenv("ENV", "").lower() == "dev":
+            if settings.debug:
                 traceback.print_exc()
             raise HTTPException(status_code=504, detail="Generation timed out")
-        if os.getenv("ENV", "").lower() == "dev":
+        if settings.debug:
             traceback.print_exc()
             lg("app").exception("generate.runtime_error")
             raise
@@ -55,12 +55,12 @@ async def generate_image(
         raise HTTPException(status_code=500, detail=f"Generation failed: {msg}")
 
     except ValueError as e:
-        if os.getenv("ENV", "").lower() == "dev":
+        if settings.debug:
             traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
-        if os.getenv("ENV", "").lower() == "dev":
+        if settings.debug:
             traceback.print_exc()
             lg("app").exception("generate.failed")
             raise
