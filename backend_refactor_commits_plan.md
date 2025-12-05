@@ -514,7 +514,7 @@
 
 Цель этапа: убрать блокирующие операции БД из event loop.
 
-### ❌ 26. `feat(db): switch to async SQLAlchemy engine and session`
+### ✅ 26. `feat(db): switch to async SQLAlchemy engine and session`
 
 **Цель:** перейти на async SQLAlchemy.
 
