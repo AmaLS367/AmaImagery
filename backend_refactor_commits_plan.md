@@ -418,7 +418,7 @@
 
 ---
 
-### ❌ 21. `feat(application): add GenerateImageUseCase`
+### ✅ 21. `feat(application): add GenerateImageUseCase`
 
 **Цель:** вынести генерацию в use case.
 
