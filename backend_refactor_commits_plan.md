@@ -594,7 +594,7 @@
 
 Цель этапа: укрепить прод готовность и наблюдаемость.
 
-### ❌ 31. `feat(core): add typed domain exceptions and error mapping`
+### ✅ 31. `feat(core): add typed domain exceptions and error mapping`
 
 **Цель:** единая система доменных ошибок.
 
