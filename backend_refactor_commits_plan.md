@@ -124,7 +124,7 @@
 
 ---
 
-### ❌ 6. `docs(backend): document provider abstraction and default provider config`
+### ✅ 6. `docs(backend): document provider abstraction and default provider config`
 
 **Цель:** описать слой провайдеров в документации.
 

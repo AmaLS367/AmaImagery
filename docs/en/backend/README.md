@@ -18,6 +18,12 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - IP-Adapter for image conditioning
 - Optimized CUDA inference
 
+### 🔌 Provider Layer
+- Provider abstraction for image generation
+- Pluggable provider architecture
+- Support for multiple generation backends
+- See [Provider Documentation](./providers.md) for details
+
 ### 🗄️ Data Layer
 - PostgreSQL database with SQLAlchemy
 - Alembic migrations
@@ -39,6 +45,7 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 
 - [Architecture](./architecture.md) - System architecture and design
 - [API Documentation](./api/overview.md) - Complete API reference
+- [Providers](./providers.md) - Provider abstraction layer
 - [Core Modules](./core/) - Security, logging, errors, limits
 - [Services](./services/) - Business logic services
 - [Inference](./inference/) - ML inference pipeline
