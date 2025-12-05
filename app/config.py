@@ -19,6 +19,18 @@ class Settings(BaseSettings):
         alias="PROVIDERS_ENABLED"
     )
     
+    # --- Feature Flags ---
+    feature_flags: dict[str, bool] = Field(
+        default_factory=lambda: {
+            "image_generation": True,
+            "image_editing": True,
+            "image_upscaling": True,
+            "ip_adapter": True,
+            "batch_generation": True,
+        },
+        alias="FEATURE_FLAGS"
+    )
+    
     # --- Inference/model ---
     model_id: str = Field("models/dreamshaper_6NoVae.safetensors", alias="MODEL_ID")
     device: str = Field("cuda", alias="DEVICE")
@@ -129,6 +141,37 @@ class Settings(BaseSettings):
             except Exception:
                 pass
         return [p.strip() for p in re.split(r"[;,]", s) if p.strip()]
+    
+    @field_validator("feature_flags", mode="before")
+    @classmethod
+    def _parse_feature_flags(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return {str(k): bool(v) for k, v in v.items()}
+        s = str(v).strip()
+        if s == "":
+            return None
+        if s.startswith("{") or s.startswith("["):
+            try:
+                data = json.loads(s)
+                if isinstance(data, dict):
+                    return {str(k): bool(v) for k, v in data.items()}
+                if isinstance(data, list):
+                    return {str(item): True for item in data}
+            except Exception:
+                pass
+        flags = {}
+        for part in re.split(r"[;,]", s):
+            part = part.strip()
+            if not part:
+                continue
+            if "=" in part:
+                k, v = part.split("=", 1)
+                flags[k.strip()] = v.strip().lower() in ("true", "1", "yes", "on")
+            else:
+                flags[part] = True
+        return flags
 
     # --- Auth: JWT, tokens, bcrypt ---
     access_ttl_min: int = Field(15, alias="ACCESS_TTL_MIN")
