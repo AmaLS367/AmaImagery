@@ -30,6 +30,12 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - Task status tracking via Redis
 - See [Queue and Workers Documentation](./queue-and-workers.md) for details
 
+### 📋 Application Layer
+- Use cases for business scenario orchestration
+- Command/Result pattern for clear input/output
+- Separation of business logic from API handlers
+- See [Application Layer Documentation](./application.md) for details
+
 ### 🗄️ Data Layer
 - PostgreSQL database with SQLAlchemy
 - Alembic migrations
@@ -56,6 +62,7 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - [API Documentation](./api/overview.md) - Complete API reference
 - [Providers](./providers.md) - Provider abstraction layer
 - [Queue and Workers](./queue-and-workers.md) - Task queue and worker architecture
+- [Application Layer](./application.md) - Use cases and business scenario orchestration
 - [Repositories and Unit of Work](./repositories.md) - Data access layer and transaction management
 - [Core Modules](./core/) - Security, logging, errors, limits
 - [Services](./services/) - Business logic services

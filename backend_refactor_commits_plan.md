@@ -496,7 +496,7 @@
 
 ---
 
-### ❌ 25. `docs(backend): document application use case layer and api flow`
+### ✅ 25. `docs(backend): document application use case layer and api flow`
 
 **Цель:** описать новый поток данных.
 
