@@ -652,7 +652,7 @@
 
 ---
 
-### ❌ 34. `feat(config): introduce feature flags for providers and features`
+### ✅ 34. `feat(config): introduce feature flags for providers and features`
 
 **Цель:** управляемое включение и выключение фич.
 

@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.v1.auth.deps import optional_user
 from app.infra.uow import get_uow
 from app.config import settings
+from app.core.feature_flags import get_feature_flag_service
+from app.core.exceptions import ValidationException
 from app.domain.schemas import GenReq, TaskResp
 from app.services.rate_limiting import create_rate_limiter
 from app.application.use_cases.generate_image import (
@@ -33,6 +35,13 @@ async def generate_image(
     user: Optional[Any] = Depends(optional_user),
     use_case: GenerateImageUseCase = Depends(get_generate_image_use_case),
 ) -> TaskResp:
+    feature_flags = get_feature_flag_service()
+    if not feature_flags.is_enabled("image_generation"):
+        raise HTTPException(
+            status_code=503,
+            detail="Image generation feature is currently disabled",
+        )
+    
     user_id = str(getattr(user, "id", "anon")) if user is not None else "anon"
     
     command = GenerateImageCommand(

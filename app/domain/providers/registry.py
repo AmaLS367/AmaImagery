@@ -74,10 +74,17 @@ def get_provider_registry() -> ProviderRegistry:
     Returns singleton registry instance with providers registered from configuration.
     
     Lazy-initializes DiffusersProvider on first access to avoid heavy imports at module load time.
+    Checks feature flags before registering providers.
     """
     global _registry
     if _registry is None:
         from app.config import settings
+        from app.core.feature_flags import get_feature_flag_service
+        
+        feature_flags = get_feature_flag_service()
+        
+        if not feature_flags.is_enabled("image_generation"):
+            raise ValueError("Image generation feature is disabled")
         
         providers: dict[str, IImageProvider] = {}
         
