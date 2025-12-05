@@ -4,10 +4,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.infra.db import get_db
+from app.infra.uow import get_uow
 from app.api.v1.auth.deps import current_user
 from app.core.safety import (
     is_blocked,
@@ -30,10 +29,11 @@ class NSFWCheckResponse(BaseModel):
     forced: bool
 
 @router.patch("/users/me/nsfw")
-async def set_nsfw(toggle: NSFWToggle, db: Session = Depends(get_db), user=Depends(current_user)):
-    user.nsfw_allow = bool(toggle.allow)
-    db.add(user)
-    db.commit()
+async def set_nsfw(toggle: NSFWToggle, user=Depends(current_user)):
+    uow = get_uow()
+    async with uow:
+        user.nsfw_allow = bool(toggle.allow)
+        await uow.users.add(user)
     return {"ok": True, "nsfw_allow": user.nsfw_allow}
 
 @router.post("/check", response_model=NSFWCheckResponse)

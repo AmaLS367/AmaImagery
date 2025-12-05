@@ -7,7 +7,7 @@ Defines protocols for data access that isolate domain logic from infrastructure.
 from typing import Protocol, TypeVar, Optional, List, Any
 from uuid import UUID
 
-from app.domain.models import Generation, User
+from app.domain.models import Generation, User, UserSettings
 
 T = TypeVar("T")
 
@@ -41,4 +41,13 @@ class IUserRepository(IRepository[User]):
         ...
     
     async def get_by_username(self, username: str) -> Optional[User]:
+        ...
+    
+    async def get_by_email_or_username(self, email: str, username: str) -> Optional[User]:
+        ...
+    
+    async def get_settings(self, user_id: UUID | str) -> Optional["UserSettings"]:
+        ...
+    
+    async def save_settings(self, settings: "UserSettings") -> None:
         ...

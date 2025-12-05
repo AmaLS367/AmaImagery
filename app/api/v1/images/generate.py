@@ -5,10 +5,8 @@ Image generation endpoints.
 from typing import Optional, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from app.api.v1.auth.deps import optional_user
-from app.infra.db import get_db
 from app.infra.uow import get_uow
 from app.core.logging import lg
 from app.config import settings
@@ -24,10 +22,9 @@ _generation_deps = [Depends(create_rate_limiter(settings.gen_per_user_per_min, 6
 @router.post("/generate", response_model=TaskResp, dependencies=_generation_deps)
 async def generate_image(
     request: GenReq,
-    db: Session = Depends(get_db),
     user: Optional[Any] = Depends(optional_user),
 ) -> TaskResp:
-    uow = get_uow(session=db)
+    uow = get_uow()
     generation_service = GenerationService(uow)
     
     try:
