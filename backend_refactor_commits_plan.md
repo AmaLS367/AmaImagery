@@ -481,7 +481,7 @@
 
 ---
 
-### ❌ 24. `refactor(services): slim down services to pure domain helpers`
+### ✅ 24. `refactor(services): slim down services to pure domain helpers`
 
 **Цель:** сервисы становятся более узкими.
 
