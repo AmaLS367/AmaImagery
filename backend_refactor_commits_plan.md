@@ -40,7 +40,7 @@
 
 ---
 
-### ❌ 2. `feat(providers): add provider registry for image generation`
+### ✅ 2. `feat(providers): add provider registry for image generation`
 
 **Цель:** централизованный реестр провайдеров, через который весь код получает нужный провайдер.
 
