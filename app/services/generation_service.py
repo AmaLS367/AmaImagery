@@ -11,13 +11,13 @@ from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any, cast
 
 import torch
-from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.logging import lg, logger
 from app.domain.models import Generation
 from app.domain.providers import GenerationRequest, ProviderRegistry
 from app.domain.schemas import GenReq, GenResp
+from app.infra.uow import SqlAlchemyUnitOfWork
 from app.services.image_service import ImageProcessingService
 from app.utils import prompt_hash
 from app.prompt_hygiene.facade import run_hygiene
@@ -32,8 +32,8 @@ class GenerationService:
     Orchestrates image generation by coordinating provider selection, prompt processing, and result persistence.
     """
     
-    def __init__(self, db: Session, provider_registry: Optional[ProviderRegistry] = None):
-        self.db = db
+    def __init__(self, uow: SqlAlchemyUnitOfWork, provider_registry: Optional[ProviderRegistry] = None):
+        self.uow = uow
         self.image_service = ImageProcessingService()
         self.provider_registry = provider_registry
         self._setup_autocorrect()    
@@ -106,7 +106,8 @@ class GenerationService:
 
             output_path = result.image_path
 
-            self._save_generation_metadata(request, user, output_path, prompt_hash_value)
+            async with self.uow:
+                await self._save_generation_metadata(request, user, output_path, prompt_hash_value)
 
             gen_logger.bind(
                 phase="completed",
@@ -257,7 +258,7 @@ class GenerationService:
             "style": style,
         }
 
-    def _save_generation_metadata(
+    async def _save_generation_metadata(
         self, 
         request: GenReq, 
         user: Optional[Any], 
@@ -286,8 +287,7 @@ class GenerationService:
             image_path=output_path,
         )
         
-        self.db.add(generation)
-        self.db.commit()
+        await self.uow.generations.add(generation)
     
     def _create_signed_url(self, output_path: str) -> Dict[str, Any]:
         from app.files.signing import make_signature

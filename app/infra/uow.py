@@ -25,8 +25,8 @@ class SqlAlchemyUnitOfWork:
     def __init__(self, session: Optional[Session] = None):
         self._session: Optional[Session] = session
         self._owns_session = session is None
-        self.users: Optional[IUserRepository] = None
-        self.generations: Optional[IGenerationRepository] = None
+        self.users: IUserRepository
+        self.generations: IGenerationRepository
     
     async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
         if self._session is None:
