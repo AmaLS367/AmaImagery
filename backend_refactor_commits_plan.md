@@ -445,7 +445,7 @@
 
 ---
 
-### ❌ 22. `feat(application): add GetGenerationStatusUseCase`
+### ✅ 22. `feat(application): add GetGenerationStatusUseCase`
 
 **Цель:** вынести получение статуса в use case.
 
