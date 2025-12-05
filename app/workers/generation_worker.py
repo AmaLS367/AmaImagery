@@ -14,6 +14,7 @@ from app.domain.models import Generation
 from app.domain.providers import GenerationRequest, get_provider_registry
 from app.infra.db import SessionLocal
 from app.infra.queue import get_task_queue
+from app.infra.repositories import SqlAlchemyGenerationRepository
 
 
 async def run_worker() -> None:
@@ -63,7 +64,7 @@ async def run_worker() -> None:
                 
                 result = await provider.generate(gen_request)
                 
-                _save_generation_to_db(
+                await _save_generation_to_db(
                     payload=payload,
                     user_id=user_id,
                     output_path=result.image_path,
@@ -121,7 +122,7 @@ def _payload_to_generation_request(payload: Dict[str, Any]) -> GenerationRequest
     )
 
 
-def _save_generation_to_db(
+async def _save_generation_to_db(
     payload: Dict[str, Any],
     user_id: Optional[str],
     output_path: str,
@@ -151,7 +152,8 @@ def _save_generation_to_db(
             image_path=output_path,
         )
         
-        db.add(generation)
+        repo = SqlAlchemyGenerationRepository(db)
+        await repo.add(generation)
         db.commit()
     except Exception as e:
         db.rollback()
