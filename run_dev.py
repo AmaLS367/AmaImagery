@@ -1,15 +1,26 @@
 # run_dev.py
+"""
+Development server runner with dev-specific patches and configuration.
+
+This script applies development-friendly settings and patches before starting
+the application server. It should NOT be used in production.
+"""
 import os
 import socket
 import logging
 import uvicorn
 from fastapi.responses import JSONResponse
 from starlette.middleware.errors import ServerErrorMiddleware
-from app.config import settings
 
+# Set dev environment BEFORE importing settings
 os.environ["ENV"] = "dev"
 
+# Now import settings after ENV is set
+from app.config import settings
+
+
 def _apply_dev_env():
+    """Apply development-specific environment variables."""
     os.environ.setdefault("ENV", "dev")
     os.environ.setdefault("PYTHONUNBUFFERED", "1")
     os.environ.setdefault("LOG_LEVEL", "DEBUG")
@@ -18,9 +29,12 @@ def _apply_dev_env():
     os.environ.setdefault("TORCH_SHOW_CPP_STACKTRACES", "1")
     os.environ.setdefault("CUDA_LAUNCH_BLOCKING", "1")
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
-    os.environ.setdefault("SECRET_KEY", "dev_" + "x"*48)
-    os.environ.setdefault("DATABASE_URL", settings.database_url)
     
+    # Use secure dev key if not set
+    os.environ.setdefault("SECRET_KEY", "dev_" + "x" * 48)
+    
+    # Use defaults if not overridden
+    os.environ.setdefault("DATABASE_URL", "sqlite:///./genai.db")
     os.environ.setdefault("REDIS_URL", "redis://:devpass@localhost:6379/0")
 
 def _patch_outbound_network():
@@ -126,6 +140,11 @@ def get_app():
 
 
 if __name__ == "__main__":
+    _apply_dev_env()
+    
+    # Re-import settings after dev env is applied
+    from app.config import settings as dev_settings
+    
     uvicorn.run(
         "run_dev:get_app",
         factory=True,
@@ -136,5 +155,5 @@ if __name__ == "__main__":
         access_log=True,
         proxy_headers=True,
         forwarded_allow_ips="127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-        timeout_keep_alive=int(os.getenv("KEEPALIVE_TIMEOUT_SECONDS", "5")),
+        timeout_keep_alive=dev_settings.keepalive_timeout_seconds,
     )

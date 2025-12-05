@@ -35,25 +35,43 @@ def align_to_unet_dtype(tensor: torch.Tensor, pipe) -> torch.Tensor:
 
 
 # --- online/offline switch & cache helpers ---
-def _flag(name: str) -> bool:
-    return os.getenv(name, "0").strip().lower() in ("1", "true", "yes", "on")
 
 def _is_offline() -> bool:
-    return _flag("HF_HUB_OFFLINE") or _flag("TRANSFORMERS_OFFLINE") or _flag("DIFFUSERS_OFFLINE") or _flag("NO_NETWORK")
+    """Check if running in offline mode based on settings."""
+    return (
+        settings.hf_hub_offline 
+        or settings.transformers_offline 
+        or settings.diffusers_offline 
+        or settings.no_network
+    )
+
 
 def _project_root() -> Path:
+    """Get project root directory."""
     # from app/inference/pipeline.py -> project root
     return Path(__file__).resolve().parents[2]
 
+
 def _hub_candidates() -> list[Path]:
-    # Priority: explicit env -> HF_HOME/hub -> project cache -> CWD cache -> user home
+    """
+    Get candidate directories for HuggingFace cache.
+    
+    Priority order:
+    1. Explicit HUGGINGFACE_HUB_CACHE from settings
+    2. HF_HOME/hub from settings
+    3. Project models/.cache/huggingface/hub
+    4. CWD models/.cache/huggingface/hub
+    5. User home ~/.cache/huggingface/hub
+    """
     c: list[Path] = []
-    env_hub = os.getenv("HUGGINGFACE_HUB_CACHE")
-    if env_hub:
-        c.append(Path(env_hub))
-    hf_home = os.getenv("HF_HOME")
-    if hf_home:
-        c.append(Path(hf_home) / "hub")
+    
+    # Priority 1: Explicit hub cache path
+    if settings.huggingface_hub_cache:
+        c.append(settings.huggingface_hub_cache)
+    
+    # Priority 2: HF_HOME/hub
+    if settings.hf_home:
+        c.append(settings.hf_home / "hub")
     c.append(_project_root() / "models" / ".cache" / "huggingface" / "hub")
     c.append(Path.cwd() / "models" / ".cache" / "huggingface" / "hub")
     c.append(Path.home() / ".cache" / "huggingface" / "hub")

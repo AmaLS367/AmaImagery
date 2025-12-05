@@ -41,6 +41,9 @@ Documentation for bootstrap, build, migration, and utility scripts.
 ### [💻 Development](./development/README.md)
 Developer guides including setup, project structure, coding standards, and contributing guidelines.
 
+### [🔄 Migrations](./migrations/README.md)
+Refactoring and migration notes documenting architectural changes and upgrade guides.
+
 ### [🔒 Security](./security/README.md)
 Security documentation covering authentication, authorization, rate limiting, and best practices.
 

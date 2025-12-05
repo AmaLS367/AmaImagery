@@ -4,8 +4,15 @@ from dotenv import load_dotenv
 from pathlib import Path
 import json, os, re
 from pydantic import Field, field_validator, model_validator
+from typing import Literal
+
 class Settings(BaseSettings):
-    # --- Inference/model
+    # --- Core / Environment ---
+    env: Literal["dev", "development", "local", "stage", "staging", "prod", "production"] = Field("dev", alias="ENV")
+    run_in_docker: bool = Field(False, alias="RUN_IN_DOCKER")
+    debug: bool = Field(False, alias="DEBUG")
+    
+    # --- Inference/model ---
     model_id: str = Field("models/dreamshaper_6NoVae.safetensors", alias="MODEL_ID")
     device: str = Field("cuda", alias="DEVICE")
     max_steps: int = Field(128, alias="MAX_STEPS")
@@ -16,12 +23,14 @@ class Settings(BaseSettings):
     scheduler: str | None = Field(None, alias="SCHEDULER")
     seed_strict: bool = Field(False, alias="SEED_STRICT")
 
-    # --- auth/db ---
+    # --- Database ---
     database_url: str = Field("sqlite:///./genai.db", alias="DATABASE_URL")
+    
+    # --- Security ---
     secret_key: str = Field("", alias="SECRET_KEY")
     jwt_alg: str = Field("HS256", alias="JWT_ALG")
     
-    # --- logging ---
+    # --- Logging ---
     log_dir: str = Field("logs", alias="LOG_DIR")
     log_level: str = Field("INFO", alias="LOG_LEVEL")                  # DEBUG/INFO/WARNING/ERROR
     log_rotation: str = Field("00:00", alias="LOG_ROTATION")           # daily rotation
@@ -69,8 +78,9 @@ class Settings(BaseSettings):
             return [p.strip() for p in parts if p.strip()]
         return v
 
-    # Redis (for rate-limits, queues, etc)
+    # --- Redis (for rate-limits, queues, etc) ---
     redis_url: str = Field("redis://localhost:6379/0", alias='REDIS_URL')
+    no_redis: bool = Field(False, alias='NO_REDIS')  # Disable Redis (for dev/testing)
     enable_hsts: bool = Field(False, alias='ENABLE_HSTS')
 
     # Limits
@@ -168,11 +178,11 @@ class Settings(BaseSettings):
     gpu_metrics_enabled: bool = Field(True, alias="GPU_METRICS_ENABLED")
     metrics_path: str = Field("/metrics", alias="METRICS_PATH")
     
-    # --- Docs and debug
-    debug: bool = Field(False, alias="DEBUG")
+    # --- Docs and UI ---
     docs_url: str | None = Field("/docs", alias="DOCS_URL")
+    ui_static_dir: Path | None = Field(default=None, alias="UI_STATIC_DIR")
 
-    # --- Paths --
+    # --- Paths ---
     root_dir: Path = Field(
         default_factory=lambda: Path(__file__).resolve().parents[2],
         alias="ROOT_DIR"
@@ -270,24 +280,85 @@ class Settings(BaseSettings):
         env_file=None,
         case_sensitive=False
     )
+    
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.env.lower() in ("prod", "production")
+    
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.env.lower() in ("dev", "development", "local")
 
-if not os.getenv("RUN_IN_DOCKER"):
-    load_dotenv(".env")
 
+# === Initialization and validation ===
+
+def _load_env_file() -> None:
+    """Load .env file if not running in Docker."""
+    if not os.getenv("RUN_IN_DOCKER"):
+        load_dotenv(".env")
+
+
+def _create_directories(settings: Settings) -> None:
+    """Create required directories for outputs and logs."""
+    Path(settings.outputs_dir).mkdir(parents=True, exist_ok=True)
+    
+    for sub in ("access", "app", "generations", "prompts", "prompts/raw", "errors", "metrics"):
+        Path(settings.log_dir, sub).mkdir(parents=True, exist_ok=True)
+
+
+def _validate_production_settings(settings: Settings) -> None:
+    """Validate critical settings for production environment."""
+    if not settings.is_production:
+        return  # Skip validation in dev/staging
+    
+    # Validate SECRET_KEY
+    if not settings.secret_key or settings.secret_key in {"CHANGE_ME", "CHANGE_ME_LONG_RANDOM"}:
+        raise RuntimeError(
+            "SECRET_KEY must be set to a secure value in production. "
+            "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(48))'"
+        )
+    
+    # Validate DATABASE_URL for production
+    db_url = urlparse(settings.database_url)
+    if db_url.scheme == "sqlite":
+        raise RuntimeError(
+            "SQLite is not supported in production. Set DATABASE_URL to PostgreSQL "
+            "(postgresql://user:password@host:port/dbname)"
+        )
+    
+    if db_url.scheme.startswith("postgresql"):
+        if (db_url.username or "") == "app" and (db_url.password or "") == "app":
+            raise RuntimeError(
+                "DATABASE_URL uses default credentials (app/app). "
+                "Set strong username/password via environment variables."
+            )
+        if not db_url.password or len(db_url.password) < 12:
+            raise RuntimeError(
+                "DATABASE_URL must include a strong password (12+ characters) in production."
+            )
+    
+    # Validate REDIS_URL for production
+    if not settings.no_redis:
+        redis_url = urlparse(settings.redis_url)
+        if redis_url.scheme.startswith("redis"):
+            if not redis_url.password or redis_url.password.strip() == "":
+                raise RuntimeError(
+                    "REDIS_URL must include a password in production (redis://:password@host:port/db)."
+                )
+
+
+def initialize_config() -> Settings:
+    _load_env_file()
+    settings = Settings()  # type: ignore[call-arg]
+    _create_directories(settings)
+    _validate_production_settings(settings)
+    return settings
+
+
+# Create settings instance 
+_load_env_file()
 settings: Settings = Settings()  # type: ignore[call-arg]
-Path(settings.outputs_dir).mkdir(parents=True, exist_ok=True)
-for sub in ("access","app","generations","prompts","prompts/raw","errors","metrics"):
-    Path(settings.log_dir, sub).mkdir(parents=True, exist_ok=True)
-
-if not settings.secret_key or settings.secret_key in {"CHANGE_ME","CHANGE_ME_LONG_RANDOM"}:
-    raise RuntimeError("SECRET_KEY must be set via env")
-
-_pg = urlparse(settings.database_url)
-if _pg.scheme == "postgresql" and (_pg.username or "") == "app" and (_pg.password or "") == "app":
-    raise RuntimeError("DATABASE_URL uses default credentials (app/app). Set strong user/password via env.")
-
-_ru = urlparse(settings.redis_url)
-if _ru.scheme.startswith("redis") and (not _ru.password or _ru.password.strip() == ""):
-    # Allow no password for local development
-    if os.getenv("ENV", "dev").lower() not in ["dev", "development", "local"]:
-        raise RuntimeError("REDIS_URL must include a password (redis://:password@host:port/db).")
+_create_directories(settings)
+_validate_production_settings(settings)
