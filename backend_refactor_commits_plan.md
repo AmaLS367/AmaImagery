@@ -328,7 +328,7 @@
 
 ---
 
-### ❌ 16. `feat(uow): introduce UnitOfWork abstraction for db transactions`
+### ✅ 16. `feat(uow): introduce UnitOfWork abstraction for db transactions`
 
 **Цель:** управляющая сущность для транзакций.
 
