@@ -465,7 +465,7 @@
 
 ---
 
-### ❌ 23. `refactor(api): delegate generation endpoints to use cases`
+### ✅ 23. `refactor(api): delegate generation endpoints to use cases`
 
 **Цель:** роутеры используют только use cases.
 
