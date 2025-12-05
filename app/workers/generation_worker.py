@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.events import GenerationFailedEvent, ImageGeneratedEvent, get_event_bus
 from app.core.logging import lg, logger
 from app.domain.models import Generation
 from app.domain.providers import GenerationRequest, get_provider_registry
@@ -96,6 +97,16 @@ async def run_worker() -> None:
                 duration = time.time() - task_start_time
                 record_task_success(task_type=task_type, duration_seconds=duration)
                 
+                event_bus = get_event_bus()
+                await event_bus.publish(
+                    ImageGeneratedEvent(
+                        task_id=task_id,
+                        user_id=user_id or "anon",
+                        image_path=result.image_path,
+                        metadata=result.metadata,
+                    )
+                )
+                
                 worker_log.info(
                     "worker.generation_completed",
                     extra={
@@ -116,6 +127,16 @@ async def run_worker() -> None:
                 )
                 await task_queue.mark_failed(task_id, error_msg)
                 record_task_error(task_type=task_type, error_type=error_type)
+                
+                event_bus = get_event_bus()
+                await event_bus.publish(
+                    GenerationFailedEvent(
+                        task_id=task_id,
+                        user_id=user_id or "anon",
+                        error=error_msg,
+                        error_type=error_type,
+                    )
+                )
                 
         except KeyboardInterrupt:
             worker_log.info("worker.shutdown_requested")

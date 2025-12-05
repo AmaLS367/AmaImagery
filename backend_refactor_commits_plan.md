@@ -668,7 +668,7 @@
 
 ---
 
-### ❌ 35. `feat(events): introduce simple domain event bus`
+### ✅ 35. `feat(events): introduce simple domain event bus`
 
 **Цель:** добавить доменные события.
 
