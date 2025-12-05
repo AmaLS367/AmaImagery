@@ -61,7 +61,7 @@
 
 ---
 
-### ❌ 3. `refactor(inference): extract diffusers logic to DiffusersProvider`
+### ✅ 3. `refactor(inference): extract diffusers logic to DiffusersProvider`
 
 **Цель:** вынести реализацию генерации через diffusers в отдельный провайдер.
 
