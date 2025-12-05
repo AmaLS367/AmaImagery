@@ -46,9 +46,6 @@ class GenerationService:
         request: GenReq,
         user: Optional[Any] = None
     ) -> GenResp:
-        """
-        Generate an image based on the request.
-        """
         semaphore = get_gen_semaphore()
         acquired = False
         try:
@@ -57,17 +54,13 @@ class GenerationService:
             await asyncio.wait_for(semaphore.acquire(), timeout=queue_timeout)
             acquired = True
 
-            # Validate request parameters
             self._validate_request(request)
 
-            # Setup logging
             gen_logger = lg("generation")
             prompt_logger = lg("prompt")
 
-            # Generate prompt hash
             prompt_hash_value = prompt_hash(request.prompt, request.negative_prompt)
 
-            # Log generation request
             gen_logger.bind(
                 phase="requested",
                 model_id=cfg.model_id,
@@ -78,20 +71,16 @@ class GenerationService:
                 seed=request.seed,
             ).info("generation.requested")
 
-            # Check safety policies
             self._check_safety_policies(request, user)
 
-            # Process prompt
             processed_prompt, corrections = self._process_prompt(
                 prompt=request.prompt,
                 negative=request.negative_prompt or "",
                 user=user,
             )
 
-            # Prepare generation parameters with business logic (style prefixes, size limits)
             generation_params = self._prepare_generation_params(request, processed_prompt)
 
-            # Get provider from registry
             if self.provider_registry is None:
                 from app.domain.providers import get_provider_registry
                 provider_registry = get_provider_registry()
@@ -100,7 +89,6 @@ class GenerationService:
             
             provider = provider_registry.get_default()
 
-            # Create domain request
             gen_request = GenerationRequest(
                 prompt=generation_params["prompt"],
                 negative_prompt=generation_params.get("negative_prompt"),
@@ -114,23 +102,18 @@ class GenerationService:
                 style=generation_params.get("style", "anime"),
             )
 
-            # Generate via provider
             result = await provider.generate(gen_request)
 
-            # Provider already saved the image, use the path from result
             output_path = result.image_path
 
-            # Save generation metadata to database
             self._save_generation_metadata(request, user, output_path, prompt_hash_value)
 
-            # Log completion
             gen_logger.bind(
                 phase="completed",
                 prompt_hash=prompt_hash_value,
                 output_path=output_path,
             ).success("generation.completed")
 
-            # Create signed URL if enabled
             signed_url = self._create_signed_url(output_path) if cfg.file_signing_enabled else None
 
             return GenResp(
@@ -160,7 +143,6 @@ class GenerationService:
                     pass
     
     def _validate_request(self, request: GenReq) -> None:
-        """Validate generation request parameters."""
         if request.width > cfg.max_gen_width or request.height > cfg.max_gen_height:
             raise ValueError("Image size too large")
         
@@ -177,26 +159,19 @@ class GenerationService:
             raise ValueError("Batch too large")
     
     def _check_safety_policies(self, request: GenReq, user: Optional[Any]) -> None:
-        """Check safety policies for the request."""
-        
-        # Determine if NSFW is allowed
         allow_global = cfg.nsfw_allow
         allow_user = True
         
         if user is not None and hasattr(user, "nsfw_allow"):
             allow_user = bool(user.nsfw_allow)
         
-        # Apply safety checks
         if not allow_global:
-            # Global ban: forced blocklist applies to everyone
             if is_blocked_forced(request.prompt):
                 raise ValueError("Blocked by safety policy.")
         else:
-            # Global allow: apply blocklist only to users with NSFW disabled
             if not allow_user and is_blocked_forced(request.prompt):
                 raise ValueError("Blocked by safety policy.")
         
-        # Check regular blocklist
         if is_blocked(request.prompt) or is_blocked(request.negative_prompt):
             lg("safety").bind(
                 prompt_hash=prompt_hash(request.prompt, request.negative_prompt),
@@ -229,10 +204,6 @@ class GenerationService:
         return max(256, (int(x) // 64) * 64)
     
     def _process_prompt(self, prompt: str, negative: str, user: Optional[Any]) -> Tuple[str, List[Tuple[str, str]]]:
-        """
-        Run prompt hygiene via facade.
-        Returns: (possibly updated prompt, list of (before, after) corrections)
-        """
         user_id = str(getattr(user, "id", "anon"))
         res = run_hygiene(user_id=user_id, prompt=prompt, negative=negative, mode=None)
         fixed = res.prompt
@@ -240,7 +211,6 @@ class GenerationService:
         return fixed, corr
     
     def _prepare_generation_params(self, request: GenReq, processed_prompt: str) -> Dict[str, Any]:
-        """Prepare parameters for image generation."""
         style = getattr(request, 'style', 'anime')
 
         quality_prefix = "masterpiece, best quality, ultra-detailed"
@@ -294,7 +264,6 @@ class GenerationService:
         output_path: str, 
         prompt_hash_value: str
     ) -> None:
-        """Save generation metadata to database."""
         prompt_blob = {
             "prompt": request.prompt,
             "negative_prompt": request.negative_prompt
