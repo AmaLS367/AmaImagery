@@ -1,51 +1,251 @@
-# Image Generator
+# AI Image Generator
 
-## Legal and licensing
+> **Powerful self-hosted image generation platform based on Stable Diffusion**
 
-This repository ships model weights and documentation that depend on upstream components.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.116.1-009688.svg)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://reactjs.org)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg)](https://www.docker.com)
 
-- Stable Diffusion v1.5 — CreativeML Open RAIL-M
-- DreamShaper v6 — CreativeML Open RAIL-M
-- VAE sd-vae-ft-mse — MIT
+AI Image Generator is a production-ready platform for generating, editing, and upscaling images using Stable Diffusion models. Features enterprise-grade security, content moderation, and comprehensive monitoring.
 
-Full texts and records are provided under models/AmaFusion_V1/LICENSES/
-- OpenRAIL-M.txt — full text of CreativeML Open RAIL-M
-- Upstream_DreamShaper_LICENSE.txt — upstream model record and links
-- VAE_LICENSE.txt — full MIT text
+---
 
-Use-based restrictions
-When distributing weights or providing model access as a service, include a clear notice of the CreativeML Open RAIL-M restrictions and link the full license text. Keep OpenRAIL-M.txt and this repository’s MODEL_CARD.md together with the weights.
+## 📚 Documentation
 
-Datasets
-See models/AmaFusion_V1/DATA_SOURCES.md for the list of datasets actually used for training, their license terms, required attribution strings, and evidence files. Prefer CC0 and CC BY datasets.
+**Multi-language comprehensive documentation is available:**
 
-Provenance and attributions
-See ATTRIBUTIONS.md for the consolidated provenance chain and links.
+| Language | Documentation | Status |
+|----------|--------------|--------|
+| 🇬🇧 English | [English Documentation](./docs/en/README.md) | ✅ Complete |
+| 🇷🇺 Русский | [Русская документация](./docs/ru/README.md) | ✅ Complete |
+| 🇨🇳 中文 | Coming soon | 🚧 Planned |
+| 🇪🇸 Español | Coming soon | 🚧 Planned |
+| 🇫🇷 Français | Coming soon | 🚧 Planned |
 
-### Files map
+📖 **[Browse all documentation →](./docs/README.md)**
 
-- models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt    full OpenRAIL-M text
-- models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt    upstream record and links
-- models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt   full MIT text for sd-vae-ft-mse
-- models/AmaFusion_V1/DATA_SOURCES.md            dataset ledger
-- models/AmaFusion_V1/MODEL_CARD.md              model card with legal section
-- ATTRIBUTIONS.md                                 consolidated upstream references
-- NOTICE.txt                                      high-level notice about third-party licenses
+---
 
-## Install
+## ✨ Features
+
+- 🎨 **High-Quality Generation** - Stable Diffusion 1.5, AmaFusion V1, DreamShaper v6
+- ✏️ **Image Editing** - Inpainting, outpainting, image-to-image with IP-Adapter
+- 🔍 **AI Upscaling** - Enhance resolution up to 4x
+- 🛡️ **Content Safety** - Built-in NSFW detection and prompt hygiene system
+- 🔒 **Enterprise Security** - JWT authentication, rate limiting, input validation
+- 📊 **Monitoring** - Prometheus metrics, structured logging, GPU monitoring
+- 🌐 **Modern UI** - React frontend with multi-language support
+- 🐳 **Docker Ready** - Production-ready containerization
+- 🚀 **RESTful API** - Comprehensive API with OpenAPI documentation
+
+---
+
+## 🚀 Quick Start
+
+### Using Docker (Recommended)
+
 ```bash
-py -3.11 -m venv .venv && . .venv\Scripts\Activate.ps1 (.\.venv\Scripts\Activate.ps1)
-python -m pip install --upgrade pip wheel setuptools
-pip install --index-url https://download.pytorch.org/whl/cu121 ^
-  torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121
-(powershell: pip install --index-url https://download.pytorch.org/whl/cu121 torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121)
+# Clone the repository
+git clone <repository-url>
+cd genai
 
+# Copy environment file
+cp .env.example .env
+# Edit .env with your settings
+
+# Start with Docker Compose
+docker compose -f docker/compose.local.yml up
+```
+
+Access the application:
+- **Frontend:** http://localhost:80
+- **API:** http://localhost:8000
+- **API Docs:** http://localhost:8000/docs
+
+### Manual Installation
+
+```bash
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
+
+# Install PyTorch with CUDA support
+pip install --index-url https://download.pytorch.org/whl/cu121 \
+  torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121
+
+# Install dependencies
 pip install xformers==0.0.25.post1
 pip install "diffusers==0.29.2"
 pip install -r requirements.txt
-```
 
-## Run
-```bash
+# Run migrations
+alembic upgrade head
+
+# Start the server
 python run.py
 ```
+
+📖 **For detailed setup instructions, see:**
+- [English Setup Guide](./docs/en/development/getting-started.md)
+- [Русское руководство по установке](./docs/ru/development/getting-started.md)
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│   Frontend      │◄────►│    Backend       │◄────►│   PostgreSQL    │
+│   React + TS    │      │   FastAPI        │      │   Database      │
+└─────────────────┘      └──────────────────┘      └─────────────────┘
+                                 │
+                                 ├─────► Redis (Cache)
+                                 │
+                                 ▼
+                         ┌──────────────────┐
+                         │   ML Pipeline    │
+                         │ Stable Diffusion │
+                         │   + GPU (CUDA)   │
+                         └──────────────────┘
+```
+
+---
+
+## 📦 Technology Stack
+
+**Backend:**
+- FastAPI 0.116.1, Python 3.11+
+- PyTorch 2.2.2 with CUDA 12.1
+- Diffusers 0.29.2
+- PostgreSQL + SQLAlchemy 2.0
+- Redis 5.0
+- Alembic (migrations)
+
+**Frontend:**
+- React 18 + TypeScript
+- Vite build tool
+- Tailwind CSS
+- i18next (multi-language)
+
+**ML Models:**
+- Stable Diffusion v1.5
+- AmaFusion V1 (custom)
+- DreamShaper v6
+- IP-Adapter
+- VAE (sd-vae-ft-mse)
+
+**Infrastructure:**
+- Docker & Docker Compose
+- Nginx (reverse proxy)
+- Prometheus metrics
+
+---
+
+## 📖 Documentation Sections
+
+- [📘 Backend](./docs/en/backend/README.md) - API, services, inference pipeline
+- [🎨 Frontend](./docs/en/frontend/README.md) - React components, UI, styling
+- [🐳 Docker](./docs/en/docker/README.md) - Containerization and deployment
+- [🧪 Tests](./docs/en/tests/README.md) - Testing strategy and guides
+- [🤖 Models](./docs/en/models/README.md) - ML models documentation
+- [🚀 Deployment](./docs/en/deployment/README.md) - Production deployment
+- [🔒 Security](./docs/en/security/README.md) - Security best practices
+- [⚡ Features](./docs/en/features/README.md) - Feature documentation
+- [🔍 Troubleshooting](./docs/en/troubleshooting/README.md) - Common issues
+
+---
+
+## 🔑 System Requirements
+
+**Minimum:**
+- CPU: 4 cores
+- RAM: 16GB
+- GPU: NVIDIA with 6GB+ VRAM
+- Storage: 50GB SSD
+- OS: Linux (Ubuntu 20.04+) or Windows 10+
+
+**Recommended:**
+- CPU: 8+ cores
+- RAM: 32GB+
+- GPU: NVIDIA RTX 3060+ (8GB+ VRAM)
+- Storage: 100GB+ NVMe SSD
+
+---
+
+## ⚖️ Legal and Licensing
+
+This repository contains model weights and code with different licenses:
+
+### Application Code
+- See [LICENSE](./LICENSE) file for application code license
+
+### ML Models
+
+**Stable Diffusion v1.5, AmaFusion V1, DreamShaper v6:**
+- **License:** CreativeML Open RAIL-M
+- **File:** `models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt`
+
+**VAE (sd-vae-ft-mse):**
+- **License:** MIT
+- **File:** `models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt`
+
+### Important Notice
+
+When distributing weights or providing model access as a service:
+1. ✅ Include CreativeML Open RAIL-M license notice
+2. ✅ Link to full license text
+3. ✅ Provide model attributions
+4. ✅ Review and comply with use-based restrictions
+
+**See complete legal documentation:**
+- [Legal Information (English)](./docs/en/legal/README.md)
+- [Юридическая информация (Русский)](./docs/ru/legal/README.md)
+- [ATTRIBUTIONS.md](./ATTRIBUTIONS.md) - Consolidated provenance
+- [NOTICE.txt](./NOTICE.txt) - Third-party licenses
+
+### Files Map
+
+```
+models/AmaFusion_V1/LICENSES/
+├── OpenRAIL-M.txt                      # Full OpenRAIL-M text
+├── Upstream_DreamShaper_LICENSE.txt    # DreamShaper license
+└── VAE_LICENSE.txt                     # MIT license for VAE
+
+models/AmaFusion_V1/
+├── DATA_SOURCES.md                     # Training datasets
+└── MODEL_CARD.md                       # Model card with legal info
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! See our contributing guides:
+- [English Contributing Guide](./docs/en/development/contributing.md)
+- [Руководство для контрибьюторов](./docs/ru/development/contributing.md)
+
+---
+
+## 📞 Support & Community
+
+- 📖 **Documentation:** [docs/](./docs/README.md)
+- 🐛 **Issues:** Use GitHub Issues
+- 💬 **Discussions:** Use GitHub Discussions
+- 🔍 **Troubleshooting:** [Troubleshooting Guide](./docs/en/troubleshooting/README.md)
+
+---
+
+## 🛣️ Roadmap
+
+- [ ] Additional language support (Chinese, Spanish, French)
+- [ ] Stable Diffusion XL support
+- [ ] LoRA model integration
+- [ ] Batch processing improvements
+- [ ] Web UI enhancements
+- [ ] Kubernetes deployment guides
+
+---
+
+**Version:** 0.2.0 | **Last Updated:** December 5, 2025
