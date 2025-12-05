@@ -87,7 +87,7 @@
 
 ---
 
-### ❌ 4. `refactor(services): route generation through ProviderRegistry`
+### ✅ 4. `refactor(services): route generation through ProviderRegistry`
 
 **Цель:** сервисы больше не знают про diffusers напрямую, только про реестр провайдеров.
 
