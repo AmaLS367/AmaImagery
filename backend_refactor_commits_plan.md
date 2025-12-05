@@ -401,7 +401,7 @@
 
 Цель этапа: вынести сценарии в отдельный слой Use Case.
 
-### ❌ 20. `feat(application): introduce use case layer with base Command`
+### ✅ 20. `feat(application): introduce use case layer with base Command`
 
 **Цель:** создать каркас Application слоя.
 
