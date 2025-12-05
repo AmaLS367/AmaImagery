@@ -11,7 +11,7 @@
 
 Цель этапа: отвязать бэкенд от конкретной реализации diffusers и ввести слой абстракций для провайдеров генерации изображений.
 
-### 1. `feat(providers): introduce IImageProvider and generation DTOs`
+### ✅ 1. `feat(providers): introduce IImageProvider and generation DTOs`
 
 **Цель:** заложить доменную абстракцию провайдера и структурированные запросы и ответы генерации.
 
@@ -40,7 +40,7 @@
 
 ---
 
-### 2. `feat(providers): add provider registry for image generation`
+### ❌ 2. `feat(providers): add provider registry for image generation`
 
 **Цель:** централизованный реестр провайдеров, через который весь код получает нужный провайдер.
 
@@ -61,7 +61,7 @@
 
 ---
 
-### 3. `refactor(inference): extract diffusers logic to DiffusersProvider`
+### ❌ 3. `refactor(inference): extract diffusers logic to DiffusersProvider`
 
 **Цель:** вынести реализацию генерации через diffusers в отдельный провайдер.
 
@@ -87,7 +87,7 @@
 
 ---
 
-### 4. `refactor(services): route generation through ProviderRegistry`
+### ❌ 4. `refactor(services): route generation through ProviderRegistry`
 
 **Цель:** сервисы больше не знают про diffusers напрямую, только про реестр провайдеров.
 
@@ -106,7 +106,7 @@
 
 ---
 
-### 5. `chore(config): add provider settings and default provider name`
+### ❌ 5. `chore(config): add provider settings and default provider name`
 
 **Цель:** сделать выбор провайдера конфигурируемым.
 
@@ -124,7 +124,7 @@
 
 ---
 
-### 6. `docs(backend): document provider abstraction and default provider config`
+### ❌ 6. `docs(backend): document provider abstraction and default provider config`
 
 **Цель:** описать слой провайдеров в документации.
 
@@ -146,7 +146,7 @@
 
 Цель этапа: перевести тяжелую генерацию в очередь и воркеры, а HTTP оставить легким.
 
-### 7. `feat(queue): introduce TaskQueue abstraction with Redis backend`
+### ❌ 7. `feat(queue): introduce TaskQueue abstraction with Redis backend`
 
 **Цель:** создать абстракцию очереди задач.
 
@@ -167,7 +167,7 @@
 
 ---
 
-### 8. `feat(workers): add generation worker consuming TaskQueue`
+### ❌ 8. `feat(workers): add generation worker consuming TaskQueue`
 
 **Цель:** выделить воркер для обработки задач.
 
@@ -190,7 +190,7 @@
 
 ---
 
-### 9. `feat(api): change generate endpoint to async task model`
+### ❌ 9. `feat(api): change generate endpoint to async task model`
 
 **Цель:** запрос на генерацию не блокирует HTTP до конца инференса.
 
@@ -210,7 +210,7 @@
 
 ---
 
-### 10. `feat(api): add generation status endpoint`
+### ❌ 10. `feat(api): add generation status endpoint`
 
 **Цель:** дать клиенту способ узнать статус задачи.
 
@@ -230,7 +230,7 @@
 
 ---
 
-### 11. `chore(infra): add worker process entrypoint and compose wiring`
+### ❌ 11. `chore(infra): add worker process entrypoint and compose wiring`
 
 **Цель:** внедрить воркер в окружение.
 
@@ -247,7 +247,7 @@
 
 ---
 
-### 12. `docs(backend): document generation queue, workers and status api`
+### ❌ 12. `docs(backend): document generation queue, workers and status api`
 
 **Цель:** задокументировать новую модель обработки генерации.
 
@@ -270,7 +270,7 @@
 
 Цель этапа: отделить домен от SQLAlchemy и централизовать транзакции.
 
-### 13. `feat(repositories): add base repository interfaces for entities`
+### ❌ 13. `feat(repositories): add base repository interfaces for entities`
 
 **Цель:** определить базовые интерфейсы репозиториев.
 
@@ -290,7 +290,7 @@
 
 ---
 
-### 14. `feat(repositories): implement generation repository on SQLAlchemy`
+### ❌ 14. `feat(repositories): implement generation repository on SQLAlchemy`
 
 **Цель:** вынести работу с генерациями в отдельный репозиторий.
 
@@ -309,7 +309,7 @@
 
 ---
 
-### 15. `feat(repositories): implement user repository and auth helpers`
+### ❌ 15. `feat(repositories): implement user repository and auth helpers`
 
 **Цель:** вынести работу с пользователями.
 
@@ -328,7 +328,7 @@
 
 ---
 
-### 16. `feat(uow): introduce UnitOfWork abstraction for db transactions`
+### ❌ 16. `feat(uow): introduce UnitOfWork abstraction for db transactions`
 
 **Цель:** управляющая сущность для транзакций.
 
@@ -350,7 +350,7 @@
 
 ---
 
-### 17. `refactor(services): migrate services to repository and UnitOfWork pattern`
+### ❌ 17. `refactor(services): migrate services to repository and UnitOfWork pattern`
 
 **Цель:** сервисы больше не используют Session напрямую.
 
@@ -366,7 +366,7 @@
 
 ---
 
-### 18. `refactor(api): stop using raw db session in handlers`
+### ❌ 18. `refactor(api): stop using raw db session in handlers`
 
 **Цель:** обработчики HTTP не работают с БД напрямую.
 
@@ -380,7 +380,7 @@
 
 ---
 
-### 19. `docs(backend): document repositories and unit of work layer`
+### ❌ 19. `docs(backend): document repositories and unit of work layer`
 
 **Цель:** зафиксировать в документации новый слой данных.
 
@@ -401,7 +401,7 @@
 
 Цель этапа: вынести сценарии в отдельный слой Use Case.
 
-### 20. `feat(application): introduce use case layer with base Command`
+### ❌ 20. `feat(application): introduce use case layer with base Command`
 
 **Цель:** создать каркас Application слоя.
 
@@ -418,7 +418,7 @@
 
 ---
 
-### 21. `feat(application): add GenerateImageUseCase`
+### ❌ 21. `feat(application): add GenerateImageUseCase`
 
 **Цель:** вынести генерацию в use case.
 
@@ -445,7 +445,7 @@
 
 ---
 
-### 22. `feat(application): add GetGenerationStatusUseCase`
+### ❌ 22. `feat(application): add GetGenerationStatusUseCase`
 
 **Цель:** вынести получение статуса в use case.
 
@@ -465,7 +465,7 @@
 
 ---
 
-### 23. `refactor(api): delegate generation endpoints to use cases`
+### ❌ 23. `refactor(api): delegate generation endpoints to use cases`
 
 **Цель:** роутеры используют только use cases.
 
@@ -481,7 +481,7 @@
 
 ---
 
-### 24. `refactor(services): slim down services to pure domain helpers`
+### ❌ 24. `refactor(services): slim down services to pure domain helpers`
 
 **Цель:** сервисы становятся более узкими.
 
@@ -496,7 +496,7 @@
 
 ---
 
-### 25. `docs(backend): document application use case layer and api flow`
+### ❌ 25. `docs(backend): document application use case layer and api flow`
 
 **Цель:** описать новый поток данных.
 
@@ -514,7 +514,7 @@
 
 Цель этапа: убрать блокирующие операции БД из event loop.
 
-### 26. `feat(db): switch to async SQLAlchemy engine and session`
+### ❌ 26. `feat(db): switch to async SQLAlchemy engine and session`
 
 **Цель:** перейти на async SQLAlchemy.
 
@@ -530,7 +530,7 @@
 
 ---
 
-### 27. `refactor(repositories): migrate repositories to async API`
+### ❌ 27. `refactor(repositories): migrate repositories to async API`
 
 **Цель:** привести репозитории к async стилю.
 
@@ -544,7 +544,7 @@
 
 ---
 
-### 28. `refactor(services): remove blocking db calls from async code`
+### ❌ 28. `refactor(services): remove blocking db calls from async code`
 
 **Цель:** убрать sync БД вызовы из async функций.
 
@@ -557,7 +557,7 @@
 
 ---
 
-### 29. `chore(tests): update db fixtures for async session`
+### ❌ 29. `chore(tests): update db fixtures for async session`
 
 **Цель:** привести тесты к async БД.
 
@@ -571,7 +571,7 @@
 
 ---
 
-### 30. `docs(backend): document async orm and concurrency model`
+### ❌ 30. `docs(backend): document async orm and concurrency model`
 
 **Цель:** зафиксировать модель конкурентности.
 
@@ -594,7 +594,7 @@
 
 Цель этапа: укрепить прод готовность и наблюдаемость.
 
-### 31. `feat(core): add typed domain exceptions and error mapping`
+### ❌ 31. `feat(core): add typed domain exceptions and error mapping`
 
 **Цель:** единая система доменных ошибок.
 
@@ -617,7 +617,7 @@
 
 ---
 
-### 32. `feat(api): implement global error handler with structured responses`
+### ❌ 32. `feat(api): implement global error handler with structured responses`
 
 **Цель:** единый формат ошибок в API.
 
@@ -633,7 +633,7 @@
 
 ---
 
-### 33. `feat(metrics): extend metrics for providers and queue processing`
+### ❌ 33. `feat(metrics): extend metrics for providers and queue processing`
 
 **Цель:** метрики провайдеров и очередей.
 
@@ -652,7 +652,7 @@
 
 ---
 
-### 34. `feat(config): introduce feature flags for providers and features`
+### ❌ 34. `feat(config): introduce feature flags for providers and features`
 
 **Цель:** управляемое включение и выключение фич.
 
@@ -668,7 +668,7 @@
 
 ---
 
-### 35. `feat(events): introduce simple domain event bus`
+### ❌ 35. `feat(events): introduce simple domain event bus`
 
 **Цель:** добавить доменные события.
 
@@ -689,7 +689,7 @@
 
 ---
 
-### 36. `docs(backend): document errors, metrics, feature flags and domain events`
+### ❌ 36. `docs(backend): document errors, metrics, feature flags and domain events`
 
 **Цель:** задокументировать наблюдаемость и управление.
 
@@ -714,7 +714,7 @@
 
 Цель этапа: собрать полноценную тестовую базу.
 
-### 37. `test(application): add tests for GenerateImageUseCase flows`
+### ❌ 37. `test(application): add tests for GenerateImageUseCase flows`
 
 **Цель:** покрыть ключевой use case.
 
@@ -732,7 +732,7 @@
 
 ---
 
-### 38. `test(repositories): add integration tests for core repositories`
+### ❌ 38. `test(repositories): add integration tests for core repositories`
 
 **Цель:** проверить работу репозиториев с реальной БД.
 
@@ -748,7 +748,7 @@
 
 ---
 
-### 39. `test(providers): add provider tests with mocked external services`
+### ❌ 39. `test(providers): add provider tests with mocked external services`
 
 **Цель:** протестировать логику провайдеров.
 
@@ -763,7 +763,7 @@
 
 ---
 
-### 40. `test(queue): add tests for TaskQueue and worker lifecycle`
+### ❌ 40. `test(queue): add tests for TaskQueue and worker lifecycle`
 
 **Цель:** протестировать очередь и воркер.
 
@@ -782,7 +782,7 @@
 
 ---
 
-### 41. `chore(testing): ensure minimum coverage threshold for backend`
+### ❌ 41. `chore(testing): ensure minimum coverage threshold for backend`
 
 **Цель:** зафиксировать минимальный порог покрытия тестами.
 
@@ -795,7 +795,7 @@
 
 ---
 
-### 42. `docs(backend): update testing strategy and coverage targets`
+### ❌ 42. `docs(backend): update testing strategy and coverage targets`
 
 **Цель:** описать тестовую стратегию.
 
