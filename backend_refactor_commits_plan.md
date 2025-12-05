@@ -167,7 +167,7 @@
 
 ---
 
-### ❌ 8. `feat(workers): add generation worker consuming TaskQueue`
+### ✅ 8. `feat(workers): add generation worker consuming TaskQueue`
 
 **Цель:** выделить воркер для обработки задач.
 

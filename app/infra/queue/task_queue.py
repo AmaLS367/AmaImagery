@@ -32,6 +32,15 @@ class TaskQueue(Protocol):
         error: Optional[str] = None,
     ) -> None:
         ...
+    
+    async def dequeue(self, timeout: float = 0.0) -> Optional[str]:
+        ...
+    
+    async def mark_completed(self, task_id: str, result: Dict[str, Any]) -> None:
+        ...
+    
+    async def mark_failed(self, task_id: str, error: str) -> None:
+        ...
 
 
 class RedisTaskQueue:
