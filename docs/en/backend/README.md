@@ -37,12 +37,19 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - See [Application Layer Documentation](./application.md) for details
 
 ### 🗄️ Data Layer
-- PostgreSQL database with SQLAlchemy
+- PostgreSQL database with async SQLAlchemy
 - Alembic migrations
 - Redis for caching and rate limiting
 - Repository pattern for data access abstraction
 - Unit of Work for transaction management
 - See [Repositories and Unit of Work Documentation](./repositories.md) for details
+
+### ⚡ Concurrency Model
+- Async ORM for non-blocking database operations
+- Task queue for heavy operations
+- Background workers for ML inference and processing
+- Event loop safety and performance optimization
+- See [Concurrency Model Documentation](./concurrency.md) for details
 
 ### 🛡️ Security & Safety
 - Prompt hygiene system
@@ -64,6 +71,7 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - [Queue and Workers](./queue-and-workers.md) - Task queue and worker architecture
 - [Application Layer](./application.md) - Use cases and business scenario orchestration
 - [Repositories and Unit of Work](./repositories.md) - Data access layer and transaction management
+- [Concurrency Model](./concurrency.md) - Async ORM and concurrency architecture
 - [Core Modules](./core/) - Security, logging, errors, limits
 - [Services](./services/) - Business logic services
 - [Inference](./inference/) - ML inference pipeline

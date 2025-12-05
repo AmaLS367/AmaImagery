@@ -571,7 +571,7 @@
 
 ---
 
-### ❌ 30. `docs(backend): document async orm and concurrency model`
+### ✅ 30. `docs(backend): document async orm and concurrency model`
 
 **Цель:** зафиксировать модель конкурентности.
 
