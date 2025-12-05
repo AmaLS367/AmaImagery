@@ -617,7 +617,7 @@
 
 ---
 
-### ❌ 32. `feat(api): implement global error handler with structured responses`
+### ✅ 32. `feat(api): implement global error handler with structured responses`
 
 **Цель:** единый формат ошибок в API.
 
