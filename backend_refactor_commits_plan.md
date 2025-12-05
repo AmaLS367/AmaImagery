@@ -190,7 +190,7 @@
 
 ---
 
-### ❌ 9. `feat(api): change generate endpoint to async task model`
+### ✅ 9. `feat(api): change generate endpoint to async task model`
 
 **Цель:** запрос на генерацию не блокирует HTTP до конца инференса.
 

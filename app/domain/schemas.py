@@ -5,7 +5,6 @@ from typing import List, Tuple, Optional, Literal, Dict, Any
 Style = Literal['realistic', 'anime']
 
 class GenReq(BaseModel):
-    """Request model for image generation."""
     prompt: str = Field(min_length=3, max_length=1000, description="Main generation prompt")
     negative_prompt: Optional[str] = Field(None, max_length=1000, description="Negative prompt")
     steps: int = Field(default=28, ge=1, le=settings.max_steps, description="Number of inference steps")
@@ -18,13 +17,16 @@ class GenReq(BaseModel):
     style: Style = Field(default='anime', description="Visual style for generation")
 
 class GenResp(BaseModel):
-    """Response model for image generation."""
     ok: bool = Field(description="Whether generation was successful")
     path: str = Field(description="Path to generated image")
     prompt_hash: str = Field(description="Hash of the prompt for identification")
     corrections: List[Tuple[str, str]] = Field(default=[], description="List of prompt corrections made")
     exp: Optional[int] = Field(None, description="Expiration timestamp for signed URL")
     sig: Optional[str] = Field(None, description="Signature for file download")
+
+class TaskResp(BaseModel):
+    task_id: str = Field(description="Unique task identifier")
+    status: str = Field(description="Task status (queued, running, completed, failed)")
     
 class ResizeReq(BaseModel):
     pass
