@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
 from app.domain.models import User
@@ -15,7 +15,7 @@ bearer = HTTPBearer(auto_error=False)
 async def current_user(
     request: Request,
     cred: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     token: Optional[str] = None
 
@@ -63,7 +63,7 @@ async def current_user(
 
 async def optional_user(
   cred: HTTPAuthorizationCredentials | None = Depends(bearer),
-  db: Session = Depends(get_db),
+  db: AsyncSession = Depends(get_db),
 ) -> User | None:
   if not cred or cred.scheme.lower() != "bearer":
     return None

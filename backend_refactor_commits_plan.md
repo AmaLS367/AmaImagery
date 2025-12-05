@@ -544,7 +544,7 @@
 
 ---
 
-### ❌ 28. `refactor(services): remove blocking db calls from async code`
+### ✅ 28. `refactor(services): remove blocking db calls from async code`
 
 **Цель:** убрать sync БД вызовы из async функций.
 
