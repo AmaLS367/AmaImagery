@@ -2,57 +2,48 @@
 Task status endpoint.
 """
 
-from typing import Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, Path
 
-from fastapi import APIRouter, HTTPException, Path
-
-from app.core.logging import lg
 from app.domain.schemas import TaskStatusResp
-from app.infra.queue import get_task_queue
+from app.application.use_cases.get_generation_status import (
+    GetGenerationStatusCommand,
+    GetGenerationStatusUseCase,
+)
+
 
 router = APIRouter()
+
+
+def get_generation_status_use_case() -> GetGenerationStatusUseCase:
+    """Dependency injection for GetGenerationStatusUseCase."""
+    return GetGenerationStatusUseCase()
 
 
 @router.get("/status/{task_id}", response_model=TaskStatusResp)
 async def get_task_status(
     task_id: str = Path(..., description="Task identifier"),
+    use_case: GetGenerationStatusUseCase = Depends(get_generation_status_use_case),
 ) -> TaskStatusResp:
-    task_queue = get_task_queue()
+    command = GetGenerationStatusCommand(task_id=task_id)
+    result = await use_case(command)
     
-    status_data = await task_queue.get_status(task_id)
-    
-    if not status_data:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    status = status_data.get("status", "unknown")
-    
-    if status == "completed":
-        result = status_data.get("result", {})
-        return TaskStatusResp(
-            task_id=task_id,
-            status=status,
-            image_path=result.get("image_path"),
-            image_filename=result.get("image_filename"),
-            metadata=result.get("metadata"),
-            created_at=status_data.get("created_at"),
-            started_at=status_data.get("started_at"),
-            completed_at=status_data.get("completed_at"),
+    if not result.success or result.data is None:
+        error_msg = result.error or "Unknown error"
+        raise HTTPException(
+            status_code=404 if "not found" in error_msg.lower() else 500,
+            detail=error_msg,
         )
     
-    if status == "failed":
-        return TaskStatusResp(
-            task_id=task_id,
-            status=status,
-            error=status_data.get("error"),
-            created_at=status_data.get("created_at"),
-            started_at=status_data.get("started_at"),
-            completed_at=status_data.get("completed_at"),
-        )
-    
+    data = result.data
     return TaskStatusResp(
-        task_id=task_id,
-        status=status,
-        created_at=status_data.get("created_at"),
-        started_at=status_data.get("started_at"),
+        task_id=data.task_id,
+        status=data.status,
+        image_path=data.image_path,
+        image_filename=data.image_filename,
+        metadata=data.metadata,
+        error=data.error,
+        created_at=data.created_at,
+        started_at=data.started_at,
+        completed_at=data.completed_at,
     )
 
