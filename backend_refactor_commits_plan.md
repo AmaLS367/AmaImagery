@@ -380,7 +380,7 @@
 
 ---
 
-### ❌ 19. `docs(backend): document repositories and unit of work layer`
+### ✅ 19. `docs(backend): document repositories and unit of work layer`
 
 **Цель:** зафиксировать в документации новый слой данных.
 

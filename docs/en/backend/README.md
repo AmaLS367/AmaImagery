@@ -34,6 +34,9 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - PostgreSQL database with SQLAlchemy
 - Alembic migrations
 - Redis for caching and rate limiting
+- Repository pattern for data access abstraction
+- Unit of Work for transaction management
+- See [Repositories and Unit of Work Documentation](./repositories.md) for details
 
 ### 🛡️ Security & Safety
 - Prompt hygiene system
@@ -53,6 +56,7 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - [API Documentation](./api/overview.md) - Complete API reference
 - [Providers](./providers.md) - Provider abstraction layer
 - [Queue and Workers](./queue-and-workers.md) - Task queue and worker architecture
+- [Repositories and Unit of Work](./repositories.md) - Data access layer and transaction management
 - [Core Modules](./core/) - Security, logging, errors, limits
 - [Services](./services/) - Business logic services
 - [Inference](./inference/) - ML inference pipeline
