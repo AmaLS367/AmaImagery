@@ -350,7 +350,7 @@
 
 ---
 
-### ❌ 17. `refactor(services): migrate services to repository and UnitOfWork pattern`
+### ✅ 17. `refactor(services): migrate services to repository and UnitOfWork pattern`
 
 **Цель:** сервисы больше не используют Session напрямую.
 

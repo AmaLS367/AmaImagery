@@ -12,9 +12,8 @@ from app.config import settings
 from app.core.logging import lg, logger
 from app.domain.models import Generation
 from app.domain.providers import GenerationRequest, get_provider_registry
-from app.infra.db import SessionLocal
 from app.infra.queue import get_task_queue
-from app.infra.repositories import SqlAlchemyGenerationRepository
+from app.infra.uow import get_uow
 
 
 async def run_worker() -> None:
@@ -128,37 +127,33 @@ async def _save_generation_to_db(
     output_path: str,
     metadata: Dict[str, Any],
 ) -> None:
-    db: Session = SessionLocal()
+    prompt_blob = {
+        "prompt": payload.get("prompt"),
+        "negative_prompt": payload.get("negative_prompt"),
+    }
+    
+    params_blob = {
+        "width": payload.get("width"),
+        "height": payload.get("height"),
+        "steps": payload.get("steps"),
+        "guidance_scale": payload.get("guidance_scale"),
+        "ip_scale": payload.get("ip_scale"),
+        "seed": payload.get("seed"),
+        "model_id": metadata.get("model_id", settings.model_id),
+    }
+    
+    generation = Generation(
+        user_id=user_id,
+        prompt=prompt_blob,
+        params=params_blob,
+        image_path=output_path,
+    )
+    
+    uow = get_uow()
     try:
-        prompt_blob = {
-            "prompt": payload.get("prompt"),
-            "negative_prompt": payload.get("negative_prompt"),
-        }
-        
-        params_blob = {
-            "width": payload.get("width"),
-            "height": payload.get("height"),
-            "steps": payload.get("steps"),
-            "guidance_scale": payload.get("guidance_scale"),
-            "ip_scale": payload.get("ip_scale"),
-            "seed": payload.get("seed"),
-            "model_id": metadata.get("model_id", settings.model_id),
-        }
-        
-        generation = Generation(
-            user_id=user_id,
-            prompt=prompt_blob,
-            params=params_blob,
-            image_path=output_path,
-        )
-        
-        repo = SqlAlchemyGenerationRepository(db)
-        await repo.add(generation)
-        db.commit()
+        async with uow:
+            await uow.generations.add(generation)
     except Exception as e:
-        db.rollback()
         logger.exception("worker.save_to_db_failed", extra={"error": str(e)})
         raise
-    finally:
-        db.close()
 

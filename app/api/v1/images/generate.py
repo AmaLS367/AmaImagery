@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.auth.deps import optional_user
 from app.infra.db import get_db
+from app.infra.uow import get_uow
 from app.core.logging import lg
 from app.config import settings
 from app.domain.schemas import GenReq, TaskResp
@@ -26,7 +27,8 @@ async def generate_image(
     db: Session = Depends(get_db),
     user: Optional[Any] = Depends(optional_user),
 ) -> TaskResp:
-    generation_service = GenerationService(db)
+    uow = get_uow(session=db)
+    generation_service = GenerationService(uow)
     
     try:
         generation_service._validate_request(request)
