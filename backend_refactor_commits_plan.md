@@ -230,7 +230,7 @@
 
 ---
 
-### ❌ 11. `chore(infra): add worker process entrypoint and compose wiring`
+### ✅ 11. `chore(infra): add worker process entrypoint and compose wiring`
 
 **Цель:** внедрить воркер в окружение.
 

@@ -42,6 +42,29 @@ services:
       - HF_HUB_ENABLE_HF_TRANSFER       
     depends_on: [redis, postgres]
 
+  generation_worker:
+    env_file:
+      - ./.env.local
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["python", "-m", "app.entrypoints.generation_worker"]
+    volumes:
+      - ../outputs:/app/outputs
+      - ../logs:/app/logs
+      - hf_cache:/root/.cache/huggingface/hub
+      - ./models:/app/models:ro
+    environment:
+      - DATABASE_URL
+      - SECRET_KEY
+      - REDIS_URL
+      - HF_HOME
+      - HUGGINGFACE_HUB_CACHE
+      - TRANSFORMERS_CACHE
+      - HF_HUB_DISABLE_TELEMETRY
+      - HF_HUB_ENABLE_HF_TRANSFER
+    depends_on: [redis, postgres]
+
   nginx:
     image: nginx:1.27-alpine
     ports: ["8080:80"]
