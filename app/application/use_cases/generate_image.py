@@ -12,6 +12,7 @@ from app.application.use_cases.base import Command, UseCaseResult, UseCase
 from app.domain.providers import ProviderRegistry, get_provider_registry
 from app.infra.queue import TaskQueue, get_task_queue
 from app.infra.uow import SqlAlchemyUnitOfWork
+from app.metrics.queue import record_queue_enqueue
 from app.services.generation_service import GenerationService
 from app.core.logging import lg
 from app.domain.schemas import GenReq
@@ -111,6 +112,7 @@ class GenerateImageUseCase:
             }
             
             task_id = await self.task_queue.enqueue(payload)
+            record_queue_enqueue()
             
             lg("api").info(
                 "generate.task_enqueued",

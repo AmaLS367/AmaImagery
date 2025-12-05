@@ -11,6 +11,7 @@ import json
 import time
 
 from app.infra.redis import get_redis
+from app.metrics.queue import update_queue_size
 
 
 class TaskQueue(Protocol):
@@ -84,6 +85,9 @@ class RedisTaskQueue:
         
         await redis.lpush(self.queue_key, task_id)
         
+        queue_len = await redis.llen(self.queue_key)
+        update_queue_size("generation", queue_len)
+        
         return task_id
     
     async def get_status(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -150,9 +154,16 @@ class RedisTaskQueue:
         if timeout > 0:
             result = await redis.brpop(self.queue_key, timeout=int(timeout))
             if result:
-                return result[1]
+                task_id = result[1]
+                queue_len = await redis.llen(self.queue_key)
+                update_queue_size("generation", queue_len)
+                return task_id
         else:
-            return await redis.rpop(self.queue_key)
+            result = await redis.rpop(self.queue_key)
+            if result:
+                queue_len = await redis.llen(self.queue_key)
+                update_queue_size("generation", queue_len)
+                return result
         return None
     
     async def mark_completed(self, task_id: str, result: Dict[str, Any]) -> None:

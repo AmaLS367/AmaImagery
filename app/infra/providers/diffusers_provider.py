@@ -16,6 +16,11 @@ from app.config import settings
 from app.core.logging import lg, logger
 from app.domain.providers.base import GenerationRequest, GenerationResult, IImageProvider
 from app.inference.pipeline import get_unet_dtype, align_to_unet_dtype
+from app.metrics.providers import (
+    record_generation_start,
+    record_generation_success,
+    record_generation_error,
+)
 from app.services.image_service import ImageProcessingService
 
 
@@ -51,6 +56,10 @@ class DiffusersProvider:
         May raise RuntimeError on generation timeout or device errors.
         Raises ValueError if request parameters are invalid at provider level.
         """
+        provider_name = "diffusers"
+        record_generation_start(provider_name)
+        start_time = time.time()
+        
         gen_log = lg("generation")
         use_ip = bool(request.ref_image_b64)
         
@@ -240,19 +249,24 @@ class DiffusersProvider:
         except asyncio.TimeoutError:
             traceback.print_exc()
             logger.exception("generation.timeout", extra={"event_type": "app"})
+            record_generation_error(provider_name, "timeout")
             raise RuntimeError("Generation timed out")
         except RuntimeError as e:
             traceback.print_exc()
             logger.exception("generation.runtime_error", extra={"event_type": "app", "msg": str(e)})
             msg = str(e).lower()
             if "generation_timeout" in msg:
+                record_generation_error(provider_name, "timeout")
                 raise RuntimeError("Generation timed out")
             if "out of memory" in msg or ("cuda" in msg and "memory" in msg):
+                record_generation_error(provider_name, "out_of_memory")
                 raise ValueError("CUDA out of memory: reduce width/height to 512 or decrease steps")
+            record_generation_error(provider_name, "runtime_error")
             raise
         except Exception as e:
             traceback.print_exc()
             logger.exception("generation.exception", extra={"event_type": "app", "where": "pipeline.call", "msg": str(e)})
+            record_generation_error(provider_name, "exception")
             raise RuntimeError(f"Generation failed: {str(e)}")
         finally:
             try:
@@ -270,6 +284,9 @@ class DiffusersProvider:
             
             output_path = self._image_service.save_image(image, prompt_hash_value)
             
+            duration = time.time() - start_time
+            record_generation_success(provider_name, duration)
+            
             return GenerationResult(
                 image_path=output_path,
                 metadata={
@@ -286,6 +303,7 @@ class DiffusersProvider:
         except Exception as e:
             traceback.print_exc()
             logger.exception("generation.extract_failed", extra={"event_type": "app"})
+            record_generation_error(provider_name, "extract_failed")
             raise RuntimeError(f"Failed to extract image: {str(e)}")
     
     async def health_check(self) -> bool:
