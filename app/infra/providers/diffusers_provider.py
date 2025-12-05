@@ -273,7 +273,7 @@ class DiffusersProvider:
             output_path = self._image_service.save_image(image, prompt_hash_value)
             
             return GenerationResult(
-                image_path=Path(output_path).name,
+                image_path=output_path,
                 metadata={
                     "width": use_width,
                     "height": use_height,
