@@ -530,7 +530,7 @@
 
 ---
 
-### ❌ 27. `refactor(repositories): migrate repositories to async API`
+### ✅ 27. `refactor(repositories): migrate repositories to async API`
 
 **Цель:** привести репозитории к async стилю.
 
