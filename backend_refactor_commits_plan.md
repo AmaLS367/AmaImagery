@@ -247,7 +247,7 @@
 
 ---
 
-### ❌ 12. `docs(backend): document generation queue, workers and status api`
+### ✅ 12. `docs(backend): document generation queue, workers and status api`
 
 **Цель:** задокументировать новую модель обработки генерации.
 
