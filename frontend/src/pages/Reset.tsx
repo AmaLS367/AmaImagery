@@ -86,7 +86,7 @@ export default function Reset() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/auth/reset-password', {
+      const res = await fetch('/api/v1/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, new_password: pwd1 }),

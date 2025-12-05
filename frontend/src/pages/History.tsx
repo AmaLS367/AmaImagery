@@ -149,8 +149,8 @@ export default function History() {
               (typeof direct === 'string' && direct.length > 0)
                 ? direct
                 : (hasSig
-                    ? `/file?path=${encodeURIComponent(name)}&exp=${String((it as any).exp)}&sig=${encodeURIComponent(String((it as any).sig))}`
-                    : `/file?path=${encodeURIComponent(name)}`)
+                    ? `/api/v1/file?path=${encodeURIComponent(name)}&exp=${String((it as any).exp)}&sig=${encodeURIComponent(String((it as any).sig))}`
+                    : `/api/v1/file?path=${encodeURIComponent(name)}`)
             const promptTxt = String(it.prompt?.prompt ?? '')
             const p = it.params || {}
 

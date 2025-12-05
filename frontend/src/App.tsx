@@ -96,7 +96,7 @@ export default function App() {
     // Check if user has valid tokens, if not clear them
     const checkAuth = async () => {
       try {
-        const response = await fetch('/auth/me', {
+        const response = await fetch('/api/v1/auth/me', {
           credentials: 'include',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`

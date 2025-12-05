@@ -1,0 +1,253 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genai"
+version = "0.2.0"
+description = "AI Image Generator based on Stable Diffusion with FastAPI backend"
+readme = "README.md"
+requires-python = ">=3.13"
+license = {text = "See LICENSE file"}
+authors = [
+    {name = "AI Image Generator Team"}
+]
+keywords = ["ai", "image-generation", "stable-diffusion", "fastapi", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    # Core ML
+    "torch==2.9.1",
+    "torchvision==0.24.1",
+    "torchaudio==2.9.1",
+    "diffusers==0.35.2",
+    "transformers==4.57.3",
+    "accelerate==1.12.0",
+    "safetensors==0.7.0",
+    
+    # Web Framework
+    "fastapi==0.123.9",
+    "starlette==0.50.0",
+    "uvicorn==0.38.0",
+    "pydantic==2.12.5",
+    "pydantic-settings==2.12.0",
+    "pydantic_core==2.41.5",
+    
+    # Database
+    "sqlalchemy==2.0.44",
+    "alembic==1.17.2",
+    "psycopg2-binary==2.9.11",
+    "greenlet==3.3.0",
+    
+    # Cache & Queue
+    "redis==7.1.0",
+    
+    # Auth & Security
+    "bcrypt==5.0.0",
+    "PyJWT==2.10.1",
+    "passlib==1.7.4",
+    
+    # HTTP & Networking
+    "httpx==0.28.1",
+    "httpcore==1.0.9",
+    "h11==0.16.0",
+    "requests==2.32.5",
+    "urllib3==2.5.0",
+    "certifi==2025.11.12",
+    "idna==3.11",
+    "charset-normalizer==3.4.4",
+    "sniffio==1.3.1",
+    "anyio==4.12.0",
+    
+    # Email
+    "aiosmtplib==5.0.0",
+    "email-validator==2.3.0",
+    "dnspython==2.8.0",
+    
+    # Logging & Monitoring
+    "loguru==0.7.3",
+    "prometheus_client==0.23.1",
+    "psutil==7.1.3",
+    "pynvml==13.0.1",
+    
+    # Utilities
+    "python-dotenv==1.2.1",
+    "click==8.3.1",
+    "colorama==0.4.6",
+    "filelock==3.20.0",
+    "packaging==25.0",
+    "tqdm==4.67.1",
+    
+    # ML Libraries
+    "huggingface-hub==0.36.0",
+    "tokenizers==0.22.1",
+    "numpy==2.3.5",
+    "pillow==12.0.0",
+    "fsspec==2025.12.0",
+    
+    # Text Processing
+    "ftfy==6.3.1",
+    "symspellpy==6.9.0",
+    "editdistpy==0.1.6",
+    "regex==2025.11.3",
+    "langcodes==3.5.1",
+    "language_data==1.4.0",
+    "wordfreq==3.1.1",
+    "marisa-trie==1.3.1",
+    
+    # Templates & Rendering
+    "Jinja2==3.1.6",
+    "MarkupSafe==3.0.3",
+    "Mako==1.3.10",
+    "Pygments==2.19.2",
+    
+    # Testing
+    "pytest==9.0.1",
+    "pluggy==1.6.0",
+    "iniconfig==2.3.0",
+    
+    # Data & Serialization
+    "PyYAML==6.0.3",
+    "msgpack==1.1.2",
+    
+    # Math & Scientific
+    "sympy==1.14.0",
+    "mpmath==1.3.0",
+    "networkx==3.6",
+    
+    # Type System
+    "annotated-types==0.7.0",
+    "typing-inspection==0.4.2",
+    "typing_extensions==4.15.0",
+    
+    # Other
+    "locate==1.1.1",
+    "wcwidth==0.2.14",
+    "win32_setctime==1.2.0",
+    "zipp==3.23.0",
+    "importlib_metadata==8.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "ruff>=0.1.0",
+    "black>=23.0",
+    "mypy>=1.0",
+]
+
+# NOTE: xformers requires CUDA-enabled PyTorch and is not compatible with Python 3.13 CPU PyTorch yet
+# Uncomment when using CUDA PyTorch:
+# cuda = [
+#     "xformers==0.0.33.post2",
+# ]
+
+[project.urls]
+Homepage = "https://github.com/your-org/genai"
+Documentation = "https://github.com/your-org/genai/tree/main/docs"
+Repository = "https://github.com/your-org/genai"
+Issues = "https://github.com/your-org/genai/issues"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.setuptools.package-data]
+app = ["config/*.txt", "config/*.md"]
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+]
+
+# Ruff configuration (linter)
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__.py
+
+[tool.ruff.isort]
+known-first-party = ["app"]
+
+# Black configuration (formatter)
+[tool.black]
+line-length = 120
+target-version = ["py313"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.venv
+  | build
+  | dist
+  | migrations/versions
+)/
+'''
+
+# MyPy configuration (type checker)
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "diffusers.*",
+    "transformers.*",
+    "xformers.*",
+    "symspellpy.*",
+    "editdistpy.*",
+    "marisa_trie.*",
+    "wordfreq.*",
+]
+ignore_missing_imports = true
+
+# Alembic configuration reference
+[tool.alembic]
+# Alembic uses alembic.ini, but we note it here for reference
+# See alembic.ini for actual configuration
+
