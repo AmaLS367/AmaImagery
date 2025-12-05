@@ -689,7 +689,7 @@
 
 ---
 
-### ❌ 36. `docs(backend): document errors, metrics, feature flags and domain events`
+### ✅ 36. `docs(backend): document errors, metrics, feature flags and domain events`
 
 **Цель:** задокументировать наблюдаемость и управление.
 
