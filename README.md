@@ -243,5 +243,3 @@ Contributions are welcome! See our contributing guides:
 - [ ] Kubernetes deployment guides
 
 ---
-
-**Version:** 0.2.0 | **Last Updated:** December 5, 2025

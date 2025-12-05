@@ -270,7 +270,7 @@
 
 Цель этапа: отделить домен от SQLAlchemy и централизовать транзакции.
 
-### ❌ 13. `feat(repositories): add base repository interfaces for entities`
+### ✅ 13. `feat(repositories): add base repository interfaces for entities`
 
 **Цель:** определить базовые интерфейсы репозиториев.
 
