@@ -366,7 +366,7 @@
 
 ---
 
-### ❌ 18. `refactor(api): stop using raw db session in handlers`
+### ✅ 18. `refactor(api): stop using raw db session in handlers`
 
 **Цель:** обработчики HTTP не работают с БД напрямую.
 

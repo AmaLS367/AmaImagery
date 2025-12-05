@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.domain.models import User
+from app.domain.models import User, UserSettings
 from app.domain.repositories import IUserRepository
 
 
@@ -73,4 +73,17 @@ class SqlAlchemyUserRepository:
             ).first()
         
         return await asyncio.to_thread(_get_by_email_or_username)
+    
+    async def get_settings(self, user_id: UUID | str) -> Optional[UserSettings]:
+        def _get_settings():
+            return self.session.get(UserSettings, user_id)
+        
+        return await asyncio.to_thread(_get_settings)
+    
+    async def save_settings(self, settings: UserSettings) -> None:
+        def _save_settings():
+            self.session.add(settings)
+            self.session.flush()
+        
+        await asyncio.to_thread(_save_settings)
 

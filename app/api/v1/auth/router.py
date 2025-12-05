@@ -3,14 +3,12 @@ from typing import Literal, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.orm import Session
 
-from app.infra.db import get_db
 from app.domain.models import User, UserSettings
 from app.core.logging import lg, sec
 from app.api.v1.auth.deps import current_user
 from app.services.rate_limiting import create_rate_limiter
-from app.infra.repositories import SqlAlchemyUserRepository
+from app.infra.uow import get_uow
 
 from app.core.security import (
     normalize_email, hash_password, verify_password,
@@ -71,19 +69,19 @@ def _set_refresh_cookie(resp: Response, token: str) -> None:
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))]
 )
-async def register(payload: RegisterIn, db: Session = Depends(get_db)):
+async def register(payload: RegisterIn):
     email = normalize_email(payload.email)
     username = payload.username.strip()
 
-    repo = SqlAlchemyUserRepository(db)
-    exists = await repo.get_by_email_or_username(email, username)
-    if exists:
-        raise HTTPException(status_code=409, detail="User with this email or username already exists")
+    uow = get_uow()
+    async with uow:
+        exists = await uow.users.get_by_email_or_username(email, username)
+        if exists:
+            raise HTTPException(status_code=409, detail="User with this email or username already exists")
 
-    user = User(email=email, username=username, password_hash=hash_password(payload.password))
-    await repo.add(user)
-    db.add(UserSettings(user_id=user.id, data={}))
-    db.commit()
+        user = User(email=email, username=username, password_hash=hash_password(payload.password))
+        await uow.users.add(user)
+        await uow.users.save_settings(UserSettings(user_id=user.id, data={}))
 
     lg("app").bind(scope="auth", action="register").info("auth.registered")
 
@@ -97,9 +95,11 @@ async def register(payload: RegisterIn, db: Session = Depends(get_db)):
     )
 
 @router.get("/me", response_model=MeOut)
-async def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
+async def me(user: User = Depends(current_user)):
     lg("app").bind(scope="auth", action="me").info("auth.me")
-    us = db.get(UserSettings, user.id)  # PK = user_id
+    uow = get_uow()
+    async with uow:
+        us = await uow.users.get_settings(user.id)
     return MeOut(
         id=str(user.id),
         email=user.email,
@@ -123,16 +123,17 @@ class LoginOut(BaseModel):
     expires_in: int  # seconds
 
 @router.post("/me", response_model=LoginOut, dependencies=[Depends(create_rate_limiter(limit=5, window_sec=60))])
-async def login(payload: LoginIn, response: Response, db: Session = Depends(get_db)):
+async def login(payload: LoginIn, response: Response):
     ident = payload.identifier.strip()
     email_norm = normalize_email(ident)
-    repo = SqlAlchemyUserRepository(db)
-    user = await repo.get_by_email_or_username(email_norm, ident)
-    if not user or not verify_password(payload.password, user.password_hash):
-        sec("login_failure")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    uow = get_uow()
+    async with uow:
+        user = await uow.users.get_by_email_or_username(email_norm, ident)
+        if not user or not verify_password(payload.password, user.password_hash):
+            sec("login_failure")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    us = db.get(UserSettings, user.id)
+        us = await uow.users.get_settings(user.id)
     
     sid = new_session_id()
     pair = await issue_tokens_rotating(str(user.id), sid)
@@ -199,11 +200,11 @@ class ForgotIn(BaseModel):
     response_class=Response,
     dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))]
 )
-def forgot_password(payload: ForgotIn, db: Session = Depends(get_db)) -> None:
+async def forgot_password(payload: ForgotIn) -> None:
     ident = payload.identifier.strip()
-    user = db.query(User).filter(
-        (User.email == normalize_email(ident)) | (User.username == ident)
-    ).first()
+    uow = get_uow()
+    async with uow:
+        user = await uow.users.get_by_email_or_username(normalize_email(ident), ident)
 
     if not user:
         lg("app").bind(scope="auth", action="forgot").info("auth.forgot.unknown")
@@ -226,18 +227,25 @@ class ResetIn(BaseModel):
     new_password: str = Field(min_length=8, max_length=256)
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK, response_class=Response)
-def reset_password(payload: ResetIn, db: Session = Depends(get_db)) -> None:
+async def reset_password(payload: ResetIn) -> None:
     try:
         data = decode_reset_token(payload.token)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    user = db.get(User, data.get("sub"))
-    if not user:
+    user_id = data.get("sub")
+    if not user_id:
         raise HTTPException(status_code=400, detail="Invalid token")
+    
+    uow = get_uow()
+    async with uow:
+        user = await uow.users.get(user_id)
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid token")
 
-    user.password_hash = hash_password(payload.new_password)
-    db.commit()
+        user.password_hash = hash_password(payload.new_password)
+        await uow.users.add(user)
+    
     lg("app").bind(scope="auth", action="reset", user=str(user.id)).info("auth.reset.ok")
 
 # ========= Change password for logged-in user =========
@@ -248,12 +256,15 @@ class ChangePwdIn(BaseModel):
 from app.api.v1.auth.deps import current_user
 
 @router.post("/change-password", status_code=status.HTTP_200_OK, response_class=Response)
-async def change_password(payload: ChangePwdIn, user: User = Depends(current_user), db: Session = Depends(get_db)) -> None:
+async def change_password(payload: ChangePwdIn, user: User = Depends(current_user)) -> None:
     if not verify_password(payload.old_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Wrong old password")
 
-    user.password_hash = hash_password(payload.new_password)
-    db.commit()
+    uow = get_uow()
+    async with uow:
+        user.password_hash = hash_password(payload.new_password)
+        await uow.users.add(user)
+    
     lg("app").bind(scope="auth", action="change_pwd", user=str(user.id)).info("auth.change_pwd.ok")
 
 
