@@ -61,7 +61,7 @@ export default function Generate() {
     // 2) иначе собираем /file?path=...
     const name = normalizeFileName(res.path);
     if (!name) return "";
-    let url = `/file?path=${encodeURIComponent(name)}`;
+    let url = `/api/v1/file?path=${encodeURIComponent(name)}`;
     // сигнатура и exp — опциональны; добавляем только если оба присутствуют
     if (typeof res.exp !== "undefined" && typeof res.sig === "string") {
       url += `&exp=${String(res.exp)}&sig=${encodeURIComponent(res.sig as string)}`;
@@ -90,7 +90,7 @@ export default function Generate() {
       const raw = String(res.path || '');
       const name = raw.split(/[\\/]/).pop() || raw;
   
-      const base = `/file?path=${encodeURIComponent(name)}`;
+      const base = `/api/v1/file?path=${encodeURIComponent(name)}`;
       const url = (typeof res.exp !== 'undefined' && typeof res.sig === 'string')
         ? `${base}&exp=${String(res.exp)}&sig=${encodeURIComponent(res.sig)}`
         : base;

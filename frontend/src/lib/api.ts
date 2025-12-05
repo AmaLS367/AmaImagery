@@ -18,7 +18,7 @@ let refreshPromise: Promise<boolean> | null = null
 async function refreshAccessToken(): Promise<boolean> {
   if (refreshPromise) return refreshPromise
   refreshPromise = (async () => {
-    const resp = await fetch(`${API_BASE}/auth/refresh`, {
+    const resp = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
     })
@@ -163,18 +163,18 @@ export async function api(input: string, init: RequestInit = {}) {
 
 export async function health(): Promise<boolean> {
   try {
-    const r = await fetch(`${API_BASE}/health`, { cache: 'no-store', headers: buildHeaders() })
+    const r = await fetch(`${API_BASE}/api/v1/health`, { cache: 'no-store', headers: buildHeaders() })
     return r.ok
   } catch { return false }
 }
 
 export async function generateJSON(body: GeneratePayload, signal?: AbortSignal): Promise<GenerateResponse> {
-  const url = `${API_BASE}/generate`;
+  const url = `${API_BASE}/api/v1/images/generate`;
   const headers = buildHeaders();
   const requestBody = JSON.stringify(body);
   
   try {
-    const r = await request('/generate', {
+    const r = await request('/api/v1/images/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -220,19 +220,19 @@ export type GenerationItem = {
 
 export async function listMyGenerations(limit = 50, offset = 0) {
   const q = new URLSearchParams({ limit: String(limit), offset: String(offset) })
-  const r = await request(`/users/me/generations?${q.toString()}`)
+  const r = await request(`/api/v1/users/me/generations?${q.toString()}`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function getMySettings() {
-  const r = await request(`/users/me/settings`)
+  const r = await request(`/api/v1/users/me/settings`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function patchMySettings(payload: any) {
-  const r = await request(`/users/me/settings`, {
+  const r = await request(`/api/v1/users/me/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: payload }),

@@ -149,7 +149,7 @@ export default function Register() {
     setServerError(null)
     setSuccess(false)
     try {
-      const res = await fetch('/auth/register', {
+      const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: data.email, password: data.password, username: data.username }),

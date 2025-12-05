@@ -71,14 +71,8 @@ python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Linux/Mac
 
-# Install PyTorch with CUDA support
-pip install --index-url https://download.pytorch.org/whl/cu121 \
-  torch==2.2.2+cu121 torchvision==0.17.2+cu121 torchaudio==2.2.2+cu121
-
-# Install dependencies
-pip install xformers==0.0.25.post1
-pip install "diffusers==0.29.2"
-pip install -r requirements.txt
+# Install project with dependencies
+pip install -e .
 
 # Run migrations
 alembic upgrade head
@@ -86,6 +80,8 @@ alembic upgrade head
 # Start the server
 python run.py
 ```
+
+**Note:** The project uses `pyproject.toml` for modern dependency management. For legacy systems, `requirements.txt` is also available.
 
 📖 **For detailed setup instructions, see:**
 - [English Setup Guide](./docs/en/development/getting-started.md)

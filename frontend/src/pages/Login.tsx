@@ -104,7 +104,7 @@ export default function Login() {
     setSuccess(false)
     try {
       if (mode === 'login') {
-        const res = await fetch('/auth/me', {
+        const res = await fetch('/api/v1/auth/me', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -132,7 +132,7 @@ export default function Login() {
         window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'gen' }))
         setSuccess(true)
       } else {
-        const res = await fetch('/auth/forgot-password', {
+        const res = await fetch('/api/v1/auth/forgot-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifier: (data as ForgotData).identifier }),

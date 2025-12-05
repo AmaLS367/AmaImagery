@@ -9,7 +9,7 @@ export async function exportHistoryZip(items: HistoryItem[]) {
   let idx = 0
   for (const it of items.slice(0, 100)) {
     try {
-      const resp = await fetch(`/file?path=${encodeURIComponent(it.path)}`)
+      const resp = await fetch(`/api/v1/file?path=${encodeURIComponent(it.path)}`)
       const blob = await resp.blob()
       thumbs?.file(`${idx++}.png`, blob)
     } catch {}
