@@ -1,7 +1,5 @@
 """
 Diffusers-based image generation provider implementation.
-
-Wraps diffusers pipeline to implement IImageProvider interface.
 """
 
 import asyncio

@@ -146,7 +146,7 @@
 
 Цель этапа: перевести тяжелую генерацию в очередь и воркеры, а HTTP оставить легким.
 
-### ❌ 7. `feat(queue): introduce TaskQueue abstraction with Redis backend`
+### ✅ 7. `feat(queue): introduce TaskQueue abstraction with Redis backend`
 
 **Цель:** создать абстракцию очереди задач.
 

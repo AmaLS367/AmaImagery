@@ -7,7 +7,6 @@ _redis: t.Any = None
 
 
 def init_redis() -> t.Any:
-    """ Initialize Redis connection from settings. """
     global _redis
     if _redis is not None:
         return _redis
