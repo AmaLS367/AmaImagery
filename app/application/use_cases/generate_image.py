@@ -62,7 +62,7 @@ class GenerateImageUseCase:
         self.uow = uow
         self.provider_registry = provider_registry or get_provider_registry()
         self.task_queue = task_queue or get_task_queue()
-        self.generation_service = GenerationService(uow, self.provider_registry)
+        self.generation_service = GenerationService()
     
     async def __call__(self, command: GenerateImageCommand) -> UseCaseResult[GenerateImageResult]:
         """
