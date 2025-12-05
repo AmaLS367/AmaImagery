@@ -24,6 +24,12 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - Support for multiple generation backends
 - See [Provider Documentation](./providers.md) for details
 
+### 📦 Queue and Workers
+- Asynchronous task queue for image generation
+- Background workers for heavy processing
+- Task status tracking via Redis
+- See [Queue and Workers Documentation](./queue-and-workers.md) for details
+
 ### 🗄️ Data Layer
 - PostgreSQL database with SQLAlchemy
 - Alembic migrations
@@ -46,6 +52,7 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - [Architecture](./architecture.md) - System architecture and design
 - [API Documentation](./api/overview.md) - Complete API reference
 - [Providers](./providers.md) - Provider abstraction layer
+- [Queue and Workers](./queue-and-workers.md) - Task queue and worker architecture
 - [Core Modules](./core/) - Security, logging, errors, limits
 - [Services](./services/) - Business logic services
 - [Inference](./inference/) - ML inference pipeline

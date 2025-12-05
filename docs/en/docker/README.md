@@ -18,6 +18,7 @@ The application is fully containerized with Docker and Docker Compose, supportin
 
 ### 🔧 Services
 - Backend (FastAPI)
+- Generation Worker (Background task processor)
 - Frontend (Nginx)
 - PostgreSQL database
 - Redis cache
@@ -42,10 +43,24 @@ The application is fully containerized with Docker and Docker Compose, supportin
 docker compose -f docker/compose.local.yml up
 ```
 
+This starts all services including the generation worker.
+
 ### Production
 ```bash
 docker compose -f docker/compose.prod.yml up -d
 ```
+
+This starts all services including the generation worker in detached mode.
+
+### Worker Service
+
+The `generation_worker` service processes image generation tasks from the queue. It:
+- Consumes tasks from Redis queue
+- Processes generation via providers
+- Saves results to database
+- Updates task status
+
+See [Queue and Workers Documentation](../backend/queue-and-workers.md) for details.
 
 See [Getting Started](./getting-started.md) for details.
 
