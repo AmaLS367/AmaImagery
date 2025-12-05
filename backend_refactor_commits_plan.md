@@ -557,7 +557,7 @@
 
 ---
 
-### ❌ 29. `chore(tests): update db fixtures for async session`
+### ✅ 29. `chore(tests): update db fixtures for async session`
 
 **Цель:** привести тесты к async БД.
 

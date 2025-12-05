@@ -1,5 +1,6 @@
 import os, sys, importlib, tempfile, shutil, contextlib
 import pytest
+import pytest_asyncio
 from dotenv import load_dotenv
 
 load_dotenv("docker/.env.local", override=False)  # подтянет ALLOWED_HOSTS и прочие
@@ -33,6 +34,55 @@ def app_client():
         return TestClient(app)
     except Exception as e:
         pytest.skip(f"Нет TestClient: {e}")
+
+# Async database session fixture
+@pytest_asyncio.fixture
+async def async_session():
+    """
+    Provides an async database session for tests.
+    
+    Creates a new async session and ensures it's closed after the test.
+    """
+    try:
+        from app.infra.db import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
+            yield session
+    except Exception as e:
+        pytest.skip(f"Async session недоступен: {e}")
+
+# Async database engine fixture
+@pytest_asyncio.fixture
+async def async_db_engine():
+    """
+    Provides an async database engine for tests.
+    
+    Can be used for creating test databases or running migrations.
+    """
+    try:
+        from app.infra.db import async_engine
+        yield async_engine
+        await async_engine.dispose()
+    except Exception as e:
+        pytest.skip(f"Async engine недоступен: {e}")
+
+# UnitOfWork fixture for tests
+@pytest_asyncio.fixture
+async def uow():
+    """
+    Provides a UnitOfWork instance for tests.
+    
+    Automatically manages transaction boundaries - rolls back after each test.
+    """
+    try:
+        from app.infra.uow import get_uow
+        uow = get_uow()
+        async with uow:
+            yield uow
+            # Rollback to clean up test data
+            if uow._session is not None:
+                await uow._session.rollback()
+    except Exception as e:
+        pytest.skip(f"UnitOfWork недоступен: {e}")
 
 # Хелпер: регистрация и логин тестового пользователя
 @pytest.fixture
