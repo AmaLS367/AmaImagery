@@ -22,13 +22,13 @@ class SettingsIn(BaseModel):
     data: dict[str, Any]
 
 @router.get("/me/settings", response_model=SettingsOut)
-def get_settings(user: User = Depends(current_user), db: Session = Depends(get_db)):
+async def get_settings(user: User = Depends(current_user), db: Session = Depends(get_db)):
     us = db.get(UserSettings, user.id)
     lg("app").bind(scope="users", action="get_settings").info("users.settings.get")
     return SettingsOut(data=(us.data if us else {}))
 
 @router.patch("/me/settings", response_model=SettingsOut)
-def patch_settings(payload: SettingsIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+async def patch_settings(payload: SettingsIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     us = db.get(UserSettings, user.id) or UserSettings(user_id=user.id, data={})
     if us.user_id is None:
         db.add(us)

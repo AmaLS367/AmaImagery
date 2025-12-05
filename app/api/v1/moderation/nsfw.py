@@ -30,7 +30,7 @@ class NSFWCheckResponse(BaseModel):
     forced: bool
 
 @router.patch("/users/me/nsfw")
-def set_nsfw(toggle: NSFWToggle, db: Session = Depends(get_db), user=Depends(current_user)):
+async def set_nsfw(toggle: NSFWToggle, db: Session = Depends(get_db), user=Depends(current_user)):
     user.nsfw_allow = bool(toggle.allow)
     db.add(user)
     db.commit()

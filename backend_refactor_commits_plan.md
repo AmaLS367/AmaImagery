@@ -309,7 +309,7 @@
 
 ---
 
-### ❌ 15. `feat(repositories): implement user repository and auth helpers`
+### ✅ 15. `feat(repositories): implement user repository and auth helpers`
 
 **Цель:** вынести работу с пользователями.
 
