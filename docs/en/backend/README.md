@@ -63,6 +63,13 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - GPU monitoring
 - Performance tracking
 
+### 🔍 Observability
+- Structured error handling with domain exceptions
+- Comprehensive metrics for providers, queues, and workers
+- Feature flags for runtime configuration
+- Domain events for decoupled communication
+- See [Observability Documentation](./observability.md) for details
+
 ## Documentation Sections
 
 - [Architecture](./architecture.md) - System architecture and design
@@ -72,6 +79,7 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - [Application Layer](./application.md) - Use cases and business scenario orchestration
 - [Repositories and Unit of Work](./repositories.md) - Data access layer and transaction management
 - [Concurrency Model](./concurrency.md) - Async ORM and concurrency architecture
+- [Observability](./observability.md) - Error handling, metrics, feature flags, and domain events
 - [Core Modules](./core/) - Security, logging, errors, limits
 - [Services](./services/) - Business logic services
 - [Inference](./inference/) - ML inference pipeline
