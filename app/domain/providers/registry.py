@@ -71,12 +71,23 @@ _registry: Optional[ProviderRegistry] = None
 
 def get_provider_registry() -> ProviderRegistry:
     """
-    Returns singleton registry instance.
+    Returns singleton registry instance with providers registered from configuration.
     
-    Registry is initially empty and must be populated by registering providers.
+    Lazy-initializes DiffusersProvider on first access to avoid heavy imports at module load time.
     """
     global _registry
     if _registry is None:
-        _registry = ProviderRegistry()
+        from app.config import settings
+        
+        providers: dict[str, IImageProvider] = {}
+        
+        if "diffusers" in settings.providers_enabled:
+            from app.infra.providers import DiffusersProvider
+            providers["diffusers"] = DiffusersProvider()
+        
+        _registry = ProviderRegistry(
+            providers=providers,
+            default_name=settings.providers_default_name
+        )
     return _registry
 

@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     run_in_docker: bool = Field(False, alias="RUN_IN_DOCKER")
     debug: bool = Field(False, alias="DEBUG")
     
+    # --- Providers ---
+    providers_default_name: str = Field("diffusers", alias="PROVIDERS_DEFAULT_NAME")
+    providers_enabled: list[str] = Field(
+        default_factory=lambda: ["diffusers"],
+        alias="PROVIDERS_ENABLED"
+    )
+    
     # --- Inference/model ---
     model_id: str = Field("models/dreamshaper_6NoVae.safetensors", alias="MODEL_ID")
     device: str = Field("cuda", alias="DEVICE")
@@ -105,7 +112,7 @@ class Settings(BaseSettings):
         alias="FILE_ALLOWED_MIMES"
     )
     
-    @field_validator("file_allowed_exts", "file_allowed_mimes", mode="before")
+    @field_validator("file_allowed_exts", "file_allowed_mimes", "providers_enabled", mode="before")
     @classmethod
     def _parse_list_env(cls, v):
         if v is None:

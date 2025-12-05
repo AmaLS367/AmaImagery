@@ -106,7 +106,7 @@
 
 ---
 
-### ❌ 5. `chore(config): add provider settings and default provider name`
+### ✅ 5. `chore(config): add provider settings and default provider name`
 
 **Цель:** сделать выбор провайдера конфигурируемым.
 
