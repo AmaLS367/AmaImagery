@@ -3,6 +3,7 @@ Generation worker that processes image generation tasks from the queue.
 """
 
 import asyncio
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -14,6 +15,12 @@ from app.domain.models import Generation
 from app.domain.providers import GenerationRequest, get_provider_registry
 from app.infra.queue import get_task_queue
 from app.infra.uow import get_uow
+from app.metrics.queue import (
+    record_queue_dequeue,
+    record_task_start,
+    record_task_success,
+    record_task_error,
+)
 
 
 async def run_worker() -> None:
@@ -36,13 +43,18 @@ async def run_worker() -> None:
             if task_id is None:
                 continue
             
+            record_queue_dequeue()
             await task_queue.update_status(task_id, "running")
+            
+            task_start_time = time.time()
+            task_type = "image_generation"
             
             try:
                 status = await task_queue.get_status(task_id)
                 if not status or "payload" not in status:
                     worker_log.warning("worker.task_missing_payload", extra={"task_id": task_id})
                     await task_queue.mark_failed(task_id, "Task payload not found")
+                    record_task_error(task_type=task_type, error_type="missing_payload")
                     continue
                 
                 payload = status["payload"]
@@ -51,6 +63,8 @@ async def run_worker() -> None:
                 user_id = payload.get("user_id")
                 
                 provider = provider_registry.get_default()
+                
+                record_task_start(task_type=task_type)
                 
                 worker_log.info(
                     "worker.generation_started",
@@ -79,6 +93,9 @@ async def run_worker() -> None:
                     },
                 )
                 
+                duration = time.time() - task_start_time
+                record_task_success(task_type=task_type, duration_seconds=duration)
+                
                 worker_log.info(
                     "worker.generation_completed",
                     extra={
@@ -89,6 +106,7 @@ async def run_worker() -> None:
                 
             except Exception as e:
                 error_msg = str(e)
+                error_type = type(e).__name__
                 worker_log.exception(
                     "worker.generation_failed",
                     extra={
@@ -97,6 +115,7 @@ async def run_worker() -> None:
                     },
                 )
                 await task_queue.mark_failed(task_id, error_msg)
+                record_task_error(task_type=task_type, error_type=error_type)
                 
         except KeyboardInterrupt:
             worker_log.info("worker.shutdown_requested")

@@ -633,7 +633,7 @@
 
 ---
 
-### ❌ 33. `feat(metrics): extend metrics for providers and queue processing`
+### ✅ 33. `feat(metrics): extend metrics for providers and queue processing`
 
 **Цель:** метрики провайдеров и очередей.
 
