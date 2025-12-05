@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 from app.infra.db import get_db
 from app.domain.models import User
 from app.core.security import decode_access_token
+from app.infra.repositories import SqlAlchemyUserRepository
 
 bearer = HTTPBearer(auto_error=False)
 
-def current_user(
+async def current_user(
     request: Request,
     cred: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
     db: Session = Depends(get_db),
@@ -53,13 +54,14 @@ def current_user(
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    user = db.get(User, user_id)
+    repo = SqlAlchemyUserRepository(db)
+    user = await repo.get(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     return user
 
-def optional_user(
+async def optional_user(
   cred: HTTPAuthorizationCredentials | None = Depends(bearer),
   db: Session = Depends(get_db),
 ) -> User | None:
@@ -70,7 +72,8 @@ def optional_user(
     user_id = UUID(str(payload["sub"]))
   except Exception:
     return None
-  return db.get(User, user_id)
+  repo = SqlAlchemyUserRepository(db)
+  return await repo.get(user_id)
 
 
 async def get_user_or_ip_identifier(request: Request) -> str:

@@ -10,6 +10,7 @@ from app.domain.models import User, UserSettings
 from app.core.logging import lg, sec
 from app.api.v1.auth.deps import current_user
 from app.services.rate_limiting import create_rate_limiter
+from app.infra.repositories import SqlAlchemyUserRepository
 
 from app.core.security import (
     normalize_email, hash_password, verify_password,
@@ -70,17 +71,17 @@ def _set_refresh_cookie(resp: Response, token: str) -> None:
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))]
 )
-def register(payload: RegisterIn, db: Session = Depends(get_db)):
+async def register(payload: RegisterIn, db: Session = Depends(get_db)):
     email = normalize_email(payload.email)
     username = payload.username.strip()
 
-    exists = db.query(User).filter((User.email == email) | (User.username == username)).first()
+    repo = SqlAlchemyUserRepository(db)
+    exists = await repo.get_by_email_or_username(email, username)
     if exists:
         raise HTTPException(status_code=409, detail="User with this email or username already exists")
 
     user = User(email=email, username=username, password_hash=hash_password(payload.password))
-    db.add(user)
-    db.flush()
+    await repo.add(user)
     db.add(UserSettings(user_id=user.id, data={}))
     db.commit()
 
@@ -96,7 +97,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     )
 
 @router.get("/me", response_model=MeOut)
-def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
+async def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
     lg("app").bind(scope="auth", action="me").info("auth.me")
     us = db.get(UserSettings, user.id)  # PK = user_id
     return MeOut(
@@ -125,11 +126,8 @@ class LoginOut(BaseModel):
 async def login(payload: LoginIn, response: Response, db: Session = Depends(get_db)):
     ident = payload.identifier.strip()
     email_norm = normalize_email(ident)
-    user = (
-        db.query(User)
-        .filter((User.email == email_norm) | (User.username == ident))
-        .first()
-    )
+    repo = SqlAlchemyUserRepository(db)
+    user = await repo.get_by_email_or_username(email_norm, ident)
     if not user or not verify_password(payload.password, user.password_hash):
         sec("login_failure")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -250,7 +248,7 @@ class ChangePwdIn(BaseModel):
 from app.api.v1.auth.deps import current_user
 
 @router.post("/change-password", status_code=status.HTTP_200_OK, response_class=Response)
-def change_password(payload: ChangePwdIn, user: User = Depends(current_user), db: Session = Depends(get_db)) -> None:
+async def change_password(payload: ChangePwdIn, user: User = Depends(current_user), db: Session = Depends(get_db)) -> None:
     if not verify_password(payload.old_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Wrong old password")
 
