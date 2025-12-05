@@ -5,6 +5,7 @@ from app.api.v1.auth.router import router as auth_router
 from app.api.v1.users.router import router as auth_users_router
 from app.api.v1.files.router import router as files_router
 from app.api.v1.images.generate import router as generate_router
+from app.api.v1.images.status import router as status_router
 # from app.api.v1.images.edit import router as edit_router
 # from app.api.v1.images.resize import router as resize_router
 # from app.api.v1.images.upscale import router as upscale_router
@@ -18,6 +19,7 @@ api_v1.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_v1.include_router(auth_users_router, prefix="/auth/users", tags=["auth"])
 api_v1.include_router(files_router, tags=["files"])
 api_v1.include_router(generate_router, tags=["images"])
+api_v1.include_router(status_router, tags=["images"])
 # api_v1.include_router(edit_router, tags=["images"])
 # api_v1.include_router(resize_router, tags=["images"])
 # api_v1.include_router(upscale_router, tags=["images"])

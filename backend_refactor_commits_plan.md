@@ -210,7 +210,7 @@
 
 ---
 
-### ❌ 10. `feat(api): add generation status endpoint`
+### ✅ 10. `feat(api): add generation status endpoint`
 
 **Цель:** дать клиенту способ узнать статус задачи.
 

@@ -27,6 +27,17 @@ class GenResp(BaseModel):
 class TaskResp(BaseModel):
     task_id: str = Field(description="Unique task identifier")
     status: str = Field(description="Task status (queued, running, completed, failed)")
+
+class TaskStatusResp(BaseModel):
+    task_id: str = Field(description="Unique task identifier")
+    status: str = Field(description="Task status (queued, running, completed, failed)")
+    image_path: Optional[str] = Field(None, description="Path to generated image (completed only)")
+    image_filename: Optional[str] = Field(None, description="Filename of generated image (completed only)")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Generation metadata (completed only)")
+    error: Optional[str] = Field(None, description="Error message (failed only)")
+    created_at: Optional[int] = Field(None, description="Task creation timestamp")
+    started_at: Optional[int] = Field(None, description="Task start timestamp")
+    completed_at: Optional[int] = Field(None, description="Task completion timestamp")
     
 class ResizeReq(BaseModel):
     pass
@@ -47,12 +58,10 @@ class EditResp(BaseModel):
     pass
     
 class HealthResponse(BaseModel):
-    """Health check response model."""
     ok: bool = Field(description="Service health status")
     status: str = Field(description="Detailed status message")
 
 class ErrorResponse(BaseModel):
-    """Error response model."""
     error: str = Field(description="Error type")
     message: str = Field(description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
