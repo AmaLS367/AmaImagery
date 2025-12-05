@@ -290,7 +290,7 @@
 
 ---
 
-### ❌ 14. `feat(repositories): implement generation repository on SQLAlchemy`
+### ✅ 14. `feat(repositories): implement generation repository on SQLAlchemy`
 
 **Цель:** вынести работу с генерациями в отдельный репозиторий.
 

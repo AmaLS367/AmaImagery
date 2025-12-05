@@ -8,7 +8,8 @@ import time
 
 from app.infra.db import get_db
 from app.api.v1.auth.deps import current_user
-from app.domain.models import User, UserSettings, Generation
+from app.domain.models import User, UserSettings
+from app.infra.repositories import SqlAlchemyGenerationRepository
 from app.core.logging import lg
 from app.config import settings
 from app.files.signing import make_signature
@@ -52,15 +53,15 @@ class GenList(BaseModel):
     items: list[GenItem]
 
 @router.get("/me/generations", response_model=GenList)
-def my_generations(
+async def my_generations(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    q = db.query(Generation).filter(Generation.user_id == user.id).order_by(Generation.created_at.desc())
-    total = q.count()
-    rows = q.offset(offset).limit(limit).all()
+    repo = SqlAlchemyGenerationRepository(db)
+    total = await repo.count_by_user(user.id)
+    rows = await repo.list_by_user(user.id, limit=limit, offset=offset)
     now = int(time.time())
     ttl = int(settings.file_download_ttl_sec)
 
