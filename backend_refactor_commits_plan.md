@@ -782,7 +782,7 @@
 
 ---
 
-### ❌ 41. `chore(testing): ensure minimum coverage threshold for backend`
+### ✅ 41. `chore(testing): ensure minimum coverage threshold for backend`
 
 **Цель:** зафиксировать минимальный порог покрытия тестами.
 
