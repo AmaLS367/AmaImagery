@@ -16,6 +16,9 @@ os.environ.setdefault("UI_MOUNT_ENABLED", "false")
 os.environ.setdefault("NSFW_ALLOW", "false")
 os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
 os.environ.setdefault("LIMITS_ENABLED", "true")
+# Set SQLite for repository tests before models are imported
+if "DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
 # Временная директория для outputs
 @pytest.fixture(autouse=True)
@@ -106,3 +109,30 @@ def auth_headers(app_client):
         return {"Authorization": f"Bearer {token}"}
     except Exception as e:
         pytest.skip(f"auth flow недоступен: {e}")
+
+# Test database session for repository tests
+@pytest_asyncio.fixture(scope="function")
+async def test_db_session():
+    """Create an in-memory SQLite database for testing repositories."""
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+    from sqlalchemy.pool import StaticPool
+    
+    # Use actual models - they should work with SQLite if JSON type is used
+    # The models use _JSON() which returns JSON for SQLite
+    from app.domain.models import Base
+    
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    async_session_maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session_maker() as session:
+        yield session
+        await session.rollback()
+    
+    await engine.dispose()
