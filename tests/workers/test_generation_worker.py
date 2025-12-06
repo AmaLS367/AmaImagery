@@ -9,7 +9,7 @@ import pytest_asyncio
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from pathlib import Path
 
-from app.domain.providers.base import GenerationRequest, GenerationResult
+from app.domain.providers.interfaces import GenerationRequest, GenerationResult
 from app.infra.queue.task_queue import RedisTaskQueue
 
 

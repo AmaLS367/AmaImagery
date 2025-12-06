@@ -4,7 +4,7 @@ Domain providers package.
 Exports the core provider abstractions, DTOs, and registry.
 """
 
-from app.domain.providers.base import (
+from app.domain.providers.interfaces import (
     GenerationRequest,
     GenerationResult,
     IImageProvider,
@@ -12,7 +12,6 @@ from app.domain.providers.base import (
 )
 from app.domain.providers.registry import (
     ProviderRegistry,
-    get_provider_registry,
 )
 
 __all__ = [

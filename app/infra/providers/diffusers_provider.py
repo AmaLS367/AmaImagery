@@ -14,7 +14,7 @@ from PIL import Image
 
 from app.config import settings
 from app.core.logging import lg, logger
-from app.domain.providers.base import GenerationRequest, GenerationResult, IImageProvider
+from app.domain.providers.interfaces import GenerationRequest, GenerationResult, IImageProvider
 from app.inference.pipeline import get_unet_dtype, align_to_unet_dtype
 from app.metrics.providers import (
     record_generation_start,
