@@ -20,6 +20,5 @@ __all__ = [
     "IImageProvider",
     "Style",
     "ProviderRegistry",
-    "get_provider_registry",
 ]
 
