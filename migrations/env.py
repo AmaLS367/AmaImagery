@@ -1,14 +1,21 @@
 """Alembic migrations environment configuration."""
-from logging.config import fileConfig
+import logging
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 import os
 from app.infra.db import Base as RuntimeBase
 import app.domain.models
 
+# Configure logging programmatically instead of using alembic.ini
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(levelname)-5.5s [%(name)s] %(message)s',
+    datefmt='%H:%M:%S',
+)
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+logging.getLogger('alembic').setLevel(logging.INFO)
+
 config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
 
 try:
     from app.config import settings

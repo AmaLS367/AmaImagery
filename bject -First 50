@@ -1,0 +1,62 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docker/compose.local.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docker/compose.prod.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/components/Footbar.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/i18n/resources/en/common.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/i18n/resources/en/error404.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/i18n/resources/ru/common.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/i18n/resources/ru/error404.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/lib/export.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/lib/storage.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/About.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/FAQ.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/Generate.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/linux/build_images.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/windows/build_images.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/windows/smoketest.ps1', LF will be replaced by CRLF the next time Git touches it
+M	.github/workflows/tests.yml
+M	.gitignore
+M	Dockerfile
+M	README.md
+D	alembic.ini
+D	app/api/v1/images/edit.py
+D	app/api/v1/images/resize.py
+D	app/api/v1/images/upscale.py
+M	app/api/v1/index.py
+M	app/config.py
+M	app/core/security.py
+M	app/domain/schemas.py
+D	backend_refactor_commits_plan.md
+D	docker/compose.cpu.yml
+M	docker/compose.local.yml
+M	docker/compose.prod.yml
+M	docker/redis/redis.conf
+M	docs/en/backend/observability.md
+M	docs/en/development/README.md
+M	docs/ru/backend/observability.md
+M	docs/ru/development/README.md
+M	frontend/index.html
+M	frontend/package-lock.json
+M	frontend/package.json
+M	frontend/src/components/Footbar.tsx
+M	frontend/src/i18n/resources/en/common.json
+M	frontend/src/i18n/resources/en/error404.json
+M	frontend/src/i18n/resources/ru/common.json
+M	frontend/src/i18n/resources/ru/error404.json
+M	frontend/src/lib/export.ts
+M	frontend/src/lib/settings.ts
+M	frontend/src/lib/storage.ts
+M	frontend/src/pages/About.tsx
+M	frontend/src/pages/FAQ.tsx
+M	frontend/src/pages/Generate.tsx
+M	migrations/env.py
+M	pyproject.toml
+M	run.py
+D	scripts/fetch-dreamshaper-license.ps1
+M	scripts/linux/build_images.sh
+M	scripts/python/generate_context.py
+M	scripts/windows/build_images.ps1
+M	scripts/windows/smoketest.ps1

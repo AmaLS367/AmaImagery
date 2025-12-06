@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     seed_strict: bool = Field(False, alias="SEED_STRICT")
 
     # --- Database ---
-    database_url: str = Field("sqlite:///./genai.db", alias="DATABASE_URL")
+    database_url: str = Field("postgresql+asyncpg://postgres:postgres@localhost:5432/amaimagery", alias="DATABASE_URL")
     
     # --- Security ---
     secret_key: str = Field("", alias="SECRET_KEY")
@@ -343,7 +343,6 @@ class Settings(BaseSettings):
 
 
 # === Initialization and validation ===
-
 def _load_env_file() -> None:
     """Load .env file if not running in Docker."""
     if not os.getenv("RUN_IN_DOCKER"):

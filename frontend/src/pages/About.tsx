@@ -103,7 +103,7 @@ export default function About() {
           <button className="about__link" onClick={() => window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'faq' }))}>
             {t('nav.faq')}
           </button>
-          <a className="about__link" href="mailto:support@genai.local">{t('footbar.support')}</a>
+          <a className="about__link" href="mailto:support@amaimagery.local">{t('footbar.support')}</a>
         </div>
       </section>
     </main>

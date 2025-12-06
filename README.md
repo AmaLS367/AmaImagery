@@ -6,6 +6,9 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.116.1-009688.svg)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://reactjs.org)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg)](https://www.docker.com)
+[![Ruff](https://img.shields.io/badge/ruff-enabled-FFDB4D.svg?logo=ruff)](https://github.com/astral-sh/ruff)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![MyPy](https://img.shields.io/badge/type%20checker-mypy-blue.svg)](https://mypy.readthedocs.io/)
 
 AI Image Generator is a production-ready platform for generating, editing, and upscaling images using Stable Diffusion models. Features enterprise-grade security, content moderation, and comprehensive monitoring.
 
@@ -48,7 +51,7 @@ AI Image Generator is a production-ready platform for generating, editing, and u
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd genai
+cd amaimagery
 
 # Copy environment file
 cp .env.example .env

@@ -19,7 +19,7 @@
       "generator": { "title": "Generator", "desc": "Create images with full control." },
       "guide":     { "title": "Prompt guide", "desc": "Short rules and examples." },
       "faq":       { "title": "FAQ", "desc": "Most common answers." },
-      "about":     { "title": "About GenAI", "desc": "What this project is and how it works." }
+      "about":     { "title": "About AmaImagery", "desc": "What this project is and how it works." }
     }
   }
 }

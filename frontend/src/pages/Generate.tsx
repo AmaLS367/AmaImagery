@@ -16,7 +16,7 @@ import { normalizeError } from '../lib/errors'
 
 type Corr = [string, string]
 type AnyResult = Record<string, unknown>;
-const ACTIVE_KEY = 'genai.activeJobId'
+const ACTIVE_KEY = 'amaimagery.activeJobId'
 
 export default function Generate() {
   const { settings } = useSettings()

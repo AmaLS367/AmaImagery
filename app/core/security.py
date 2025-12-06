@@ -124,8 +124,8 @@ def _issue_access_token(user_id: str) -> str:
         "nbf": int(iat.timestamp()),
         "exp": int(exp.timestamp()),
         "jti": uuid.uuid4().hex,
-        "iss": "genai-api",
-        "aud": "genai-client",
+        "iss": "amaimagery-api",
+        "aud": "amaimagery-client",
     }
     return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_alg)
 
@@ -143,8 +143,8 @@ def _issue_refresh_token(user_id: str, session_id: str) -> tuple[str, str, int]:
         "exp": int(exp.timestamp()),
         "jti": rjti,
         "session_id": session_id,
-        "iss": "genai-api",
-        "aud": "genai-client",
+        "iss": "amaimagery-api",
+        "aud": "amaimagery-client",
     }
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_alg)
     return token, rjti, int(exp.timestamp())
