@@ -141,6 +141,7 @@ def is_blocked_forced(text: str | None) -> bool:
 
 
 def reload_rules() -> None:
+    """Clear the safety rules cache to force reload on next access."""
     global _cache_compiled, _cache_mtime, _cache_forced_compiled, _cache_forced_mtime
     with _cache_lock:
         _cache_compiled = None

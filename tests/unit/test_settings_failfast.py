@@ -1,4 +1,7 @@
-import importlib, os, sys, pytest
+import importlib
+
+import pytest
+
 
 def test_secret_key_required(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "")

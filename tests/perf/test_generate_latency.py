@@ -1,4 +1,8 @@
-import pytest, time
+import time
+
+import pytest
+
+
 @pytest.mark.slow
 def test_generate_latency(app_client):
     t0 = time.time()

@@ -1,4 +1,8 @@
-import pytest, subprocess, os
+import os
+
+import pytest
+
+
 @pytest.mark.db
 def test_alembic_upgrade_head():
     # Требует установленный Alembic внутри контейнера/окружения

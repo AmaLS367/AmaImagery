@@ -1,4 +1,7 @@
-import os, sys, importlib, tempfile, shutil, contextlib
+import os
+import shutil
+import tempfile
+
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
@@ -12,6 +15,7 @@ os.environ.setdefault("DEVICE", "cpu")
 os.environ.setdefault("UI_MOUNT_ENABLED", "false")
 os.environ.setdefault("NSFW_ALLOW", "false")
 os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+os.environ.setdefault("LIMITS_ENABLED", "true")
 
 # Временная директория для outputs
 @pytest.fixture(autouse=True)

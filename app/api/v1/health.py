@@ -15,6 +15,7 @@ async def health_check() -> dict:
 
 @router.get("/healthz")
 async def healthz() -> dict:
-    if getattr(settings, "limits_enabled", None) is None:
+    limits_enabled = getattr(settings, "limits_enabled", None)
+    if limits_enabled is None:
         raise HTTPException(status_code=503, detail="misconfigured")
     return {"ok": True, "status": "ready"}

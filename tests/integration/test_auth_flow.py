@@ -1,4 +1,6 @@
 import pytest
+
+
 def test_register_login_me(app_client):
     email="tester@example.com"; password="pass12345"
     r = app_client.post("/auth/register", json={"email": email, "password": password})

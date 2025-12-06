@@ -1,5 +1,6 @@
 import pytest
 
+
 def _resolve_ref(schema, ref):
     # ref вида "#/components/schemas/Name"
     if not ref.startswith("#/"):

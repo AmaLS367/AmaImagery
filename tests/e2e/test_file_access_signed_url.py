@@ -1,4 +1,6 @@
 import pytest
+
+
 @pytest.mark.e2e
 def test_signed_file_link(app_client):
     # Если сервис возвращает подписанные ссылки, проверим доступ

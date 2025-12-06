@@ -1,4 +1,6 @@
 import pytest
+
+
 def test_patch_user_settings(app_client, auth_headers):
     r = app_client.get("/me/settings", headers=auth_headers)
     if r.status_code != 200:
