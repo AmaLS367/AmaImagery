@@ -763,7 +763,7 @@
 
 ---
 
-### ❌ 40. `test(queue): add tests for TaskQueue and worker lifecycle`
+### ✅ 40. `test(queue): add tests for TaskQueue and worker lifecycle`
 
 **Цель:** протестировать очередь и воркер.
 
