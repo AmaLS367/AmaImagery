@@ -732,7 +732,7 @@
 
 ---
 
-### ❌ 38. `test(repositories): add integration tests for core repositories`
+### ✅ 38. `test(repositories): add integration tests for core repositories`
 
 **Цель:** проверить работу репозиториев с реальной БД.
 
