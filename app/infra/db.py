@@ -1,4 +1,6 @@
 from __future__ import annotations
+from sqlalchemy.ext.asyncio.session import AsyncSession
+
 import subprocess
 import sys
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -8,12 +10,6 @@ from app.config import settings
 
 
 def _make_async_url(url: str) -> str:
-    """
-    Converts sync database URL to async URL.
-    
-    Replaces postgresql:// with postgresql+asyncpg:// for async driver.
-    For SQLite, uses aiosqlite driver.
-    """
     if url.startswith("postgresql+psycopg2://"):
         return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
     if url.startswith("postgresql+psycopg://"):
@@ -35,7 +31,7 @@ async_engine = create_async_engine(
     echo=False,
 )
 
-AsyncSessionLocal = async_sessionmaker(
+AsyncSessionLocal = async_sessionmaker[AsyncSession](
     bind=async_engine,
     class_=AsyncSession,
     expire_on_commit=False,
@@ -59,10 +55,28 @@ async def get_db():
             await session.close()
 
 def run_pending_migrations() -> None:
+    """
+    Applies pending database migrations using Alembic.
+    
+    Executed via subprocess to ensure isolation from the running asyncio loop,
+    preventing 'Event loop is already running' errors common with async Alembic env.py.
+    """
     backend = make_url(settings.database_url).get_backend_name()
-    if backend not in ("postgresql", "postgresql+psycopg", "postgresql+psycopg2"):
-        raise RuntimeError("Only PostgreSQL is supported for pending migrations. Set DATABASE_URL to Postgres.")
-    r = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(f"Alembic failed: {r.stdout}\n{r.stderr}")
-
+    
+    # Strict production requirement: PostgreSQL only
+    if not backend.startswith("postgres"):
+        raise RuntimeError(f"Migrations are strictly restricted to PostgreSQL (current: {backend}).")
+        
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"], 
+            capture_output=True, 
+            text=True
+        )
+        if r.returncode != 0:
+            raise RuntimeError(f"Alembic migration failed (code {r.returncode}):\n{r.stdout}\n{r.stderr}")
+            
+    except FileNotFoundError:
+        raise RuntimeError("Python executable not found for migration subprocess.")
+    except Exception as e:
+        raise RuntimeError(f"Failed to launch migration subprocess: {e}")
