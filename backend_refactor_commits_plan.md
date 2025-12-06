@@ -748,7 +748,7 @@
 
 ---
 
-### ❌ 39. `test(providers): add provider tests with mocked external services`
+### ✅ 39. `test(providers): add provider tests with mocked external services`
 
 **Цель:** протестировать логику провайдеров.
 
