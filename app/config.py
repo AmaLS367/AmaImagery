@@ -341,16 +341,14 @@ def _load_env_file() -> None:
 
 
 def _create_directories(settings: Settings) -> None:
-    """
-    Create required directories for outputs and logs.
-    Silently ignores PermissionError for read-only environments (logs will go to stdout).
-    """
     try:
         Path(settings.outputs_dir).mkdir(parents=True, exist_ok=True)
         
         for sub in ("access", "app", "generations", "prompts", "prompts/raw", "errors", "metrics"):
             Path(settings.log_dir, sub).mkdir(parents=True, exist_ok=True)
     except PermissionError:
+        # In read-only environments (like some K8s pods), we can't create dirs.
+        # This is fine as long as we log to stdout/stderr.
         pass
     except Exception as e:
         print(f"Warning: Failed to create directories: {e}")

@@ -1,18 +1,21 @@
 """
-Central registry that routes generation requests to the appropriate provider.
+Central registry for image generation providers.
 
-Enables provider selection and switching without changing application code.
+Manages the lifecycle and retrieval of registered providers strategies.
 """
 
-from typing import Dict, Optional
-from app.domain.providers.base import IImageProvider
+import asyncio
+from typing import Dict, Optional, List
+
+from app.domain.providers.interfaces import IImageProvider
 
 
 class ProviderRegistry:
     """
-    Centralized provider registry that isolates application code from provider selection logic.
+    Strategy pattern registry.
     
-    Raises KeyError if a requested provider is not registered.
+    Allows the application to route requests to different implementations 
+    (Diffusers, OpenAI, etc.) dynamically.
     """
     
     def __init__(self, providers: Optional[Dict[str, IImageProvider]] = None, default_name: Optional[str] = None):
@@ -24,7 +27,7 @@ class ProviderRegistry:
     
     def get(self, name: str) -> IImageProvider:
         """
-        Raises KeyError if provider is not registered.
+        Retrieve a provider by name.
         """
         if name not in self._providers:
             raise KeyError(f"Provider '{name}' is not registered")
@@ -32,9 +35,7 @@ class ProviderRegistry:
     
     def get_default(self) -> IImageProvider:
         """
-        Returns provider registered under default_name, or first registered provider if default_name is None.
-        
-        Raises ValueError if no providers are registered.
+        Returns the preferred provider strategy.
         """
         if not self._providers:
             raise ValueError("No providers registered")
@@ -42,18 +43,16 @@ class ProviderRegistry:
         if self._default_name and self._default_name in self._providers:
             return self._providers[self._default_name]
         
+        # Fallback to the first available if default is not set
         return next(iter(self._providers.values()))
     
-    def list_providers(self) -> list[str]:
-        return list(self._providers.keys())
+    def list_providers(self) -> List[str]:
+        return list[str](self._providers.keys())
     
     async def health_report(self) -> Dict[str, bool]:
         """
-        Checks all providers concurrently via asyncio.gather.
-        Returns False for any provider that raises during health_check().
+        Aggregates health status from all registered providers concurrently.
         """
-        import asyncio
-        
         async def check_provider(name: str, provider: IImageProvider) -> tuple[str, bool]:
             try:
                 is_healthy = await provider.health_check()
@@ -61,40 +60,9 @@ class ProviderRegistry:
             except Exception:
                 return (name, False)
         
+        if not self._providers:
+            return {}
+
         tasks = [check_provider(name, provider) for name, provider in self._providers.items()]
         results = await asyncio.gather(*tasks)
-        return dict(results)
-
-
-_registry: Optional[ProviderRegistry] = None
-
-
-def get_provider_registry() -> ProviderRegistry:
-    """
-    Returns singleton registry instance with providers registered from configuration.
-    
-    Lazy-initializes DiffusersProvider on first access to avoid heavy imports at module load time.
-    Checks feature flags before registering providers.
-    """
-    global _registry
-    if _registry is None:
-        from app.config import settings
-        from app.core.feature_flags import get_feature_flag_service
-        
-        feature_flags = get_feature_flag_service()
-        
-        if not feature_flags.is_enabled("image_generation"):
-            raise ValueError("Image generation feature is disabled")
-        
-        providers: dict[str, IImageProvider] = {}
-        
-        if "diffusers" in settings.providers_enabled:
-            from app.infra.providers import DiffusersProvider
-            providers["diffusers"] = DiffusersProvider()
-        
-        _registry = ProviderRegistry(
-            providers=providers,
-            default_name=settings.providers_default_name
-        )
-    return _registry
-
+        return dict[str, bool](results)

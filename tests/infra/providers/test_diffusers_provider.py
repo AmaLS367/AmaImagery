@@ -10,7 +10,7 @@ from pathlib import Path
 import torch
 from PIL import Image
 
-from app.domain.providers.base import GenerationRequest, GenerationResult
+from app.domain.providers.interfaces import GenerationRequest, GenerationResult
 from app.infra.providers.diffusers_provider import DiffusersProvider
 from app.services.image_service import ImageProcessingService
 
