@@ -7,13 +7,15 @@ import re
 import torch
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from typing import Optional
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1 import api_v1
+from app.api.v1.auth.deps import optional_user
 
 from app.config import settings
 from app.core.errors import install_error_handlers
@@ -27,15 +29,16 @@ from app.inference.net_guard import apply as apply_net_guard
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.request_limits import RequestLimitsMiddleware
 from app.services.rate_limiting import RateLimitLoggingMiddleware
-from app.infra.db import run_dev_migrations
+from app.infra.db import run_pending_migrations
+from app.domain.models import User
 
 
 # ==================== Application Lifecycle ====================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not bool(getattr(settings, "debug", False)):
-        run_dev_migrations()
+    if not settings.debug:
+        run_pending_migrations()
     try:
         yield
     finally:
@@ -66,9 +69,9 @@ _configure_pytorch()
 setup_logging()
 
 app = FastAPI(
-    title="AI Image Generator",
+    title="AmaImagery",
     version="0.2.0",
-    debug=bool(getattr(settings, "debug", False)),
+    debug=settings.debug,
     lifespan=lifespan,
     docs_url=settings.docs_url,
 )
@@ -106,7 +109,7 @@ def _add_middleware() -> None:
 
 
 def _setup_error_handlers() -> None:
-    if not (getattr(settings, "env", "").lower() in ("dev", "development") or getattr(settings, "debug", 0) == 1):
+    if not (settings.env in ("dev", "development") or settings.debug):
         install_exception_handlers(app)
     install_error_handlers(app)
 
@@ -136,10 +139,12 @@ def _setup_logging_filters() -> None:
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
+
         # Add security headers
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
+
         # Add HSTS header if enabled
         if settings.enable_hsts:
             response.headers.setdefault(
@@ -157,8 +162,16 @@ app.add_middleware(SecurityHeadersMiddleware)
 # ==================== Application Constants ====================
 
 @app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/admin/")
+async def root(user: Optional[User] = Depends(optional_user)):
+    if user and getattr(user, "is_superuser", False):
+        return RedirectResponse(url="/admin/")
+    
+    return {
+        "app": "AmaImagery",
+        "version": "0.1.0",
+        "docs_url": settings.docs_url,
+        "frontend_url": settings.frontend_origin,
+    }
 
 
 # ==================== Routes Configuration ====================
