@@ -795,7 +795,7 @@
 
 ---
 
-### ❌ 42. `docs(backend): update testing strategy and coverage targets`
+### ✅ 42. `docs(backend): update testing strategy and coverage targets`
 
 **Цель:** описать тестовую стратегию.
 

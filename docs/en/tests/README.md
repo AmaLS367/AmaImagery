@@ -67,5 +67,18 @@ See [Running Tests](./running-tests.md) for details.
 Current test coverage:
 - Backend: Unit tests, integration, E2E, security
 - Frontend: Unit tests, E2E tests
-- Target: 80%+ coverage for critical paths
+- Target: **80% minimum coverage** for `app/` package
+
+### Coverage Configuration
+
+Coverage is enforced in CI and local development:
+- Minimum threshold: **80%**
+- CI fails if coverage drops below threshold
+- Coverage reports: terminal, HTML, XML
+
+See [Testing Strategy](./testing-strategy.md) for detailed coverage guidelines.
+
+## Documentation
+
+- [Testing Strategy](./testing-strategy.md) - Comprehensive testing strategy, coverage targets, and best practices
 
