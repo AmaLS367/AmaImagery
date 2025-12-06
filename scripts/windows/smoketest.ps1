@@ -22,5 +22,5 @@ if ($resp.sig -and $resp.exp) {
 }
 
 Write-Host "[smoke] file $url"
-Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\genai_smoke.bin" | Out-Null
+Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\amaimagery_smoke.bin" | Out-Null
 Write-Host "[smoke] ok"

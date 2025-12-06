@@ -39,24 +39,6 @@ class TaskStatusResp(BaseModel):
     started_at: Optional[int] = Field(None, description="Task start timestamp")
     completed_at: Optional[int] = Field(None, description="Task completion timestamp")
     
-class ResizeReq(BaseModel):
-    pass
-
-class ResizeResp(BaseModel):
-    pass
-
-class UpscaleReq(BaseModel):
-    pass
-
-class UpscaleResp(BaseModel):
-    pass
-
-class EditReq(BaseModel):
-    pass
-
-class EditResp(BaseModel):
-    pass
-    
 class HealthResponse(BaseModel):
     ok: bool = Field(description="Service health status")
     status: str = Field(description="Detailed status message")

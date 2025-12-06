@@ -36,7 +36,7 @@ export type Settings = {
   banlist: string // строки через запятую/перенос
 }
 
-const KEY = 'genai.settings.v2'
+const KEY = 'amaimagery.settings.v2'
 
 const DEFAULT_PRESETS: Preset[] = [
   { id: 'portrait', name: 'Portrait 896×1152', steps: 28, guidance: 7, width: 896, height: 1152, seed: null, ipScale: 0.6, neg: '' },

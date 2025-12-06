@@ -109,7 +109,7 @@ export default function FAQ() {
       <section className="faq__section faq__section--muted">
         <div className="faq__container faq__contact">
           <div className="faq__contactText">Не нашли ответ?</div>
-          <a className="faq__btn" href="mailto:support@genai.local">Написать в поддержку</a>
+          <a className="faq__btn" href="mailto:support@amaimagery.local">Написать в поддержку</a>
         </div>
       </section>
     </main>

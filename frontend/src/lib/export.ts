@@ -15,7 +15,7 @@ export async function exportHistoryZip(items: HistoryItem[]) {
     } catch {}
   }
   const blobZip = await zip.generateAsync({ type: 'blob' })
-  saveAs(blobZip, 'genai-history.zip')
+  saveAs(blobZip, 'amaimagery-history.zip')
 }
 
 export async function importHistoryZip(file: File): Promise<{ items: HistoryItem[] }> {

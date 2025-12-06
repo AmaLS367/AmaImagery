@@ -18,7 +18,7 @@ Complete guide for developers to set up, develop, and contribute to the AI Image
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd genai
+cd amaimagery
 ```
 
 2. **Set up backend**
@@ -85,7 +85,7 @@ npm run dev
 ## Project Structure
 
 ```
-genai/
+amaimagery/
 ├── app/              # Backend application
 │   ├── api/         # API routes
 │   ├── core/        # Core functionality
@@ -120,7 +120,7 @@ alembic upgrade head
 ### Building for Production
 ```bash
 # Backend
-docker build -t genai-backend .
+docker build -t amaimagery-backend .
 
 # Frontend
 cd frontend && npm run build

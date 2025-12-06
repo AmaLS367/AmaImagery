@@ -303,7 +303,7 @@ Feature flags проверяются:
 
 ```yaml
 scrape_configs:
-  - job_name: 'genai-backend'
+  - job_name: 'amaimagery-backend'
     scrape_interval: 15s
     metrics_path: '/metrics'
     static_configs:
@@ -325,7 +325,7 @@ scrape_configs:
 
 ```yaml
 groups:
-  - name: genai_alerts
+  - name: amaimagery_alerts
     rules:
       - alert: HighGenerationErrorRate
         expr: rate(provider_generation_errors_total[5m]) > 0.1

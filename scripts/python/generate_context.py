@@ -48,7 +48,7 @@ def should_include_file(file_path: str, file: str) -> bool:
 
 def generate_context():
     """Генерирует полный контекст проекта в один файл."""
-    output_file = 'full_project_context_genai.txt'
+    output_file = 'full_project_context_amaimagery.txt'
     
     file_count = 0
     total_size = 0

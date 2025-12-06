@@ -18,7 +18,7 @@
 1. **Клонировать репозиторий**
 ```bash
 git clone <repository-url>
-cd genai
+cd amaimagery
 ```
 
 2. **Настроить бэкенд**
@@ -85,7 +85,7 @@ npm run dev
 ## Структура проекта
 
 ```
-genai/
+amaimagery/
 ├── app/              # Бэкенд приложение
 │   ├── api/         # API роуты
 │   ├── core/        # Основной функционал
@@ -120,7 +120,7 @@ alembic upgrade head
 ### Сборка для Production
 ```bash
 # Бэкенд
-docker build -t genai-backend .
+docker build -t amaimagery-backend .
 
 # Фронтенд
 cd frontend && npm run build

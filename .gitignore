@@ -76,7 +76,7 @@ outputs/
 
 # === Env / secrets ===
 .env
-.env.*
+.env.docker
 .env.local
 .env.dev
 .env.development.local
