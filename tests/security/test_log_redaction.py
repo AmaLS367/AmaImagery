@@ -1,6 +1,9 @@
-from app.core.logging import logger
+import re
+import sys
 from io import StringIO
-import sys, re
+
+from app.core.logging import logger
+
 
 def test_log_redacts_tokens(monkeypatch):
     buf = StringIO()
@@ -8,4 +11,4 @@ def test_log_redacts_tokens(monkeypatch):
     logger.info("Authorization: Bearer abc.def.ghi; Set-Cookie: session=abcdef")
     out = buf.getvalue()
     assert "Authorization: Bearer ****" in out
-    assert re.search(r"Set-Cookie:\s*session=\*{2,}", out)
+    assert re.search(r"Set-Cookie:\s*session=\*{3,}", out)

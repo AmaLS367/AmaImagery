@@ -1,4 +1,7 @@
-import pytest, time
+
+import pytest
+
+
 @pytest.mark.e2e
 def test_health_and_generate(app_client):
     r = app_client.get("/healthz")

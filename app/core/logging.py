@@ -36,7 +36,7 @@ def _console_sink(message: str) -> None:
 
 # -------- secret sanitizer --------
 _SECRET_RX = re.compile(
-    r"(?P<bearer>Authorization:\s*Bearer\s+)[A-Za-z0-9\-\._~\+/]+=*|(?P<key>(?:api|token|secret|password)\s*=\s*)[^,\s]+",
+    r"(?P<bearer>Authorization:\s*Bearer\s+)[A-Za-z0-9\-\._~\+/]+=*|(?P<key>(?:api|token|secret|password)\s*=\s*)[^,\s]+|(?P<cookie>Set-Cookie:\s*session=)[^;\s]+",
     re.IGNORECASE,
 )
 
@@ -85,7 +85,15 @@ def _patch_std_logging():
 # ==============================================
 def _mask_text(text: str) -> str:
     try:
-        return _SECRET_RX.sub(lambda m: (m.group("bearer") or m.group("key") or "") + "***", str(text))
+        def replace_match(m):
+            if m.group("bearer"):
+                return m.group("bearer") + "****"
+            elif m.group("key"):
+                return m.group("key") + "****"
+            elif m.group("cookie"):
+                return m.group("cookie") + "****"
+            return ""
+        return _SECRET_RX.sub(replace_match, str(text))
     except Exception:
         return str(text)
 

@@ -1,4 +1,7 @@
-import pytest, time
+
+import pytest
+
+
 @pytest.mark.redis
 def test_rate_limit_basic(app_client):
     # Сервис может вернуть 429 после порога; если нет лимитера — пропускаем

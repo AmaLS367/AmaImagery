@@ -1,7 +1,7 @@
+import importlib
 import os
 import sys
-import importlib
-import pytest
+
 
 def _reload_safety(nsrm: str):
     os.environ["NSFW_ALLOW"] = nsrm
@@ -13,13 +13,18 @@ def _reload_safety(nsrm: str):
     else:
         importlib.import_module("app.config")
 
-    # Перезагрузить safety
-    if "app.safety" in sys.modules:
-        importlib.reload(sys.modules["app.safety"])
+    # Перезагрузить core.safety (основной модуль)
+    if "app.core.safety" in sys.modules:
+        importlib.reload(sys.modules["app.core.safety"])
     else:
-        importlib.import_module("app.safety")
+        importlib.import_module("app.core.safety")
 
-    return sys.modules["app.safety"]
+    # Очистить кэш safety после перезагрузки
+    safety_module = sys.modules["app.core.safety"]
+    if hasattr(safety_module, "reload_rules"):
+        safety_module.reload_rules()
+
+    return safety_module
 
 def test_blocklist_respects_allow_flag():
     safety = _reload_safety("false")

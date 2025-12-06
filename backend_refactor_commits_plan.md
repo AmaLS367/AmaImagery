@@ -714,7 +714,7 @@
 
 Цель этапа: собрать полноценную тестовую базу.
 
-### ❌ 37. `test(application): add tests for GenerateImageUseCase flows`
+### ✅ 37. `test(application): add tests for GenerateImageUseCase flows`
 
 **Цель:** покрыть ключевой use case.
 

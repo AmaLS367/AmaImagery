@@ -1,7 +1,9 @@
 import fastapi
-from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
+
 from app.main import app
+
 
 def fake_dep():
     raise fastapi.HTTPException(status_code=429, detail="rate limited")
