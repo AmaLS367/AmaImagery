@@ -58,10 +58,10 @@ async def get_db():
         finally:
             await session.close()
 
-def run_dev_migrations() -> None:
+def run_pending_migrations() -> None:
     backend = make_url(settings.database_url).get_backend_name()
     if backend not in ("postgresql", "postgresql+psycopg", "postgresql+psycopg2"):
-        raise RuntimeError("Only PostgreSQL is supported for dev. Set DATABASE_URL to Postgres.")
+        raise RuntimeError("Only PostgreSQL is supported for pending migrations. Set DATABASE_URL to Postgres.")
     r = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError(f"Alembic failed: {r.stdout}\n{r.stderr}")
