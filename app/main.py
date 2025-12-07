@@ -1,14 +1,18 @@
-﻿""" Main FastAPI application module. """
+﻿"""
+Main FastAPI application entry point.
+
+Orchestrates application startup, middleware configuration, and infrastructure initialization.
+"""
 
 from __future__ import annotations
 
 import logging
 import re
-import torch
 from contextlib import asynccontextmanager
+from typing import Any
 
-from typing import Optional
-from fastapi import FastAPI, Request, Depends
+import torch
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -16,43 +20,67 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1 import api_v1
 from app.api.v1.auth.deps import optional_user
-
 from app.config import settings
 from app.core.errors import install_error_handlers
 from app.core.logging import (
-    setup_logging,
     AccessLogMiddleware,
     install_exception_handlers,
     logger,
+    setup_logging,
 )
+from app.domain.models import User
 from app.inference.net_guard import apply as apply_net_guard
+from app.infra.db import run_pending_migrations
+from app.infra.queue import RedisTaskQueue
+from app.infra.redis import close_redis, get_redis, init_redis
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.request_limits import RequestLimitsMiddleware
 from app.services.rate_limiting import RateLimitLoggingMiddleware
-from app.infra.db import run_pending_migrations
-from app.domain.models import User
 
 
 # ==================== Application Lifecycle ====================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Manages the application lifecycle events (startup and shutdown).
+    Initializes infrastructure components (DB, Redis, Queue).
+    """
+    # 1. Database Migrations
     if not settings.debug:
+        logger.info("Running pending database migrations...")
         run_pending_migrations()
+
+    # 2. Infrastructure Initialization
+    await init_redis()
+    
+    # 3. Task Queue Setup
+    # We initialize the queue with the global redis client and attach it to app state
+    # so it can be accessed by dependencies via request.app.state.task_queue
+    redis_client = get_redis()
+    if redis_client:
+        app.state.task_queue = RedisTaskQueue(redis_client)
+        logger.info("TaskQueue initialized.")
+    else:
+        logger.warning("Redis not available. TaskQueue disabled.")
+        app.state.task_queue = None
+
     try:
         yield
     finally:
-        pass
+        # 4. Graceful Shutdown
+        logger.info("Shutting down application...")
+        await close_redis()
 
 
-# ==================== Application Setup ====================
+# ==================== Configuration Helpers ====================
 
-def _configure_network_security() -> None:
+def _configure_system() -> None:
+    """Configures low-level system settings (Network, PyTorch)."""
     if settings.no_network:
         apply_net_guard()
 
-
-def _configure_pytorch() -> None:
+    # PyTorch Optimization
     try:
         torch.set_num_threads(max(1, int(settings.torch_threads)))
         if torch.cuda.is_available():
@@ -63,9 +91,87 @@ def _configure_pytorch() -> None:
         logger.error(f"Failed to configure PyTorch: {e}")
 
 
-# Initialize application
-_configure_network_security()
-_configure_pytorch()
+def _setup_security_logging() -> None:
+    """Configures filters to redact sensitive information from logs."""
+    auth_pattern = re.compile(r"(Authorization:\s*Bearer\s+)([A-Za-z0-9\-\._]+)", re.IGNORECASE)
+
+    class AuthMaskingFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            if not settings.log_mask_auth:
+                return True
+            message = str(record.getMessage())
+            masked_message = auth_pattern.sub(r"\1[REDACTED]", message)
+            record.msg = masked_message
+            return True
+
+    logging.getLogger().addFilter(AuthMaskingFilter())
+
+
+# ==================== Middleware ====================
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Adds security-related headers to all responses."""
+    
+    async def dispatch(self, request: Request, call_next: Any) -> Any:
+        response = await call_next(request)
+
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+
+        if settings.enable_hsts:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=63072000; includeSubDomains; preload",
+            )
+        return response
+
+
+def _setup_middleware(application: FastAPI) -> None:
+    """Registers middleware stack."""
+    
+    # 1. Trusted Host (Security)
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.allowed_hosts,
+    )
+
+    # 2. Security Headers
+    application.add_middleware(SecurityHeadersMiddleware)
+
+    # 3. Request ID (Correlation)
+    application.add_middleware(RequestIDMiddleware)
+
+    # 4. Limits (Shaping)
+    application.add_middleware(RequestLimitsMiddleware)
+
+    # 5. Rate Limit Logging
+    application.add_middleware(RateLimitLoggingMiddleware)
+
+    # 6. Access Logging
+    application.add_middleware(AccessLogMiddleware)
+
+    # 7. CORS
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.frontend_origin],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        allow_credentials=True,
+    )
+
+
+def _setup_exceptions(application: FastAPI) -> None:
+    """Registers error handlers."""
+    if not (settings.is_development or settings.debug):
+        install_exception_handlers(application)
+    install_error_handlers(application)
+
+
+# ==================== Initialization ====================
+
+_configure_system()
+_setup_security_logging()
 setup_logging()
 
 app = FastAPI(
@@ -76,94 +182,15 @@ app = FastAPI(
     docs_url=settings.docs_url,
 )
 
-
-# ==================== Middleware Configuration ====================
-
-def _add_middleware() -> None:
-    # Security middleware (trusted hosts)
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=settings.allowed_hosts,
-    )
-
-    # Correlation first
-    app.add_middleware(RequestIDMiddleware)
-
-    # Request shaping
-    app.add_middleware(RequestLimitsMiddleware)
-
-    # Rate limit logs (uses request_id if logger picks from state)
-    app.add_middleware(RateLimitLoggingMiddleware)
-
-    # Access log after core context is established
-    app.add_middleware(AccessLogMiddleware)
-
-    # CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[settings.frontend_origin],
-        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
-        allow_credentials=True,
-    )
+_setup_middleware(app)
+_setup_exceptions(app)
 
 
-def _setup_error_handlers() -> None:
-    if not (settings.env in ("dev", "development") or settings.debug):
-        install_exception_handlers(app)
-    install_error_handlers(app)
-
-
-# Apply middleware and error handlers
-_add_middleware()
-_setup_error_handlers()
-
-
-# ==================== Security Headers ====================
-
-def _setup_logging_filters() -> None:
-    AUTH_PATTERN = re.compile(r"(Authorization:\s*Bearer\s+)([A-Za-z0-9\-\._]+)", re.IGNORECASE)
-
-    class AuthMaskingFilter(logging.Filter):
-        def filter(self, record: logging.LogRecord) -> bool:
-            if not settings.log_mask_auth:
-                return True
-            message = str(record.getMessage())
-            masked_message = AUTH_PATTERN.sub(r"\1[REDACTED]", message)
-            record.msg = masked_message
-            return True
-
-    logging.getLogger().addFilter(AuthMaskingFilter())
-
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-
-        # Add security headers
-        response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("X-Frame-Options", "DENY")
-        response.headers.setdefault("Referrer-Policy", "no-referrer")
-
-        # Add HSTS header if enabled
-        if settings.enable_hsts:
-            response.headers.setdefault(
-                "Strict-Transport-Security",
-                "max-age=63072000; includeSubDomains; preload",
-            )
-        return response
-
-
-# Apply security configuration
-_setup_logging_filters()
-app.add_middleware(SecurityHeadersMiddleware)
-
-
-# ==================== Application Constants ====================
+# ==================== Routes & Root ====================
 
 @app.get("/", include_in_schema=False)
-async def root(user: Optional[User] = Depends(optional_user)):
-    if user and getattr(user, "is_superuser", False):
+async def root(user: User | None = Depends(optional_user)) -> dict[str, Any] | RedirectResponse:
+    if user and user.is_superuser:
         return RedirectResponse(url="/admin/")
     
     return {
@@ -173,6 +200,4 @@ async def root(user: Optional[User] = Depends(optional_user)):
         "frontend_url": settings.frontend_origin,
     }
 
-
-# ==================== Routes Configuration ====================
 app.include_router(api_v1, prefix="/api/v1")

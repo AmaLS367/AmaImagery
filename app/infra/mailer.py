@@ -1,37 +1,83 @@
+"""
+SMTP implementation of email sender.
+"""
+
+import asyncio
+import logging
+import smtplib
+import ssl
+from collections.abc import Iterable
 from email.message import EmailMessage
-import smtplib, ssl
-from typing import Iterable
+
 from app.config import settings
-from app.core.logging import lg
+from app.domain.providers.interfaces import IEmailSender
 
-def _make_message(subject: str, to: str | Iterable[str], text: str, html: str | None = None) -> EmailMessage:
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = settings.smtp_from
-    msg["To"] = ", ".join(to) if isinstance(to, (list, tuple, set)) else to
-    msg.set_content(text)
-    if html:
-        msg.add_alternative(html, subtype="html")
-    return msg
+logger = logging.getLogger(__name__)
 
-def send_mail(subject: str, to: str, text: str, html: str | None = None) -> None:
-    msg = _make_message(subject, to, text, html)
-    sec = (settings.smtp_security or "starttls").lower()
 
-    try:
+class SmtpEmailSender(IEmailSender):
+    """
+    SMTP implementation of email sender using blocking calls wrapped in asyncio.to_thread.
+    """
+
+    def _make_message(self, subject: str, to: str | Iterable[str], text: str, html: str | None = None) -> EmailMessage:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = settings.smtp_from
+        
+        if isinstance(to, (list, tuple, set)):
+            msg["To"] = ", ".join(to)
+        else:
+            msg["To"] = to
+            
+        msg.set_content(text)
+        if html:
+            msg.add_alternative(html, subtype="html")
+        return msg
+
+    def _send_sync(self, msg: EmailMessage) -> None:
+        """
+        Blocking synchronous SMTP sending logic.
+        """
+        sec = (settings.smtp_security or "starttls").lower()
+        
         if sec == "ssl":
             context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=settings.smtp_timeout_sec, context=context) as s:
+            with smtplib.SMTP_SSL(
+                settings.smtp_host, 
+                settings.smtp_port, 
+                timeout=settings.smtp_timeout_sec, 
+                context=context
+            ) as s:
                 if settings.smtp_user:
                     s.login(settings.smtp_user, settings.smtp_pass or "")
                 s.send_message(msg)
         else:
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=settings.smtp_timeout_sec) as s:
+            with smtplib.SMTP(
+                settings.smtp_host, 
+                settings.smtp_port, 
+                timeout=settings.smtp_timeout_sec
+            ) as s:
                 if sec == "starttls":
                     s.starttls(context=ssl.create_default_context())
                 if settings.smtp_user:
                     s.login(settings.smtp_user, settings.smtp_pass or "")
                 s.send_message(msg)
-        lg("app").bind(scope="mail").info("mail.sent")
-    except Exception as e:
-        lg("app").bind(scope="mail", err=type(e).__name__).error(f"mail.error: {e}")
+
+    async def send_mail(self, subject: str, to: str | list[str], text: str, html: str | None = None) -> bool:
+        """
+        Sends an email asynchronously by running blocking SMTP code in a separate thread.
+        """
+        try:
+            msg = self._make_message(subject, to, text, html)
+            # Offload blocking I/O to a thread to prevent blocking the event loop
+            await asyncio.to_thread(self._send_sync, msg)
+            logger.info("Email sent successfully.")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            return False
+
+
+# Global instance for easy access if needed, though DI is preferred
+mailer = SmtpEmailSender()

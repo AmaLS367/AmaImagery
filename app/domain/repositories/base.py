@@ -55,3 +55,24 @@ class IUserRepository(IRepository[User]):
     
     async def get_by_email_or_username(self, email: str, username: str) -> Optional[User]:
         ...
+
+class IUnitOfWork(Protocol):
+    """
+    Contract for Unit of Work pattern.
+    
+    Ensures atomicity of business transactions across multiple repositories.
+    """
+    users: IUserRepository
+    generations: IGenerationRepository
+    
+    async def __aenter__(self) -> "IUnitOfWork":
+        ...
+        
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        ...
+        
+    async def commit(self) -> None:
+        ...
+        
+    async def rollback(self) -> None:
+        ...
