@@ -1,27 +1,56 @@
-from __future__ import annotations
-import typing as t
-import redis.asyncio as redis
+"""
+Redis client management for infrastructure layer.
+
+Handles connection lifecycle (init/close) and provides a global accessor.
+"""
+
+import logging
+from redis.asyncio import Redis
+
 from app.config import settings
 
-_redis: t.Any = None
+logger = logging.getLogger(__name__)
+
+_redis_client: Redis | None = None
 
 
-def init_redis() -> t.Any:
-    global _redis
-    if _redis is not None:
-        return _redis
+async def init_redis() -> None:
+    global _redis_client
     
     if settings.no_redis:
-        _redis = None
-        return _redis
+        logger.info("Redis disabled via configuration (NO_REDIS=True).")
+        return
 
-    url = settings.redis_url
-    if not url or redis is None:
-        _redis = None
-        return _redis
+    if _redis_client is not None:
+        return
 
-    _redis = redis.from_url(url, encoding="utf-8", decode_responses=True)
-    return _redis
+    logger.info(f"Connecting to Redis at {settings.redis_url}...")
+    try:
+        # Create async Redis client
+        client = Redis.from_url(
+            settings.redis_url, 
+            encoding="utf-8", 
+            decode_responses=True
+        )
+        # Fail fast: Ping to ensure connection works immediately
+        # Note: In redis.asyncio, ping() is a coroutine that returns bool
+        ping_result = await client.ping()  # type: ignore[awaitable-is-not-awaitable]
+        if not ping_result:
+            raise RuntimeError("Redis ping returned False")
+        _redis_client = client
+        logger.info("Redis connection established.")
+    except Exception as e:
+        logger.error(f"Failed to connect to Redis: {e}")
+        raise e
 
-def get_redis() -> t.Any:
-    return init_redis()
+
+async def close_redis() -> None:
+    global _redis_client
+    if _redis_client:
+        await _redis_client.close()
+        logger.info("Redis connection closed.")
+        _redis_client = None
+
+
+def get_redis() -> Redis | None:
+    return _redis_client

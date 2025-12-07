@@ -75,3 +75,39 @@ class IImageProvider(Protocol):
         """
         ...
 
+class IEmailSender(Protocol):
+    """
+    Abstraction for email sending services.
+    """
+    
+    async def send_mail(self, subject: str, to: str | list[str], text: str, html: str | None = None) -> bool:
+        """Sends an email asynchronously."""
+        ...
+
+class ITaskQueue(Protocol):
+    """
+    Contract for asynchronous task queue operations.
+    Decouples task scheduling from the underlying message broker (Redis, RabbitMQ, etc.).
+    """
+    
+    async def enqueue(self, payload: dict[str, Any]) -> str:
+        """Enqueue a task and return its ID."""
+        ...
+    
+    async def get_status(self, task_id: str) -> dict[str, Any] | None:
+        """Retrieve task status and result."""
+        ...
+    
+    async def update_status(
+        self,
+        task_id: str,
+        status: str,
+        result: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Update task status."""
+        ...
+        
+    async def dequeue(self, timeout: float = 0.0) -> str | None:
+        """Wait for and retrieve the next task ID."""
+        ...
