@@ -58,7 +58,7 @@ def _set_refresh_cookie(resp: Response, token: str) -> None:
         secure=settings.refresh_cookie_secure,
         samesite="lax",
         max_age=settings.refresh_ttl_days * 86400,
-        path="/auth",
+        path="/api/v1/auth",
     )
     
 # ========================
@@ -155,7 +155,7 @@ async def login(payload: LoginIn, response: Response):
         settings.refresh_cookie_name,
         "",
         expires=0,
-        path="/auth",
+        path="/api/v1/auth",
         httponly=True,
         secure=settings.refresh_cookie_secure,
         samesite="lax"
@@ -186,7 +186,7 @@ async def logout(request: Request) -> Response:
             pass
 
     resp = Response(status_code=status.HTTP_204_NO_CONTENT)
-    resp.delete_cookie(settings.refresh_cookie_name, path="/auth")
+    resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
     return resp
                   
 
@@ -307,7 +307,7 @@ async def refresh(response: Response, request: Request):
         sec("refresh_reuse_detected", user_id=uid, jti=jti)
         await revoke_family(uid, sid)
         resp = JSONResponse(status_code=401, content={"detail": "reused"})
-        resp.delete_cookie(settings.refresh_cookie_name, path="/auth")
+        resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
         return resp
 
 
@@ -315,7 +315,7 @@ async def refresh(response: Response, request: Request):
         sec("refresh_mismatch", user_id=uid, jti=jti)
         await revoke_family(uid, sid)
         resp = JSONResponse(status_code=401, content={"detail": "rotated"})
-        resp.delete_cookie(settings.refresh_cookie_name, path="/auth")
+        resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
         return resp
 
 
@@ -328,7 +328,7 @@ async def refresh(response: Response, request: Request):
         secure=settings.refresh_cookie_secure,
         samesite="lax",
         max_age=settings.refresh_ttl_days * 86400,
-        path="/auth",
+        path="/api/v1/auth",
     )
     return TokenOut(
         access_token=pair["access"],
