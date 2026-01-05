@@ -1,6 +1,6 @@
 const API_BASE =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
-  (typeof window !== 'undefined' ? `${window.location.origin}` : 'http://127.0.0.1:8000')
+  'http://127.0.0.1:8000'
 
 function getAccessToken(): string | null {
   try { return localStorage.getItem('access_token') } catch { return null }
@@ -101,10 +101,24 @@ export type GeneratePayload = {
   style?: 'realistic' | 'anime'
 }
 
-export type GenerateResponse = {
-  path: string
-  prompt_hash?: string
-  corrections?: Array<[string, string]>
+export type TaskResp = {
+  task_id: string
+  status: string
+}
+
+export type TaskStatusResp = {
+  task_id: string
+  status: string
+  image_path?: string | null
+  image_filename?: string | null
+  image_url?: string | null
+  exp?: number | null
+  sig?: string | null
+  metadata?: Record<string, any> | null
+  error?: string | null
+  created_at?: number | null
+  started_at?: number | null
+  completed_at?: number | null
 }
 
 let headerProvider: (() => Record<string, string>) | null = null
@@ -168,16 +182,13 @@ export async function health(): Promise<boolean> {
   } catch { return false }
 }
 
-export async function generateJSON(body: GeneratePayload, signal?: AbortSignal): Promise<GenerateResponse> {
-  const url = `${API_BASE}/api/v1/images/generate`;
-  const headers = buildHeaders();
-  const requestBody = JSON.stringify(body);
-  
+export async function generateJSON(body: GeneratePayload, signal?: AbortSignal): Promise<TaskResp> {
   try {
     const r = await request('/api/v1/images/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     }, true)
     
     if (!r.ok) {
@@ -199,10 +210,37 @@ export async function generateJSON(body: GeneratePayload, signal?: AbortSignal):
       throw new Error(msg);
     }
     
-    const data = await r.json();;
-    return data;
+    const data = await r.json();
+    return data as TaskResp;
   } catch (e) {
     console.error('Request failed:', e);
+    throw e;
+  }
+}
+
+export async function getTaskStatus(task_id: string, signal?: AbortSignal): Promise<TaskStatusResp> {
+  try {
+    const r = await request(`/api/v1/images/status/${encodeURIComponent(task_id)}`, {
+      method: 'GET',
+      signal,
+    }, true)
+    
+    if (!r.ok) {
+      let msg = `HTTP ${r.status}`;
+      try {
+        const text = await r.text();
+        const j = JSON.parse(text);
+        msg = j.detail || msg;
+      } catch {
+        // ignore parsing errors
+      }
+      throw new Error(msg);
+    }
+    
+    const data = await r.json();
+    return data as TaskStatusResp;
+  } catch (e) {
+    console.error('Failed to get task status:', e);
     throw e;
   }
 }

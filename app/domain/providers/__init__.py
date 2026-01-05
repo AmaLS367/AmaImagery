@@ -12,6 +12,7 @@ from app.domain.providers.interfaces import (
 )
 from app.domain.providers.registry import (
     ProviderRegistry,
+    get_provider_registry,
 )
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     "IImageProvider",
     "Style",
     "ProviderRegistry",
+    "get_provider_registry",
 ]
 

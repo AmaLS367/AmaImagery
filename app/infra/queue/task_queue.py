@@ -15,6 +15,9 @@ from app.metrics.queue import update_queue_size
 
 logger = logging.getLogger(__name__)
 
+# Type alias for TaskQueue interface
+TaskQueue = ITaskQueue
+
 
 class RedisTaskQueue(ITaskQueue):
     """
@@ -141,9 +144,41 @@ class RedisTaskQueue(ITaskQueue):
                 return res  # type: ignore[return-value]
         return None
 
+    async def mark_completed(self, task_id: str, result: dict[str, Any]) -> None:
+        """Mark a task as completed with result data."""
+        await self.update_status(task_id, "completed", result=result)
+    
+    async def mark_failed(self, task_id: str, error: str) -> None:
+        """Mark a task as failed with error message."""
+        await self.update_status(task_id, "failed", error=error)
+    
     async def _update_metrics(self) -> None:
         try:
             queue_len = await self.redis.llen(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
             update_queue_size("generation", queue_len)
         except Exception:
             pass
+
+
+# Global instance cache
+_task_queue_instance: RedisTaskQueue | None = None
+
+
+def get_task_queue() -> RedisTaskQueue:
+    """
+    Factory function that returns a singleton TaskQueue instance.
+    
+    Creates the queue using the global Redis client if available.
+    """
+    global _task_queue_instance
+    
+    if _task_queue_instance is None:
+        from app.infra.redis import get_redis
+        
+        redis_client = get_redis()
+        if redis_client is None:
+            raise RuntimeError("Redis client is not available. Cannot create TaskQueue.")
+        
+        _task_queue_instance = RedisTaskQueue(redis_client)
+    
+    return _task_queue_instance

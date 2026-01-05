@@ -46,28 +46,6 @@ export default function Generate() {
   const activeJob = get(activeId || null)
   const busy = !!activeJob && (activeJob.status === 'running' || activeJob.status === 'queued')
 
-  function normalizeFileName(p?: unknown): string {
-    const s = String(p ?? "");
-    if (!s) return "";
-    const parts = s.split(/[\\/]/);
-    return parts[parts.length - 1] || s;
-  }
-  
-  function buildImageUrl(res: AnyResult): string {
-    // 1) если бэк уже вернул готовый URL
-    if (typeof res.image_url === "string" && res.image_url.length > 0) {
-      return res.image_url as string;
-    }
-    // 2) иначе собираем /file?path=...
-    const name = normalizeFileName(res.path);
-    if (!name) return "";
-    let url = `/api/v1/file?path=${encodeURIComponent(name)}`;
-    // сигнатура и exp — опциональны; добавляем только если оба присутствуют
-    if (typeof res.exp !== "undefined" && typeof res.sig === "string") {
-      url += `&exp=${String(res.exp)}&sig=${encodeURIComponent(res.sig as string)}`;
-    }
-    return url;
-  }
 
   useEffect(() => {
     saveForm({ prompt, neg, steps, guidance, width, height, seed, ipScale, style })
@@ -85,30 +63,52 @@ export default function Generate() {
     if (!activeJob) return;
   
     if (activeJob.status === 'done' && activeJob.result) {
-      const res = activeJob.result as any;
+      const res = activeJob.result;
+      
+      console.log('Job completed, result:', res);
   
-      const raw = String(res.path || '');
-      const name = raw.split(/[\\/]/).pop() || raw;
+      // Используем image_url если доступен (уже содержит полный путь с подписью)
+      if (res.image_url) {
+        console.log('Using image_url:', res.image_url);
+        setImgUrl(res.image_url);
+      } else if (res.image_filename && res.exp && res.sig) {
+        // Строим URL с подписью если есть все необходимые данные
+        const name = res.image_filename;
+        const url = `/api/v1/file?path=${encodeURIComponent(name)}&exp=${String(res.exp)}&sig=${encodeURIComponent(res.sig)}`;
+        console.log('Built signed URL:', url);
+        setImgUrl(url);
+      } else if (res.image_filename) {
+        // Fallback без подписи (может не работать, но попробуем)
+        const name = res.image_filename;
+        const base = `/api/v1/file?path=${encodeURIComponent(name)}`;
+        console.warn('Using URL without signature:', base);
+        setImgUrl(base);
+      } else if (res.image_path) {
+        // Последний fallback - извлекаем имя файла из пути
+        const raw = String(res.image_path);
+        const name = raw.split(/[\\/]/).pop() || raw;
+        const base = `/api/v1/file?path=${encodeURIComponent(name)}`;
+        console.warn('Using image_path fallback:', base);
+        setImgUrl(base);
+      } else {
+        console.error('No image data available in result:', res);
+        setError('Изображение не найдено в ответе сервера');
+      }
   
-      const base = `/api/v1/file?path=${encodeURIComponent(name)}`;
-      const url = (typeof res.exp !== 'undefined' && typeof res.sig === 'string')
-        ? `${base}&exp=${String(res.exp)}&sig=${encodeURIComponent(res.sig)}`
-        : base;
-  
-      setImgUrl(url);
-      setHash(res.prompt_hash ?? null);
-      setCorr(Array.isArray(res.corrections) ? res.corrections : null);
+      // prompt_hash и corrections больше не возвращаются в новом API
+      setHash(null);
+      setCorr(null);
   
       try { localStorage.removeItem(ACTIVE_KEY) } catch {}
       setActiveId(null);
     }
   
     if (activeJob.status === 'error') {
-      setError('Ошибка сервера');
+      setError(activeJob.error || 'Ошибка сервера');
       try { localStorage.removeItem(ACTIVE_KEY) } catch {}
       setActiveId(null);
     }
-  }, [activeJob?.status]);
+  }, [activeJob?.status, activeJob?.result, activeJob?.error]);
   
   
   function goGuide() {

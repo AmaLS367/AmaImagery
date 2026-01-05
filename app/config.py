@@ -224,7 +224,6 @@ class Settings(BaseSettings):
     ui_static_dir: Annotated[Optional[Path], Field(alias="UI_STATIC_DIR")] = None
 
     # --- Paths ---
-    # [FIX] Changed parents[2] to parents[1] to point to project root correctly
     root_dir: Annotated[Path, Field(alias="ROOT_DIR")] = Path(__file__).resolve().parents[1]
     outputs_dir: Annotated[Path, Field(alias="OUTPUTS_DIR")] = Path(__file__).resolve().parents[1] / "outputs"
     ip_adapter_dir: Annotated[Optional[Path], Field(alias="IP_ADAPTER_DIR", validation_alias="IP_ADAPTER_DIR")] = None

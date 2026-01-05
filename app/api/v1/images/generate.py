@@ -11,6 +11,7 @@ from app.infra.uow import get_uow
 from app.config import settings
 from app.core.feature_flags import get_feature_flag_service
 from app.core.exceptions import ValidationException
+from app.core.logging import lg
 from app.domain.schemas import GenReq, TaskResp
 from app.services.rate_limiting import create_rate_limiter
 from app.application.use_cases.generate_image import (
@@ -63,6 +64,15 @@ async def generate_image(
     if not result.success or result.data is None:
         error_msg = result.error or "Unknown error"
         status_code = 400 if ("Blocked" in error_msg or "too large" in error_msg.lower()) else 500
+        
+        lg("app").bind(
+            scope="images",
+            action="generate",
+            user_id=user_id,
+            status_code=status_code,
+            error=error_msg,
+        ).error("Image generation failed")
+        
         raise HTTPException(
             status_code=status_code,
             detail=error_msg,

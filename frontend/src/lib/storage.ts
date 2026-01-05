@@ -27,6 +27,8 @@ export type HistoryItem = {
   tags: string[]
   pinned: boolean
   nsfw: boolean
+  exp?: number
+  sig?: string
 }
 
 export function saveForm(s: FormState) {

@@ -81,3 +81,10 @@ class SmtpEmailSender(IEmailSender):
 
 # Global instance for easy access if needed, though DI is preferred
 mailer = SmtpEmailSender()
+
+
+async def send_mail(subject: str, to: str | list[str], text: str, html: str | None = None) -> bool:
+    """
+    Convenience function that delegates to the global mailer instance.
+    """
+    return await mailer.send_mail(subject, to, text, html)
