@@ -72,7 +72,7 @@ async def my_generations(
         name = Path(r.image_path).name 
         exp = now + ttl
         sig = make_signature(name, exp)
-        image_url = f"/file?path={name}&exp={exp}&sig={sig}"
+        image_url = f"/api/v1/file?path={name}&exp={exp}&sig={sig}"
         items.append(GenItem(
             id=str(r.id),
             image_path=r.image_path,
