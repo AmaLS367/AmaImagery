@@ -32,7 +32,10 @@ def set_client_ip(v: str | None) -> None: _client_ip.set(v)
 def get_client_ip() -> str | None: return _client_ip.get()
 
 def _console_sink(message: str) -> None:
-    print(_mask_text(message), end="")
+    import sys
+    # Write to stderr to avoid buffering issues and ensure visibility
+    sys.stderr.write(_mask_text(message))
+    sys.stderr.flush()
 
 # -------- secret sanitizer --------
 _SECRET_RX = re.compile(
@@ -77,10 +80,13 @@ class InterceptHandler(logging.Handler):
 
 def _patch_std_logging():
     logging.root.handlers = [InterceptHandler()]
-    logging.root.setLevel(logging.INFO)
+    # Set root level to DEBUG to capture all logs, filtering happens at sink level
+    logging.root.setLevel(logging.DEBUG)
     for name in ("uvicorn", "uvicorn.access", "uvicorn.error", "fastapi", "asyncio", "gunicorn"):
         logging.getLogger(name).handlers = [InterceptHandler()]
         logging.getLogger(name).propagate = False
+        # Set to DEBUG to ensure all logs are captured
+        logging.getLogger(name).setLevel(logging.DEBUG)
         
 # ==============================================
 def _mask_text(text: str) -> str:
@@ -114,27 +120,37 @@ def setup_logging(level: str = "INFO") -> None:
         pass
 
     is_dev = bool(getattr(settings, "debug", False))
+    
+    # Parse log level to ensure it's valid
+    try:
+        log_level = level.upper()
+        if log_level not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+            log_level = "INFO"
+    except Exception:
+        log_level = "INFO"
 
-    # Console sink
+    # Console sink - always use stderr for better visibility
     if is_dev:
         # DEV: maximum diagnostics + traceback in output
         _logger.add(
             sink=_console_sink,
-            level=level,
+            level=log_level,
             backtrace=True,
             diagnose=True,
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
                    "<level>{level: <8}</level> | {message} | {extra}\n{exception}",
+            colorize=True,
         )
     else:
         # PROD: clean output without traceback
         _logger.add(
             sink=_console_sink,
-            level=level,
+            level=log_level,
             backtrace=False,
             diagnose=False,
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
                    "<level>{level: <8}</level> | {message} | {extra}",
+            colorize=True,
         )
 
     _patch_std_logging()

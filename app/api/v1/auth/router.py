@@ -218,7 +218,7 @@ async def forgot_password(payload: ForgotIn) -> None:
     html = f"""<p>Use this link to reset your password (valid {ttl} min):</p>
                <p><a href="{link}" target="_blank" rel="noopener">{link}</a></p>"""
 
-    send_mail(subject, user.email, text, html)
+    await send_mail(subject, user.email, text, html)
     lg("app").bind(scope="auth", action="forgot", user=str(user.id)).info("auth.forgot.sent")
 
 # ========= Reset password by token =========

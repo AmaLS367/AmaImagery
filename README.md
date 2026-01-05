@@ -80,7 +80,7 @@ pip install -e .
 # Run migrations
 alembic upgrade head
 
-# Start the server
+# Start the server (includes API and generation worker)
 python run.py
 ```
 

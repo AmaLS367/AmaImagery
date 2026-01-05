@@ -8,8 +8,12 @@ from __future__ import annotations
 
 import logging
 import re
+import warnings
 from contextlib import asynccontextmanager
 from typing import Any
+
+# Suppress pynvml deprecation warning from PyTorch before importing torch
+warnings.filterwarnings("ignore", category=FutureWarning, module="torch.cuda")
 
 import torch
 from fastapi import Depends, FastAPI, Request
@@ -172,7 +176,11 @@ def _setup_exceptions(application: FastAPI) -> None:
 
 _configure_system()
 _setup_security_logging()
-setup_logging()
+setup_logging(level=settings.log_level)
+
+# Test logging to ensure it works
+from app.core.logging import logger
+logger.info("Logging system initialized", extra={"log_level": settings.log_level, "debug": settings.debug})
 
 app = FastAPI(
     title="AmaImagery",
@@ -188,7 +196,7 @@ _setup_exceptions(app)
 
 # ==================== Routes & Root ====================
 
-@app.get("/", include_in_schema=False)
+@app.get("/", include_in_schema=False, response_model=None)
 async def root(user: User | None = Depends(optional_user)) -> dict[str, Any] | RedirectResponse:
     if user and user.is_superuser:
         return RedirectResponse(url="/admin/")

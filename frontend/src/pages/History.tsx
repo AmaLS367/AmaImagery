@@ -150,7 +150,7 @@ export default function History() {
                 ? direct
                 : (hasSig
                     ? `/api/v1/file?path=${encodeURIComponent(name)}&exp=${String((it as any).exp)}&sig=${encodeURIComponent(String((it as any).sig))}`
-                    : `/api/v1/file?path=${encodeURIComponent(name)}`)
+                    : null)
             const promptTxt = String(it.prompt?.prompt ?? '')
             const p = it.params || {}
 

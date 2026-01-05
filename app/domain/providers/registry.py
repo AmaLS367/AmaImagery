@@ -66,3 +66,23 @@ class ProviderRegistry:
         tasks = [check_provider(name, provider) for name, provider in self._providers.items()]
         results = await asyncio.gather(*tasks)
         return dict[str, bool](results)
+
+
+def get_provider_registry() -> ProviderRegistry:
+    """
+    Factory function that creates and configures the provider registry.
+    
+    Registers providers based on settings.providers_enabled and sets the default provider.
+    """
+    from app.config import settings
+    
+    providers: Dict[str, IImageProvider] = {}
+    
+    if "diffusers" in settings.providers_enabled:
+        from app.infra.providers.diffusers_provider import DiffusersProvider
+        providers["diffusers"] = DiffusersProvider()
+    
+    return ProviderRegistry(
+        providers=providers,
+        default_name=settings.providers_default_name,
+    )

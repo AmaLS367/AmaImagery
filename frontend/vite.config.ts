@@ -19,6 +19,11 @@ export default defineConfig(({ mode }) => {
       cors: { origin: '*' },
       hmr: { protocol: 'ws' },
       proxy: {
+        '/api': {
+          target,
+          changeOrigin: true,
+          secure: false,
+        },
         '/generate': { 
           target, 
           changeOrigin: true, 
