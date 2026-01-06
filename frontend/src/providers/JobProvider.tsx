@@ -79,7 +79,9 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
       // Polling статуса задачи
       const pollInterval = 2000 // 2 секунды
       const maxAttempts = 300 // максимум 10 минут (300 * 2 сек)
+      const queuedTimeout = 120000 // 2 минуты для статуса "queued" (если worker не запущен)
       let attempts = 0
+      let queuedStartTime: number | null = null
 
       while (attempts < maxAttempts && !signal.aborted) {
         await new Promise(resolve => setTimeout(resolve, pollInterval))
@@ -92,18 +94,10 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
         try {
           const statusResp = await getTaskStatus(task_id, signal)
           
-          console.log('Task status response:', statusResp);
-          
           // Check if task is completed - can use image_path, image_filename, or image_url
           const hasImage = statusResp.image_path || statusResp.image_filename || statusResp.image_url
           
           if (statusResp.status === 'completed' && hasImage) {
-            console.log('Task completed with image:', { 
-              image_path: statusResp.image_path, 
-              image_filename: statusResp.image_filename, 
-              image_url: statusResp.image_url 
-            });
-            
             // Задача завершена успешно
             setJobs(prev => prev.map(j => j.id === id ? { 
               ...j, 
@@ -151,6 +145,23 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
               finishedAt: Date.now() 
             } : j))
             return
+          } else if (statusResp.status === 'queued') {
+            // Отслеживаем время в статусе "queued"
+            if (queuedStartTime === null) {
+              queuedStartTime = Date.now()
+            } else if (Date.now() - queuedStartTime > queuedTimeout) {
+              // Задача слишком долго в очереди - вероятно worker не запущен
+              setJobs(prev => prev.map(j => j.id === id ? { 
+                ...j, 
+                status: 'error', 
+                error: 'Task stuck in queue. Worker may not be running.', 
+                finishedAt: Date.now() 
+              } : j))
+              return
+            }
+          } else if (statusResp.status === 'running') {
+            // Сбрасываем таймер, если задача начала выполняться
+            queuedStartTime = null
           }
           // Продолжаем polling для статусов 'queued' и 'running'
         } catch (e: any) {

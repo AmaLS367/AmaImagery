@@ -130,18 +130,26 @@ class RedisTaskQueue(ITaskQueue):
         await self.redis.hset(status_key, mapping=updates) # type: ignore
     
     async def dequeue(self, timeout: float = 0.0) -> str | None:
-        if timeout > 0:
-            # brpop returns (key, value) tuple or None
-            res = await self.redis.brpop([self.queue_key], timeout=timeout)  # type: ignore[awaitable-is-not-awaitable]
-            if res:
-                task_id = res[1]  # type: ignore[index]
-                await self._update_metrics()
-                return task_id  # type: ignore[return-value]
-        else:
-            res = await self.redis.rpop(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
-            if res:
-                await self._update_metrics()
-                return res  # type: ignore[return-value]
+        try:
+            if timeout > 0:
+                # brpop requires integer timeout (seconds), not float
+                timeout_int = int(timeout)
+                # brpop returns (key, value) tuple or None
+                res = await self.redis.brpop([self.queue_key], timeout=timeout_int)  # type: ignore[awaitable-is-not-awaitable]
+                if res:
+                    task_id = res[1]  # type: ignore[index]
+                    await self._update_metrics()
+                    logger.debug(f"Dequeued task {task_id} from {self.queue_key}")
+                    return task_id  # type: ignore[return-value]
+            else:
+                res = await self.redis.rpop(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
+                if res:
+                    await self._update_metrics()
+                    logger.debug(f"Dequeued task {res} from {self.queue_key}")
+                    return res  # type: ignore[return-value]
+        except Exception as e:
+            logger.exception(f"Error during dequeue: {e}")
+            raise
         return None
 
     async def mark_completed(self, task_id: str, result: dict[str, Any]) -> None:

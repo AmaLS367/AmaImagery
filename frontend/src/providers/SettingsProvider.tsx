@@ -37,12 +37,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useSettings() {
-  console.log('useSettings hook called');
   const v = useContext(SettingsCtx)
   if (!v) {
-    console.error('SettingsProvider is missing in the component tree');
     throw new Error('SettingsProvider is missing')
   }
-  console.log('Settings context:', v);
   return v
 }

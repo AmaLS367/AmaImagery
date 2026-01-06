@@ -23,9 +23,20 @@ _ip_ready = False
 # --- dtype alignment helpers ---
 def get_unet_dtype(pipe) -> torch.dtype:
     try:
-        return next(pipe.unet.parameters()).dtype
+        dtype = next(pipe.unet.parameters()).dtype
+        # If dtype is float16 but device is CPU, convert to float32
+        if dtype == torch.float16:
+            device = next(pipe.unet.parameters()).device
+            if device.type == "cpu":
+                return torch.float32
+        return dtype
     except Exception:
-        return torch.float16 if getattr(pipe, "device", None) and getattr(pipe.device, "type", "") == "cuda" else torch.float32
+        # Fallback: check device type
+        try:
+            device = next(pipe.unet.parameters()).device
+            return torch.float16 if device.type == "cuda" else torch.float32
+        except Exception:
+            return torch.float32
 
 def align_to_unet_dtype(tensor: torch.Tensor, pipe) -> torch.Tensor:
     try:
@@ -211,7 +222,9 @@ def get_pipeline():
     want_cuda = str(getattr(settings, "device", "cuda")).lower() != "cpu"
     device = "cuda" if (torch.cuda.is_available() and want_cuda) else "cpu"
     _dtype_map = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}
-    dtype = _dtype_map.get(getattr(settings, "torch_dtype", "fp16").lower(), torch.float16)
+    requested_dtype = _dtype_map.get(getattr(settings, "torch_dtype", "fp16").lower(), torch.float16)
+    # CPU doesn't support float16, use float32 instead
+    dtype = torch.float32 if device == "cpu" else requested_dtype
 
     mid = settings.model_id
     offline = _is_offline() 
@@ -281,16 +294,80 @@ def get_pipeline():
         if not mi.exists():
             raise RuntimeError(f"SD1.5 config repo is invalid: missing {mi}")
 
-        pipe = StableDiffusionPipeline.from_single_file(
-            mid,
-            config=str(cfg_dir),  
-            torch_dtype=dtype,
-            vae=vae,
-            use_safetensors=True,
-            safety_checker=None,
-            feature_extractor=None,
-            local_files_only=offline,
-        )
+        # Explicitly load tokenizer and text_encoder to avoid "vocab_file is None" errors
+        # Load from the config repo (runwayml/stable-diffusion-v1-5) which should have them
+        from transformers import CLIPTokenizer, CLIPTextModel
+        
+        tokenizer = None
+        text_encoder = None
+        
+        # Try loading from config directory subdirectories
+        tokenizer_dir = cfg_dir / "tokenizer"
+        text_encoder_dir = cfg_dir / "text_encoder"
+        
+        # Load tokenizer
+        if tokenizer_dir.exists() and (tokenizer_dir / "vocab.json").exists():
+            try:
+                tokenizer = CLIPTokenizer.from_pretrained(
+                    str(tokenizer_dir),
+                    local_files_only=offline
+                )
+            except Exception as e:
+                lg("app").debug(f"Failed to load tokenizer from {tokenizer_dir}: {e}")
+        
+        # If tokenizer not loaded from subdir, try loading from repo
+        if tokenizer is None:
+            try:
+                tokenizer = CLIPTokenizer.from_pretrained(
+                    "openai/clip-vit-large-patch14" if offline else "runwayml/stable-diffusion-v1-5",
+                    subfolder="tokenizer" if not offline else None,
+                    local_files_only=offline
+                )
+            except Exception as e:
+                lg("app").warning(f"Failed to load tokenizer from repo: {e}")
+        
+        # Load text_encoder
+        if text_encoder_dir.exists() and (text_encoder_dir / "config.json").exists():
+            try:
+                text_encoder = CLIPTextModel.from_pretrained(
+                    str(text_encoder_dir),
+                    torch_dtype=dtype,
+                    local_files_only=offline
+                )
+            except Exception as e:
+                lg("app").debug(f"Failed to load text_encoder from {text_encoder_dir}: {e}")
+        
+        # If text_encoder not loaded from subdir, try loading from repo
+        if text_encoder is None:
+            try:
+                text_encoder = CLIPTextModel.from_pretrained(
+                    "openai/clip-vit-large-patch14" if offline else "runwayml/stable-diffusion-v1-5",
+                    subfolder="text_encoder" if not offline else None,
+                    torch_dtype=dtype,
+                    local_files_only=offline
+                )
+            except Exception as e:
+                lg("app").warning(f"Failed to load text_encoder from repo: {e}")
+
+        # Build pipe kwargs - always include tokenizer and text_encoder if loaded
+        # Use repo_id for config instead of local path to avoid "config.json not found" errors
+        # from_single_file will load config from the repo if config path doesn't have all required files
+        pipe_kwargs = {
+            "config": "runwayml/stable-diffusion-v1-5" if not offline else str(cfg_dir),
+            "torch_dtype": dtype,
+            "vae": vae,
+            "use_safetensors": True,
+            "safety_checker": None,
+            "feature_extractor": None,
+            "local_files_only": offline,
+        }
+        
+        if tokenizer is not None:
+            pipe_kwargs["tokenizer"] = tokenizer
+        if text_encoder is not None:
+            pipe_kwargs["text_encoder"] = text_encoder
+
+        pipe = StableDiffusionPipeline.from_single_file(mid, **pipe_kwargs)
 
     else:
         # 2) HF-репозиторий или локальная папка с model_index.json
@@ -319,7 +396,11 @@ def get_pipeline():
     pipe.enable_attention_slicing()
     pipe.enable_vae_slicing()
     pipe.enable_vae_tiling()
-    pipe.enable_xformers_memory_efficient_attention()
+    # xformers is optional - only enable if available
+    try:
+        pipe.enable_xformers_memory_efficient_attention()
+    except (ModuleNotFoundError, ValueError) as e:
+        lg("app").debug(f"xformers not available, skipping: {e}")
 
     pipe.set_progress_bar_config(disable=True)
 

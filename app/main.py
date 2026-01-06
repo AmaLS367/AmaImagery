@@ -8,12 +8,8 @@ from __future__ import annotations
 
 import logging
 import re
-import warnings
 from contextlib import asynccontextmanager
 from typing import Any
-
-# Suppress pynvml deprecation warning from PyTorch before importing torch
-warnings.filterwarnings("ignore", category=FutureWarning, module="torch.cuda")
 
 import torch
 from fastapi import Depends, FastAPI, Request
@@ -40,6 +36,9 @@ from app.infra.redis import close_redis, get_redis, init_redis
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.request_limits import RequestLimitsMiddleware
 from app.services.rate_limiting import RateLimitLoggingMiddleware
+
+import multiprocessing
+from app.entrypoints.generation_worker import main as worker_main
 
 
 # ==================== Application Lifecycle ====================
@@ -69,11 +68,40 @@ async def lifespan(app: FastAPI):
         logger.warning("Redis not available. TaskQueue disabled.")
         app.state.task_queue = None
 
+    # 4. Start generation worker if Redis is available
+    worker_process = None
+    if redis_client and not settings.no_redis:
+        try:
+            logger.info("Starting generation worker process...")
+            worker_process = multiprocessing.Process(target=worker_main, name="GenerationWorker")
+            worker_process.daemon = False
+            worker_process.start()
+            logger.info(f"Generation worker started (PID: {worker_process.pid})")
+            
+            # Store worker process in app state for shutdown
+            app.state.worker_process = worker_process
+        except Exception as e:
+            logger.exception(f"Failed to start worker process: {e}")
+            worker_process = None
+    else:
+        logger.info("Worker not started: Redis not available or disabled via NO_REDIS")
+
     try:
         yield
     finally:
-        # 4. Graceful Shutdown
+        # 5. Graceful Shutdown
         logger.info("Shutting down application...")
+        
+        # Terminate worker process if it was started
+        if worker_process and worker_process.is_alive():
+            logger.info("Terminating worker process...")
+            worker_process.terminate()
+            worker_process.join(timeout=5)
+            if worker_process.is_alive():
+                logger.warning("Worker process did not terminate gracefully, forcing kill...")
+                worker_process.kill()
+                worker_process.join()
+        
         await close_redis()
 
 

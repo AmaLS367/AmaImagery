@@ -237,8 +237,18 @@ export async function getTaskStatus(task_id: string, signal?: AbortSignal): Prom
       throw new Error(msg);
     }
     
-    const data = await r.json();
-    return data as TaskStatusResp;
+    const data = await r.json().catch(() => null)
+    if (!data) {
+      throw new Error('Invalid response format')
+    }
+    
+    // Debug logging
+    if (data.status === 'queued') {
+      const age = data.created_at ? Date.now() - (data.created_at * 1000) : 0
+      console.warn(`Task ${task_id} still queued after ${age}ms`, data)
+    }
+    
+    return data as TaskStatusResp
   } catch (e) {
     console.error('Failed to get task status:', e);
     throw e;
