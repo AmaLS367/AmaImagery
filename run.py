@@ -2,18 +2,36 @@
 Main entry point for the application.
 Starts both the FastAPI server and the generation worker.
 """
+import asyncio
 import multiprocessing
 import signal
 import sys
 import uvicorn
 from app.config import settings
 from app.core.logging import lg
+from app.infra.redis import get_redis, init_redis
 
 
 def run_worker_process():
     """Run the generation worker in a separate process."""
     from app.entrypoints.generation_worker import main
     main()
+
+
+async def check_redis_available() -> bool:
+    """Check if Redis is available for worker."""
+    if settings.no_redis:
+        return False
+    
+    try:
+        await init_redis()
+        redis_client = get_redis()
+        if redis_client:
+            await redis_client.ping()
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def run_server():
@@ -43,27 +61,14 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    # Start worker in a separate process
-    worker_process = multiprocessing.Process(target=run_worker_process, name="GenerationWorker")
-    worker_process.daemon = True  # Worker will terminate when main process exits
-    worker_process.start()
-    
     logger = lg("app")
-    logger.info(f"Generation worker started (PID: {worker_process.pid})")
+    logger.info("Starting application server. Worker will be started via FastAPI lifespan hooks.")
     
     try:
         # Run the server (this blocks)
+        # Worker is started automatically via lifespan hooks in app/main.py
         run_server()
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     finally:
-        # Terminate worker process
-        if worker_process.is_alive():
-            logger.info("Terminating worker process...")
-            worker_process.terminate()
-            worker_process.join(timeout=5)
-            if worker_process.is_alive():
-                logger.warning("Worker process did not terminate gracefully, forcing kill...")
-                worker_process.kill()
-                worker_process.join()
         logger.info("Shutdown complete")

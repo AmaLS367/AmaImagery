@@ -63,22 +63,70 @@ class DiffusersProvider(IImageProvider):
         record_generation_start(provider_name)
         start_time = time.time()
         
+        logger.info(
+            "generation.started",
+            extra={
+                "event_type": "app",
+                "prompt": request.prompt[:50] if request.prompt else None,
+                "width": request.width,
+                "height": request.height,
+                "steps": request.steps,
+            }
+        )
+        
         try:
             # 1. Prepare Pipeline
+            logger.info("generation.resolving_pipeline", extra={"event_type": "app"})
             pipeline, use_ip = self._resolve_pipeline(request)
+            logger.info("generation.pipeline_resolved", extra={"event_type": "app", "use_ip": use_ip})
+            
+            logger.info("generation.getting_device", extra={"event_type": "app"})
             device = self._get_device(pipeline)
+            logger.info("generation.device_obtained", extra={"event_type": "app", "device": str(device)})
+            
+            logger.info("generation.preparing_pipeline_resources", extra={"event_type": "app"})
             unet_dtype = self._prepare_pipeline_resources(pipeline, device, request.seed)
+            logger.info("generation.pipeline_resources_ready", extra={"event_type": "app", "dtype": str(unet_dtype)})
             
             # 2. Prepare Inputs (IP-Adapter, etc.)
+            logger.info("generation.preparing_ip_adapter", extra={"event_type": "app"})
             extra_kwargs = self._prepare_ip_adapter(pipeline, request, use_ip, device, unet_dtype)
+            logger.info("generation.ip_adapter_ready", extra={"event_type": "app", "has_extra_kwargs": bool(extra_kwargs)})
             
             # 3. Calculate dimensions
+            logger.info("generation.resolving_dimensions", extra={"event_type": "app"})
             width, height = self._resolve_dimensions(request, device)
-            steps = request.steps or 28
+            # For CPU, reduce steps to speed up generation for testing
+            base_steps = request.steps or 28
+            if device.type == "cpu":
+                # Reduce steps for CPU to make generation faster (can be increased later)
+                steps = min(base_steps, 10)
+            else:
+                steps = base_steps
+            logger.info("generation.dimensions_resolved", extra={"event_type": "app", "width": width, "height": height, "steps": steps, "device": str(device)})
             
             # 4. Run Inference (Thread-offloaded)
             # We pass a timeout slightly larger than the internal deadline to catch hangs
-            timeout_sec = float(settings.generation_timeout_seconds) + 2.0
+            # For CPU, increase timeout significantly as generation is much slower
+            base_timeout = float(settings.generation_timeout_seconds)
+            if device.type == "cpu":
+                # CPU generation is much slower: ~10 sec/step, so for 28 steps we need ~280 sec minimum
+                # Add extra buffer for safety
+                timeout_sec = max(base_timeout, steps * 12) + 60.0
+            else:
+                timeout_sec = base_timeout + 2.0
+            
+            logger.info(
+                "generation.starting_inference",
+                extra={
+                    "event_type": "app",
+                    "width": width,
+                    "height": height,
+                    "steps": steps,
+                    "device": str(device),
+                    "dtype": str(unet_dtype),
+                }
+            )
             
             result = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -93,6 +141,11 @@ class DiffusersProvider(IImageProvider):
                     extra_kwargs=extra_kwargs
                 ),
                 timeout=timeout_sec,
+            )
+            
+            logger.info(
+                "generation.inference_completed",
+                extra={"event_type": "app"}
             )
             
             # 5. Process Result
@@ -115,12 +168,12 @@ class DiffusersProvider(IImageProvider):
                 record_generation_error(provider_name, "out_of_memory")
                 raise ValueError("CUDA out of memory: reduce width/height or steps")
                 
-            logger.exception("generation.runtime_error", extra={"event_type": "app", "msg": str(e)})
+            logger.exception("generation.runtime_error", extra={"event_type": "app", "error_message": str(e)})
             record_generation_error(provider_name, "runtime_error")
             raise e
             
         except Exception as e:
-            logger.exception("generation.exception", extra={"event_type": "app", "msg": str(e)})
+            logger.exception("generation.exception", extra={"event_type": "app", "error_message": str(e)})
             record_generation_error(provider_name, "exception")
             raise RuntimeError(f"Generation failed: {e}")
             
@@ -149,12 +202,19 @@ class DiffusersProvider(IImageProvider):
     def _resolve_pipeline(self, request: GenerationRequest) -> tuple[Any, bool]:
         use_ip = bool(request.ref_image_b64)
         try:
+            logger.info("generation._resolve_pipeline.calling_get_pipeline", extra={"event_type": "app", "use_ip": use_ip})
             pipeline = self._get_pipeline_with_ip() if use_ip else self._get_pipeline()
+            logger.info("generation._resolve_pipeline.pipeline_obtained", extra={"event_type": "app"})
+            logger.info("generation._resolve_pipeline.setting_quality_mode", extra={"event_type": "app"})
             self._set_quality_mode(pipeline)
+            logger.info("generation._resolve_pipeline.quality_mode_set", extra={"event_type": "app"})
             return pipeline, use_ip
         except Exception as e:
-            logger.warning(f"IP-Adapter unavailable, falling back to standard pipeline: {e}")
-            return self._get_pipeline(), False
+            logger.warning(f"IP-Adapter unavailable, falling back to standard pipeline: {e}", extra={"event_type": "app"})
+            logger.info("generation._resolve_pipeline.fallback_to_standard", extra={"event_type": "app"})
+            pipeline = self._get_pipeline()
+            self._set_quality_mode(pipeline)
+            return pipeline, False
 
     def _get_device(self, pipeline: Any) -> torch.device:
         try:
@@ -163,19 +223,28 @@ class DiffusersProvider(IImageProvider):
             return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def _prepare_pipeline_resources(self, pipeline: Any, device: torch.device, seed: int | None) -> torch.dtype:
+        logger.info("generation._prepare_pipeline_resources.getting_dtype", extra={"event_type": "app"})
         unet_dtype = get_unet_dtype(pipeline)
+        logger.info("generation._prepare_pipeline_resources.dtype_obtained", extra={"event_type": "app", "dtype": str(unet_dtype)})
         
         # Move models to device
+        logger.info("generation._prepare_pipeline_resources.moving_unet", extra={"event_type": "app", "device": str(device)})
         if getattr(pipeline, "unet", None) is not None:
             pipeline.unet.to(device=device, dtype=unet_dtype)
+        logger.info("generation._prepare_pipeline_resources.unet_moved", extra={"event_type": "app"})
+        
+        logger.info("generation._prepare_pipeline_resources.moving_vae", extra={"event_type": "app"})
         if getattr(pipeline, "vae", None) is not None:
             pipeline.vae.to(device=device, dtype=unet_dtype)
+        logger.info("generation._prepare_pipeline_resources.vae_moved", extra={"event_type": "app"})
             
         # Text encoder usually stays on CPU if VRAM is tight, or moves to GPU
         # Ideally this logic matches `net_guard` or `pipeline.py` loading strategy
+        logger.info("generation._prepare_pipeline_resources.moving_text_encoder", extra={"event_type": "app"})
         if getattr(pipeline, "text_encoder", None) is not None:
             target_dev = "cpu" if torch.cuda.is_available() else device
             pipeline.text_encoder.to(device=target_dev, dtype=torch.float32)
+        logger.info("generation._prepare_pipeline_resources.text_encoder_moved", extra={"event_type": "app"})
             
         return unet_dtype
 
@@ -318,13 +387,22 @@ class DiffusersProvider(IImageProvider):
             
             # Execute
             try:
-                return pipeline(**call_kwargs)
-            except TypeError:
+                logger.info("generation.calling_pipeline", extra={"event_type": "app"})
+                result = pipeline(**call_kwargs)
+                logger.info("generation.pipeline_returned", extra={"event_type": "app"})
+                return result
+            except TypeError as e:
                 # Fallback for older diffusers versions that don't support some args
+                logger.warning(f"generation.pipeline_typeerror: {e}, trying fallback", extra={"event_type": "app"})
                 call_kwargs.pop("noise_offset", None)
                 call_kwargs.pop("callback_on_step_end", None)
                 call_kwargs.pop("callback_on_step_end_tensor_inputs", None)
-                return pipeline(**call_kwargs)
+                result = pipeline(**call_kwargs)
+                logger.info("generation.pipeline_fallback_returned", extra={"event_type": "app"})
+                return result
+            except Exception as e:
+                logger.exception("generation.pipeline_error", extra={"event_type": "app", "error_message": str(e)})
+                raise
 
     def _process_result(
         self, 
@@ -339,12 +417,15 @@ class DiffusersProvider(IImageProvider):
         start_time: float
     ) -> GenerationResult:
         
+        logger.info("generation.extracting_image", extra={"event_type": "app"})
         image = self._image_service.extract_image_from_result(result)
         
         from app.utils import prompt_hash
         p_hash = prompt_hash(request.prompt, request.negative_prompt or "")
         
+        logger.info("generation.saving_image", extra={"event_type": "app", "hash": p_hash})
         output_path = self._image_service.save_image(image, p_hash)
+        logger.info("generation.image_saved", extra={"event_type": "app", "path": output_path})
         
         duration = time.time() - start_time
         record_generation_success("diffusers", duration)

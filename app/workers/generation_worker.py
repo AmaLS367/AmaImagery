@@ -31,18 +31,37 @@ async def run_worker() -> None:
     Blocks on queue dequeue with timeout, processes tasks, and updates status.
     Exits only on unrecoverable errors or explicit shutdown.
     """
-    task_queue = get_task_queue()
-    provider_registry = get_provider_registry()
-    
     worker_log = lg("worker")
-    worker_log.info("worker.started")
+    
+    try:
+        task_queue = get_task_queue()
+        worker_log.info("worker.task_queue_obtained")
+    except Exception as e:
+        worker_log.exception("worker.task_queue_error", extra={"error": str(e)})
+        raise
+    
+    try:
+        provider_registry = get_provider_registry()
+        worker_log.info("worker.provider_registry_obtained")
+    except Exception as e:
+        worker_log.exception("worker.provider_registry_error", extra={"error": str(e)})
+        raise
+    
+    worker_log.info("worker.started", extra={"dequeue_timeout": 5.0})
+    empty_polls = 0
     
     while True:
         try:
             task_id = await task_queue.dequeue(timeout=5.0)
             
             if task_id is None:
+                empty_polls += 1
+                if empty_polls % 12 == 0:  # Log every minute (12 * 5s)
+                    worker_log.debug("worker.polling_queue", extra={"empty_polls": empty_polls})
                 continue
+            
+            empty_polls = 0
+            worker_log.info("worker.task_dequeued", extra={"task_id": task_id})
             
             record_queue_dequeue()
             await task_queue.update_status(task_id, "running")
@@ -76,14 +95,42 @@ async def run_worker() -> None:
                     },
                 )
                 
-                result = await provider.generate(gen_request)
+                try:
+                    result = await provider.generate(gen_request)
+                    worker_log.info(
+                        "worker.generation_provider_completed",
+                        extra={
+                            "task_id": task_id,
+                            "image_path": result.image_path,
+                        },
+                    )
+                except Exception as e:
+                    worker_log.exception(
+                        "worker.generation_provider_failed",
+                        extra={
+                            "task_id": task_id,
+                            "error": str(e),
+                        },
+                    )
+                    raise
                 
-                await _save_generation_to_db(
-                    payload=payload,
-                    user_id=user_id,
-                    output_path=result.image_path,
-                    metadata=result.metadata,
-                )
+                try:
+                    await _save_generation_to_db(
+                        payload=payload,
+                        user_id=user_id,
+                        output_path=result.image_path,
+                        metadata=result.metadata,
+                    )
+                    worker_log.info("worker.generation_saved_to_db", extra={"task_id": task_id})
+                except Exception as e:
+                    worker_log.exception(
+                        "worker.generation_db_save_failed",
+                        extra={
+                            "task_id": task_id,
+                            "error": str(e),
+                        },
+                    )
+                    # Don't fail the task if DB save fails, but log it
                 
                 await task_queue.mark_completed(
                     task_id,
@@ -93,6 +140,7 @@ async def run_worker() -> None:
                         "metadata": result.metadata,
                     },
                 )
+                worker_log.info("worker.generation_marked_completed", extra={"task_id": task_id})
                 
                 duration = time.time() - task_start_time
                 record_task_success(task_type=task_type, duration_seconds=duration)

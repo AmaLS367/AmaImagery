@@ -71,9 +71,12 @@ async def get_task_status(
         has_image_path=bool(data.image_path),
         has_image_filename=bool(data.image_filename),
         has_image_url=bool(image_url),
+        created_at=data.created_at,
+        started_at=data.started_at,
+        completed_at=data.completed_at,
     ).info("Task status retrieved")
     
-    return TaskStatusResp(
+    response = TaskStatusResp(
         task_id=data.task_id,
         status=data.status,
         image_path=data.image_path,
@@ -87,4 +90,17 @@ async def get_task_status(
         started_at=data.started_at,
         completed_at=data.completed_at,
     )
+    
+    # Additional debug logging
+    if data.status == "queued":
+        lg("app").warning(
+            "Task still queued",
+            extra={
+                "task_id": task_id,
+                "created_at": data.created_at,
+                "age_seconds": int(time.time()) - (data.created_at or 0) if data.created_at else None,
+            }
+        )
+    
+    return response
 

@@ -88,6 +88,7 @@ dependencies = [
     # ML Libraries
     "huggingface-hub>=0.26.0",
     "tokenizers>=0.20.0",
+    "protobuf>=4.25.0",
     "numpy>=1.26.0",
     "pillow>=11.0.0",
     "fsspec>=2024.10.0",
