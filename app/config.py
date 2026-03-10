@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     # --- Providers ---
     providers_default_name: Annotated[str, Field(alias="PROVIDERS_DEFAULT_NAME")] = "diffusers"
     providers_enabled: Annotated[List[str], Field(alias="PROVIDERS_ENABLED")] = ["diffusers"]
+    comfyui_base_url: Annotated[Optional[str], Field(alias="COMFYUI_BASE_URL")] = None
+    comfyui_websocket_url: Annotated[Optional[str], Field(alias="COMFYUI_WEBSOCKET_URL")] = None
+    comfyui_workflow_path: Annotated[Optional[Path], Field(alias="COMFYUI_WORKFLOW_PATH")] = None
+    comfyui_workflow_map_path: Annotated[Optional[Path], Field(alias="COMFYUI_WORKFLOW_MAP_PATH")] = None
+    comfyui_poll_interval_sec: Annotated[float, Field(alias="COMFYUI_POLL_INTERVAL_SEC")] = 1.5
+    comfyui_timeout_sec: Annotated[int, Field(alias="COMFYUI_TIMEOUT_SEC")] = 300
     
     # --- Feature Flags ---
     feature_flags: Annotated[Dict[str, bool], Field(alias="FEATURE_FLAGS")] = {
@@ -235,6 +241,35 @@ class Settings(BaseSettings):
     def _norm_device(cls, v: Any) -> str:
         s = (str(v) if v is not None else "cuda").strip().lower()
         return "cuda" if s not in ("cpu", "cuda") else s
+
+    @field_validator(
+        "run_in_docker",
+        "debug",
+        "no_network",
+        "no_redis",
+        "enable_hsts",
+        "limits_enabled",
+        "file_signing_enabled",
+        "file_single_use",
+        "nsfw_allow",
+        "refresh_cookie_secure",
+        "hf_hub_offline",
+        "transformers_offline",
+        "diffusers_offline",
+        "metrics_enabled",
+        "gpu_metrics_enabled",
+        mode="before",
+    )
+    @classmethod
+    def _parse_boolish(cls, v: Any) -> Any:
+        if isinstance(v, bool) or v is None:
+            return v
+        s = str(v).strip().lower()
+        if s in {"1", "true", "yes", "on", "debug", "development", "dev"}:
+            return True
+        if s in {"0", "false", "no", "off", "release", "prod", "production"}:
+            return False
+        return v
     
     @field_validator("torch_dtype", mode="before")
     @classmethod
@@ -275,6 +310,8 @@ class Settings(BaseSettings):
         "ip_image_encoder_path",
         "ui_static_dir",
         "nsfw_blocklist_path",
+        "comfyui_workflow_path",
+        "comfyui_workflow_map_path",
         mode="before",
     )
     @classmethod
@@ -305,6 +342,8 @@ class Settings(BaseSettings):
         self.ip_adapter_dir = norm_opt(self.ip_adapter_dir)
         self.ip_image_encoder_path = norm_opt(self.ip_image_encoder_path)
         self.ui_static_dir = norm_opt(self.ui_static_dir)
+        self.comfyui_workflow_path = norm_opt(self.comfyui_workflow_path)
+        self.comfyui_workflow_map_path = norm_opt(self.comfyui_workflow_map_path)
 
         if self.hf_home:
             os.environ["HF_HOME"] = str(self.hf_home)
