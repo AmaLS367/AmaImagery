@@ -75,6 +75,7 @@ The backend is built with **FastAPI** and Python, providing a robust REST API fo
 - [Architecture](./architecture.md) - System architecture and design
 - [API Documentation](./api/overview.md) - Complete API reference
 - [Providers](./providers.md) - Provider abstraction layer
+- [Admin and Readiness](./admin-and-readiness.md) - Admin access, liveness, readiness, and lifecycle contract
 - [Queue and Workers](./queue-and-workers.md) - Task queue and worker architecture
 - [Application Layer](./application.md) - Use cases and business scenario orchestration
 - [Repositories and Unit of Work](./repositories.md) - Data access layer and transaction management

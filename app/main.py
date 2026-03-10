@@ -15,9 +15,11 @@ import torch
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from sqlalchemy.engine.url import make_url
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.admin.router import router as admin_router
 from app.api.v1 import api_v1
 from app.api.v1.auth.deps import optional_user
 from app.config import settings
@@ -31,7 +33,7 @@ from app.core.logging import (
 from app.domain.models import User
 from app.inference.net_guard import apply as apply_net_guard
 from app.infra.db import run_pending_migrations
-from app.infra.queue import RedisTaskQueue
+from app.infra.queue import get_task_queue
 from app.infra.redis import close_redis, get_redis, init_redis
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.request_limits import RequestLimitsMiddleware
@@ -45,24 +47,44 @@ async def lifespan(app: FastAPI):
     Manages the application lifecycle events (startup and shutdown).
     Initializes infrastructure components (DB, Redis, Queue).
     """
-    # 1. Database Migrations
-    if not settings.debug:
+    app.state.infrastructure_status = {
+        "redis": {"status": "disabled" if settings.no_redis else "pending", "error": None},
+        "task_queue": {"backend": "unknown", "ready": False, "error": None},
+        "migrations": {"status": "skipped", "backend": None},
+    }
+
+    backend_name = make_url(settings.database_url).get_backend_name()
+    app.state.infrastructure_status["migrations"] = {"status": "skipped", "backend": backend_name}
+
+    if not settings.debug and backend_name.startswith("postgres"):
         logger.info("Running pending database migrations...")
         run_pending_migrations()
+        app.state.infrastructure_status["migrations"] = {"status": "applied", "backend": backend_name}
+    elif not settings.debug:
+        logger.info("Skipping pending migrations for non-PostgreSQL backend.", extra={"backend": backend_name})
 
-    # 2. Infrastructure Initialization
-    await init_redis()
-    
-    # 3. Task Queue Setup
-    # We initialize the queue with the global redis client and attach it to app state
-    # so it can be accessed by dependencies via request.app.state.task_queue
-    redis_client = get_redis()
-    if redis_client:
-        app.state.task_queue = RedisTaskQueue(redis_client)
-        logger.info("TaskQueue initialized.")
-    else:
-        logger.warning("Redis not available. TaskQueue disabled.")
-        app.state.task_queue = None
+    redis_error: str | None = None
+    try:
+        await init_redis()
+        if get_redis() is not None:
+            app.state.infrastructure_status["redis"] = {"status": "connected", "error": None}
+        elif settings.no_redis:
+            app.state.infrastructure_status["redis"] = {"status": "disabled", "error": None}
+    except Exception as exc:
+        redis_error = str(exc)
+        logger.warning("Redis initialization degraded.", extra={"error": redis_error})
+        app.state.infrastructure_status["redis"] = {"status": "error", "error": redis_error}
+
+    task_queue = get_task_queue()
+    task_queue_backend = "redis" if get_redis() is not None else "memory"
+    task_queue_error = redis_error if task_queue_backend == "memory" and not settings.no_redis else None
+    app.state.task_queue = task_queue
+    app.state.infrastructure_status["task_queue"] = {
+        "backend": task_queue_backend,
+        "ready": True,
+        "error": task_queue_error,
+    }
+    logger.info("TaskQueue initialized.", extra={"backend": task_queue_backend})
 
     try:
         yield
@@ -204,3 +226,4 @@ async def root(user: User | None = Depends(optional_user)) -> dict[str, Any] | R
     }
 
 app.include_router(api_v1, prefix="/api/v1")
+app.include_router(admin_router)

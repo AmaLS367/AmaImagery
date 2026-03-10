@@ -1,0 +1,56 @@
+{% extends "admin/base.html" %}
+{% block title %}Generation {{ payload.task_id if payload else "Not Found" }}{% endblock %}
+{% block content %}
+{% if not generation or not payload %}
+<h2>Generation Not Found</h2>
+<p class="meta">The requested generation does not exist.</p>
+{% else %}
+<h2>Generation {{ payload.task_id }}</h2>
+<div class="grid">
+  <div>
+    <div class="meta">Status</div>
+    <div><span class="pill status-{{ payload.status }}">{{ payload.status }}</span></div>
+  </div>
+  <div>
+    <div class="meta">Provider</div>
+    <div>{{ payload.provider_name or "-" }}</div>
+  </div>
+  <div>
+    <div class="meta">Provider Job ID</div>
+    <div>{{ payload.provider_job_id or "-" }}</div>
+  </div>
+  <div>
+    <div class="meta">Owner</div>
+    <div>{% if owner %}{{ owner.username }} ({{ owner.email }}){% else %}Anonymous or deleted{% endif %}</div>
+  </div>
+  <div>
+    <div class="meta">Created</div>
+    <div>{{ created_at or "-" }}</div>
+  </div>
+  <div>
+    <div class="meta">Started</div>
+    <div>{{ started_at or "-" }}</div>
+  </div>
+  <div>
+    <div class="meta">Completed</div>
+    <div>{{ completed_at or "-" }}</div>
+  </div>
+  <div>
+    <div class="meta">Artifact</div>
+    <div>{% if payload.image_url %}<a href="{{ payload.image_url }}">{{ payload.image_filename }}</a>{% else %}-{% endif %}</div>
+  </div>
+</div>
+<h3>Prompt</h3>
+<pre>{{ prompt_blob | tojson(indent=2) }}</pre>
+<h3>Params</h3>
+<pre>{{ params_blob | tojson(indent=2) }}</pre>
+<h3>Provider State</h3>
+<pre>{{ payload.provider_state | tojson(indent=2) }}</pre>
+<h3>Metadata</h3>
+<pre>{{ payload.metadata | tojson(indent=2) }}</pre>
+{% if payload.error %}
+<h3>Error</h3>
+<pre>{{ payload.error }}</pre>
+{% endif %}
+{% endif %}
+{% endblock %}

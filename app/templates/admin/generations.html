@@ -1,0 +1,48 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin Generations{% endblock %}
+{% block content %}
+<h2>Generations</h2>
+<p class="meta">Total matching rows: {{ total }}. Showing {{ items|length }} starting at offset {{ offset }}.</p>
+<form class="filters" method="get">
+  <input type="text" name="status" value="{{ status_filter }}" placeholder="Filter by status">
+  <input type="text" name="provider" value="{{ provider_filter }}" placeholder="Filter by provider">
+  <input type="hidden" name="limit" value="{{ limit }}">
+  <button type="submit">Apply Filters</button>
+</form>
+<table>
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Status</th>
+      <th>Provider</th>
+      <th>Prompt</th>
+      <th>Created</th>
+      <th>Started</th>
+      <th>Completed</th>
+      <th>Artifact</th>
+      <th>Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td><a href="/admin/generations/{{ item.task_id }}">{{ item.task_id }}</a><br><span class="meta">{{ item.provider_job_id or "No provider job" }}</span></td>
+      <td><span class="pill status-{{ item.status }}">{{ item.status }}</span></td>
+      <td>{{ item.provider_name or "-" }}</td>
+      <td>{{ item.prompt_preview or "-" }}</td>
+      <td>{{ item.created_at or "-" }}</td>
+      <td>{{ item.started_at or "-" }}</td>
+      <td>{{ item.completed_at or "-" }}</td>
+      <td>
+        {% if item.image_url %}
+          <a href="{{ item.image_url }}">Download {{ item.image_filename }}</a>
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>{{ item.error or "-" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

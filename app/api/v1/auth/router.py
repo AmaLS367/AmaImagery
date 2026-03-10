@@ -60,6 +60,26 @@ def _set_refresh_cookie(resp: Response, token: str) -> None:
         max_age=settings.refresh_ttl_days * 86400,
         path="/api/v1/auth",
     )
+
+
+def _set_access_cookie(resp: Response, token: str) -> None:
+    resp.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=settings.refresh_cookie_secure,
+        samesite="lax",
+        max_age=settings.access_ttl_min * 60,
+        path="/",
+    )
+
+
+def _clear_access_cookie(resp: Response) -> None:
+    resp.delete_cookie("access_token", path="/")
+
+
+def _clear_refresh_cookie(resp: Response) -> None:
+    resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
     
 # ========================
 
@@ -150,19 +170,11 @@ async def login(payload: LoginIn, response: Response):
 
     resp = JSONResponse(content=body)
     
-    # Clear old refresh cookie
-    resp.set_cookie(
-        settings.refresh_cookie_name,
-        "",
-        expires=0,
-        path="/api/v1/auth",
-        httponly=True,
-        secure=settings.refresh_cookie_secure,
-        samesite="lax"
-    )
+    _clear_refresh_cookie(resp)
+    _clear_access_cookie(resp)
     
-    # Set new refresh cookie
     _set_refresh_cookie(resp, pair["refresh"])
+    _set_access_cookie(resp, pair["access"])
     lg("app").bind(scope="auth", action="login").info("auth.login")
     sec("login_success", user_id=str(user.id))
     return resp
@@ -186,7 +198,8 @@ async def logout(request: Request) -> Response:
             pass
 
     resp = Response(status_code=status.HTTP_204_NO_CONTENT)
-    resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
+    _clear_refresh_cookie(resp)
+    _clear_access_cookie(resp)
     return resp
                   
 
@@ -307,7 +320,8 @@ async def refresh(response: Response, request: Request):
         sec("refresh_reuse_detected", user_id=uid, jti=jti)
         await revoke_family(uid, sid)
         resp = JSONResponse(status_code=401, content={"detail": "reused"})
-        resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
+        _clear_refresh_cookie(resp)
+        _clear_access_cookie(resp)
         return resp
 
 
@@ -315,7 +329,8 @@ async def refresh(response: Response, request: Request):
         sec("refresh_mismatch", user_id=uid, jti=jti)
         await revoke_family(uid, sid)
         resp = JSONResponse(status_code=401, content={"detail": "rotated"})
-        resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
+        _clear_refresh_cookie(resp)
+        _clear_access_cookie(resp)
         return resp
 
 
@@ -330,6 +345,7 @@ async def refresh(response: Response, request: Request):
         max_age=settings.refresh_ttl_days * 86400,
         path="/api/v1/auth",
     )
+    _set_access_cookie(response, pair["access"])
     return TokenOut(
         access_token=pair["access"],
         expires_in=settings.access_ttl_min * 60,

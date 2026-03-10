@@ -12,24 +12,26 @@ from app.infra.repositories import SqlAlchemyUserRepository
 
 bearer = HTTPBearer(auto_error=False)
 
+
+def _extract_access_token(
+    request: Request,
+    cred: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    if cred and cred.scheme.lower() == "bearer" and cred.credentials:
+        return cred.credentials
+
+    return (
+        request.cookies.get("access_token")
+        or request.cookies.get("Authorization")
+        or request.cookies.get("token")
+    )
+
 async def current_user(
     request: Request,
     cred: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    token: Optional[str] = None
-
-    # Bearer
-    if cred and cred.scheme.lower() == "bearer" and cred.credentials:
-        token = cred.credentials
-
-    # Cookie
-    if not token:
-        token = (
-            request.cookies.get("access_token")
-            or request.cookies.get("Authorization")
-            or request.cookies.get("token")
-        )
+    token = _extract_access_token(request, cred)
 
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -48,18 +50,26 @@ async def current_user(
     return user
 
 async def optional_user(
+  request: Request,
   cred: HTTPAuthorizationCredentials | None = Depends(bearer),
   db: AsyncSession = Depends(get_db),
 ) -> User | None:
-  if not cred or cred.scheme.lower() != "bearer":
+  token = _extract_access_token(request, cred)
+  if not token:
     return None
   try:
-    payload = decode_access_token(cred.credentials)
+    payload = decode_access_token(token)
     user_id = UUID(str(payload["sub"]))
   except Exception:
     return None
   repo = SqlAlchemyUserRepository(db)
   return await repo.get(user_id)
+
+
+async def current_superuser(user: User = Depends(current_user)) -> User:
+    if not getattr(user, "is_superuser", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superuser access required")
+    return user
 
 
 async def get_user_or_ip_identifier(request: Request) -> str:
