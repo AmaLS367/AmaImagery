@@ -32,6 +32,8 @@ class TaskResp(BaseModel):
 class TaskStatusResp(BaseModel):
     task_id: str = Field(description="Unique task identifier")
     status: str = Field(description="Task status (queued, running, completed, failed)")
+    provider_name: Optional[str] = Field(None, description="Selected provider name")
+    provider_state: Optional[Dict[str, Any]] = Field(None, description="Provider-specific execution state")
     image_path: Optional[str] = Field(None, description="Path to generated image (completed only)")
     image_filename: Optional[str] = Field(None, description="Filename of generated image (completed only)")
     image_url: Optional[str] = Field(None, description="Signed URL for image download (completed only)")
