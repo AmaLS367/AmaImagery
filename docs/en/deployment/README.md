@@ -43,6 +43,7 @@ Comprehensive deployment guides for running AI Image Generator in production env
   - [Azure](./cloud/azure.md)
   - [DigitalOcean](./cloud/digitalocean.md)
 - [Maintenance](./maintenance.md) - Ongoing maintenance
+- [Provider Rollout](./provider-rollout.md) - Diffusers and ComfyUI verification profiles and rollout policy
 
 ## Quick Start
 

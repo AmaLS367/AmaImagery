@@ -12,6 +12,8 @@
 
 AI Image Generator is a production-ready platform for generating, editing, and upscaling images using Stable Diffusion models. Features enterprise-grade security, content moderation, and comprehensive monitoring.
 
+The generation runtime supports both `diffusers` and `comfyui` through the same asynchronous API and worker lifecycle. The rollout target is `ComfyUI` as the default provider with `Diffusers` kept as fallback.
+
 ---
 
 ## 📚 Documentation
@@ -60,6 +62,8 @@ cp .env.example .env
 # Start with Docker Compose
 docker compose -f docker/compose.local.yml up
 ```
+
+Provider verification profiles are available in `docker/.env.verify.diffusers.example` and `docker/.env.verify.comfyui.example`.
 
 Access the application:
 - **Frontend:** http://localhost:80

@@ -43,6 +43,7 @@
   - [Azure](./cloud/azure.md)
   - [DigitalOcean](./cloud/digitalocean.md)
 - [Обслуживание](./maintenance.md) - Текущее обслуживание
+- [Rollout провайдеров](./provider-rollout.md) - Профили верификации Diffusers и ComfyUI и rollout policy
 
 ## Быстрый старт
 
