@@ -81,6 +81,9 @@ def get_provider_registry() -> ProviderRegistry:
     if "diffusers" in settings.providers_enabled:
         from app.infra.providers.diffusers_provider import DiffusersProvider
         providers["diffusers"] = DiffusersProvider()
+    if "comfyui" in settings.providers_enabled:
+        from app.infra.providers.comfyui_provider import ComfyUIProvider
+        providers["comfyui"] = ComfyUIProvider()
     
     return ProviderRegistry(
         providers=providers,

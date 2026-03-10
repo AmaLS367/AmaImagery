@@ -8,6 +8,8 @@ from app.domain.providers.interfaces import (
     GenerationRequest,
     GenerationResult,
     IImageProvider,
+    ProviderResult,
+    ProviderSubmission,
     Style,
 )
 from app.domain.providers.registry import (
@@ -19,6 +21,8 @@ __all__ = [
     "GenerationRequest",
     "GenerationResult",
     "IImageProvider",
+    "ProviderResult",
+    "ProviderSubmission",
     "Style",
     "ProviderRegistry",
     "get_provider_registry",

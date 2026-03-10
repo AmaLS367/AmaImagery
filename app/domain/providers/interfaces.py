@@ -1,10 +1,8 @@
 """
 Provider abstraction layer that decouples the application from specific image generation implementations.
-
-Enables switching between diffusers, external APIs, and other providers without changing application code.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol, Optional, Dict, Any, Literal
 
 
@@ -17,6 +15,7 @@ class GenerationRequest:
     Provider-agnostic request DTO that isolates application code from provider-specific parameter formats.
     """
     prompt: str
+    generation_id: str | None = None
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
     width: int = 768
@@ -53,17 +52,44 @@ class GenerationResult:
             raise ValueError("Image path cannot be empty")
 
 
+@dataclass
+class ProviderSubmission:
+    provider_name: str
+    provider_job_id: str | None = None
+    provider_state: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ProviderResult:
+    provider_name: str
+    image_path: str
+    provider_job_id: str | None = None
+    provider_state: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.image_path:
+            raise ValueError("Image path cannot be empty")
+
+
 class IImageProvider(Protocol):
     """
     Abstraction that allows the application to work with any image generation provider
     through a unified interface, enabling provider switching without code changes.
     """
     
-    async def generate(self, request: GenerationRequest) -> GenerationResult:
+    async def submit(self, request: GenerationRequest) -> ProviderSubmission:
         """
-        May raise RuntimeError if provider is unavailable or generation fails.
+        May raise RuntimeError if provider is unavailable or submission fails.
         Raises ValueError if request validation fails at provider level.
         """
+        ...
+
+    async def wait_for_result(self, submission: ProviderSubmission, timeout_sec: float) -> ProviderResult:
+        ...
+
+    async def cancel(self, submission: ProviderSubmission) -> None:
         ...
     
     async def health_check(self) -> bool:
@@ -86,26 +112,11 @@ class IEmailSender(Protocol):
 
 class ITaskQueue(Protocol):
     """
-    Contract for asynchronous task queue operations.
-    Decouples task scheduling from the underlying message broker (Redis, RabbitMQ, etc.).
+    Contract for asynchronous task queue operations used as a transport only.
     """
     
-    async def enqueue(self, payload: dict[str, Any]) -> str:
-        """Enqueue a task and return its ID."""
-        ...
-    
-    async def get_status(self, task_id: str) -> dict[str, Any] | None:
-        """Retrieve task status and result."""
-        ...
-    
-    async def update_status(
-        self,
-        task_id: str,
-        status: str,
-        result: dict[str, Any] | None = None,
-        error: str | None = None,
-    ) -> None:
-        """Update task status."""
+    async def enqueue(self, generation_id: str) -> str:
+        """Enqueue a generation ID and return the same ID."""
         ...
         
     async def dequeue(self, timeout: float = 0.0) -> str | None:
