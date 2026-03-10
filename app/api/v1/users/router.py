@@ -38,10 +38,19 @@ async def patch_settings(payload: SettingsIn, user: User = Depends(current_user)
     return SettingsOut(data=us.data)
 class GenItem(BaseModel):
     id: str
+    task_id: str
+    status: str
+    provider_name: str | None = None
+    provider_state: dict[str, Any] | None = None
     image_path: str
+    image_filename: str | None = None
+    metadata: dict[str, Any] | None = None
+    error: str | None = None
     prompt: dict
     params: dict
     created_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
     exp: int | None = None
     sig: str | None = None
     image_url: str | None = None
@@ -67,17 +76,19 @@ async def my_generations(
         signed = artifacts.build_signed_download(r.image_path)
         items.append(GenItem(
             id=str(r.id),
+            task_id=str(r.id),
+            status=r.status,
+            provider_name=r.provider_name,
+            provider_state=r.provider_state or {},
             image_path=r.image_path or "",
+            image_filename=signed["image_filename"],
+            metadata=r.result or {},
+            error=r.error,
             prompt=r.prompt or {},
-            params={
-                **(r.params or {}),
-                "status": r.status,
-                "provider_name": r.provider_name,
-                "provider_state": r.provider_state or {},
-                "result": r.result or {},
-                "error": r.error,
-            },
+            params=r.params or {},
             created_at=r.created_at.isoformat(),
+            started_at=r.started_at.isoformat() if r.started_at else None,
+            completed_at=r.completed_at.isoformat() if r.completed_at else None,
             exp=signed["exp"],
             sig=signed["sig"],
             image_url=signed["image_url"],

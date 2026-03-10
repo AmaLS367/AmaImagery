@@ -260,10 +260,19 @@ export async function getTaskStatus(task_id: string, signal?: AbortSignal): Prom
 // Экспорт функций под личные ручки
 export type GenerationItem = {
   id: string
+  task_id?: string
+  status?: string
+  provider_name?: string | null
+  provider_state?: Record<string, any> | null
   image_path: string
+  image_filename?: string | null
+  metadata?: Record<string, any> | null
+  error?: string | null
   prompt: any
   params: any
   created_at: string
+  started_at?: string | null
+  completed_at?: string | null
   image_url?: string
   exp?: number
   sig?: string
@@ -291,6 +300,5 @@ export async function patchMySettings(payload: any) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
-
 
 
