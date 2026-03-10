@@ -12,7 +12,13 @@ from typing import Any, Callable, cast
 import torch
 
 from app.config import settings
-from app.domain.providers.interfaces import GenerationRequest, GenerationResult, IImageProvider
+from app.domain.providers.interfaces import (
+    GenerationRequest,
+    GenerationResult,
+    IImageProvider,
+    ProviderResult,
+    ProviderSubmission,
+)
 from app.inference.dtype_helpers import get_unet_dtype, align_to_unet_dtype
 from app.metrics.providers import (
     record_generation_start,
@@ -52,7 +58,31 @@ class DiffusersProvider(IImageProvider):
         
         self._image_service = image_service or ImageProcessingService()
 
+    async def submit(self, request: GenerationRequest) -> ProviderSubmission:
+        return ProviderSubmission(
+            provider_name="diffusers",
+            provider_job_id=request.generation_id,
+            provider_state={"request": _request_to_state(request)},
+        )
+
+    async def wait_for_result(self, submission: ProviderSubmission, timeout_sec: float) -> ProviderResult:
+        request = _state_to_request(submission.provider_state.get("request") or {})
+        result = await self._generate(request)
+        return ProviderResult(
+            provider_name="diffusers",
+            image_path=result.image_path,
+            provider_job_id=submission.provider_job_id,
+            provider_state={"local": True},
+            metadata=result.metadata,
+        )
+
+    async def cancel(self, submission: ProviderSubmission) -> None:
+        return None
+
     async def generate(self, request: GenerationRequest) -> GenerationResult:
+        return await self._generate(request)
+
+    async def _generate(self, request: GenerationRequest) -> GenerationResult:
         """
         Executes the generation pipeline.
         """
@@ -460,3 +490,35 @@ class DiffusersProvider(IImageProvider):
         except Exception:
             pass
         gc.collect()
+
+
+def _request_to_state(request: GenerationRequest) -> dict[str, Any]:
+    return {
+        "generation_id": request.generation_id,
+        "prompt": request.prompt,
+        "negative_prompt": request.negative_prompt,
+        "seed": request.seed,
+        "width": request.width,
+        "height": request.height,
+        "steps": request.steps,
+        "guidance_scale": request.guidance_scale,
+        "ref_image_b64": request.ref_image_b64,
+        "ip_scale": request.ip_scale,
+        "style": request.style,
+    }
+
+
+def _state_to_request(state: dict[str, Any]) -> GenerationRequest:
+    return GenerationRequest(
+        generation_id=state.get("generation_id"),
+        prompt=state["prompt"],
+        negative_prompt=state.get("negative_prompt"),
+        seed=state.get("seed"),
+        width=state.get("width", 768),
+        height=state.get("height", 1152),
+        steps=state.get("steps"),
+        guidance_scale=state.get("guidance_scale"),
+        ref_image_b64=state.get("ref_image_b64"),
+        ip_scale=state.get("ip_scale"),
+        style=state.get("style", "anime"),
+    )
