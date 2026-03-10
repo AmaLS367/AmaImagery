@@ -22,7 +22,7 @@ os.environ.setdefault("NSFW_ALLOW", "false")
 os.environ.setdefault("ALLOWED_HOSTS", '["localhost","127.0.0.1","testserver"]')
 os.environ.setdefault("LIMITS_ENABLED", "true")
 if "DATABASE_URL" not in os.environ:
-    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    os.environ["DATABASE_URL"] = f"sqlite:///{(ROOT / '.pytest-app.db').as_posix()}"
 
 
 @pytest.fixture(autouse=True)
@@ -37,12 +37,23 @@ def _tmp_outputs(monkeypatch):
 def app_client():
     try:
         from app.main import app
+        from app.domain.models import Base
+        from app.infra.db import async_engine
     except Exception as e:
         pytest.skip(f"Failed to import app.main: {e}")
     try:
+        import asyncio
         from starlette.testclient import TestClient
 
-        return TestClient(app)
+        async def _reset_schema() -> None:
+            async with async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+                await conn.run_sync(Base.metadata.create_all)
+
+        asyncio.run(_reset_schema())
+
+        with TestClient(app) as client:
+            yield client
     except Exception as e:
         pytest.skip(f"TestClient unavailable: {e}")
 
