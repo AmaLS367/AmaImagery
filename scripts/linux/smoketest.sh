@@ -33,7 +33,23 @@ else:
 auth_headers=()
 
 echo "[smoke] healthz"
-curl -fsS "$API/api/v1/healthz" >/dev/null
+HEALTH=$(curl -fsS "$API/api/v1/health")
+HEALTH_DEFAULT_PROVIDER=$(printf '%s' "$HEALTH" | json_field providers.default_provider)
+echo "[smoke] health default provider: ${HEALTH_DEFAULT_PROVIDER:-unknown}"
+
+READINESS=$(curl -fsS "$API/api/v1/healthz")
+GEN_READY=$(printf '%s' "$READINESS" | json_field generation_ready)
+DEFAULT_PROVIDER_USABLE=$(printf '%s' "$READINESS" | json_field default_provider_usable)
+if [[ "$GEN_READY" != "True" && "$GEN_READY" != "true" ]]; then
+  echo "$READINESS"
+  echo "Generation readiness is false"
+  exit 1
+fi
+if [[ "$DEFAULT_PROVIDER_USABLE" != "True" && "$DEFAULT_PROVIDER_USABLE" != "true" ]]; then
+  echo "$READINESS"
+  echo "Default provider is not usable"
+  exit 1
+fi
 
 echo "[smoke] register"
 register_status=$(curl -sS -o /tmp/ama_smoke_register.json -w "%{http_code}" \

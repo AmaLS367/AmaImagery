@@ -9,7 +9,15 @@ $SmokePassword = if ($env:SMOKE_PASSWORD) { $env:SMOKE_PASSWORD } else { "pass12
 $SmokeUsername = if ($env:SMOKE_USERNAME) { $env:SMOKE_USERNAME } else { "smoke$stamp" }
 
 Write-Host "[smoke] healthz"
-Invoke-RestMethod -Uri "$Api/api/v1/healthz" -Method GET | Out-Null
+$health = Invoke-RestMethod -Uri "$Api/api/v1/health" -Method GET
+Write-Host "[smoke] health default provider: $($health.providers.default_provider)"
+$readiness = Invoke-RestMethod -Uri "$Api/api/v1/healthz" -Method GET
+if (-not $readiness.generation_ready) {
+  throw "Generation readiness is false: $($readiness | ConvertTo-Json -Depth 6)"
+}
+if (-not $readiness.default_provider_usable) {
+  throw "Default provider is not usable: $($readiness | ConvertTo-Json -Depth 6)"
+}
 
 Write-Host "[smoke] register"
 try {

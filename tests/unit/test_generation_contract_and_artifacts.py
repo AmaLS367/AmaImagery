@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.api.v1.users.router import my_generations
+from app.domain.generation_lifecycle import build_generation_public_payload
 from app.application.use_cases.get_generation_status import (
     GetGenerationStatusCommand,
     GetGenerationStatusUseCase,
@@ -76,3 +77,28 @@ def test_artifact_service_detects_canonical_path(tmp_path):
 
     assert artifacts.is_canonical_path("gen-1", canonical_path)
     assert artifacts.persist_local("gen-1", canonical_path) == str(canonical_path)
+
+
+def test_non_terminal_generation_hides_artifact_fields(tmp_path):
+    artifacts = ArtifactService(outputs_dir=tmp_path)
+    payload = build_generation_public_payload(
+        SimpleNamespace(
+            id="gen-2",
+            status="running",
+            provider_name="comfyui",
+            provider_job_id="prompt-2",
+            provider_state={"prompt_id": "prompt-2"},
+            result={},
+            error=None,
+            image_path="C:/outputs/gen-2.png",
+            created_at=None,
+            started_at=None,
+            completed_at=None,
+        ),
+        artifacts=artifacts,
+    )
+
+    assert payload.status == "running"
+    assert payload.image_path is None
+    assert payload.image_filename is None
+    assert payload.image_url is None

@@ -10,8 +10,15 @@ from typing import Any
 from app.config import settings
 from app.core.events import GenerationFailedEvent, ImageGeneratedEvent, get_event_bus
 from app.core.logging import lg
+from app.domain.generation_lifecycle import COMPLETED, FAILED, RUNNING, is_terminal_status
 from app.domain.models import Generation
-from app.domain.providers import GenerationRequest, ProviderResult, ProviderSubmission, get_provider_registry
+from app.domain.providers import (
+    GenerationRequest,
+    ProviderOperationError,
+    ProviderResult,
+    ProviderSubmission,
+    get_provider_registry,
+)
 from app.files.artifacts import get_artifact_service
 from app.infra.queue import get_task_queue
 from app.infra.uow import get_uow
@@ -51,7 +58,7 @@ async def run_worker() -> None:
                 record_task_error(task_type=task_type, error_type="missing_generation")
                 continue
 
-            if generation.status in {"completed", "failed"}:
+            if is_terminal_status(generation.status):
                 worker_log.info(
                     "worker.task_already_terminal",
                     extra={"task_id": generation_id, "status": generation.status},
@@ -59,16 +66,19 @@ async def run_worker() -> None:
                 continue
 
             user_id = str(generation.user_id) if generation.user_id else None
+            submission: ProviderSubmission | None = None
+            provider_name: str | None = None
 
             try:
                 provider = provider_registry.get_default()
                 provider_name = _provider_name(provider)
                 await _update_generation(
                     generation_id,
-                    status="running",
+                    status=RUNNING,
                     provider_name=provider_name,
                     started_at=datetime.now(timezone.utc),
                     error=None,
+                    completed_at=None,
                 )
                 generation = await _load_generation(generation_id)
                 if generation is None:
@@ -88,7 +98,7 @@ async def run_worker() -> None:
 
                 await _update_generation(
                     generation_id,
-                    status="completed",
+                    status=COMPLETED,
                     provider_name=result.provider_name,
                     provider_job_id=result.provider_job_id,
                     provider_state=result.provider_state,
@@ -108,13 +118,54 @@ async def run_worker() -> None:
                         metadata=result.metadata,
                     )
                 )
+            except ProviderOperationError as exc:
+                failure_state = exc.as_persistable_state()
+                if submission is not None:
+                    failure_state = {
+                        **dict(submission.provider_state or {}),
+                        **failure_state,
+                    }
+                await _update_generation(
+                    generation_id,
+                    status=FAILED,
+                    provider_name=exc.provider_name or locals().get("provider_name"),
+                    provider_job_id=exc.provider_job_id or (submission.provider_job_id if submission else None),
+                    provider_state=failure_state,
+                    image_path=None,
+                    error=exc.message,
+                    completed_at=datetime.now(timezone.utc),
+                )
+                record_task_error(task_type=task_type, error_type=exc.error_code)
+                await get_event_bus().publish(
+                    GenerationFailedEvent(
+                        task_id=generation_id,
+                        user_id=user_id or "anon",
+                        error=exc.message,
+                        error_type=exc.error_code,
+                    )
+                )
+                worker_log.warning(
+                    "worker.generation_failed",
+                    extra={
+                        "task_id": generation_id,
+                        "provider_name": exc.provider_name,
+                        "provider_job_id": exc.provider_job_id,
+                        "error": exc.message,
+                        "error_code": exc.error_code,
+                        "stage": exc.stage,
+                    },
+                )
             except Exception as exc:
                 error_msg = str(exc)
                 error_type = type(exc).__name__
+                provider_state = dict(submission.provider_state or {}) if submission else {}
                 await _update_generation(
                     generation_id,
-                    status="failed",
-                    provider_name=locals().get("provider_name"),
+                    status=FAILED,
+                    provider_name=provider_name,
+                    provider_job_id=submission.provider_job_id if submission else None,
+                    provider_state=provider_state,
+                    image_path=None,
                     error=error_msg,
                     completed_at=datetime.now(timezone.utc),
                 )

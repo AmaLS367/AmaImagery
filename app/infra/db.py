@@ -1,11 +1,14 @@
 from __future__ import annotations
-from sqlalchemy.ext.asyncio.session import AsyncSession
 
 import subprocess
 import sys
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
+from typing import Any
+
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
+
 from app.config import settings
 
 
@@ -25,10 +28,27 @@ def _make_async_url(url: str) -> str:
     return url
 
 
+def _build_engine_kwargs(url: str) -> dict[str, Any]:
+    backend = make_url(url).get_backend_name()
+    kwargs: dict[str, Any] = {
+        "pool_pre_ping": True,
+        "echo": False,
+    }
+
+    if backend == "sqlite":
+        # File-backed SQLite is heavily used in local tests. A pooled async
+        # connection can keep the database locked between fixture resets on
+        # Windows, so prefer one-shot connections for sqlite URLs.
+        kwargs["connect_args"] = {"check_same_thread": False, "timeout": 5}
+        kwargs["poolclass"] = NullPool
+        kwargs["pool_pre_ping"] = False
+
+    return kwargs
+
+
 async_engine = create_async_engine(
     _make_async_url(settings.database_url),
-    pool_pre_ping=True,
-    echo=False,
+    **_build_engine_kwargs(settings.database_url),
 )
 
 AsyncSessionLocal = async_sessionmaker[AsyncSession](

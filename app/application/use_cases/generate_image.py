@@ -3,10 +3,12 @@ Use case for image generation.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Literal
 from uuid import UUID
 
 from app.application.use_cases.base import Command, UseCaseResult, UseCase
+from app.domain.generation_lifecycle import FAILED, QUEUED
 from app.domain.providers import ProviderRegistry, get_provider_registry
 from app.infra.queue import TaskQueue, get_task_queue
 from app.infra.uow import SqlAlchemyUnitOfWork
@@ -120,7 +122,7 @@ class GenerateImageUseCase:
                 user_id=None if command.user_id == "anon" else getattr(user, "id", None),
                 prompt=prompt_blob,
                 params=params,
-                status="queued",
+                status=QUEUED,
                 provider_name=provider_name,
                 provider_state={},
                 result={},
@@ -137,8 +139,9 @@ class GenerateImageUseCase:
                 async with self.uow:
                     await self.uow.generations.update_fields(
                         generation.id,
-                        status="failed",
+                        status=FAILED,
                         error=f"Failed to enqueue task: {exc}",
+                        completed_at=datetime.now(timezone.utc),
                     )
                 raise
 
@@ -155,7 +158,7 @@ class GenerateImageUseCase:
             
             return UseCaseResult(
                 success=True,
-                data=GenerateImageResult(task_id=task_id, status="queued"),
+                data=GenerateImageResult(task_id=task_id, status=QUEUED),
             )
             
         except ValueError as e:

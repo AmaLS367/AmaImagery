@@ -26,9 +26,8 @@ async def generation_repo(test_db_session: AsyncSession):
 async def test_user(test_db_session: AsyncSession):
     """Create a test user for generation tests."""
     user_id = uuid4()
-    # For SQLite, convert UUID to string
     user = User(
-        id=str(user_id),
+        id=user_id,
         email="gen@example.com",
         username="genuser",
         password_hash="hashed",
@@ -46,8 +45,8 @@ async def test_generation_repository_add_and_get(
     """Test adding and retrieving a generation."""
     gen_id = uuid4()
     generation = Generation(
-        id=str(gen_id),
-        user_id=str(test_user.id),
+        id=gen_id,
+        user_id=test_user.id,
         prompt={"text": "test prompt", "negative": "test negative"},
         params={},
         image_path="test/path.png",
@@ -72,16 +71,16 @@ async def test_generation_repository_list_by_user(
     """Test listing generations by user."""
     # Create multiple generations
     gen1 = Generation(
-        id=str(uuid4()),
-        user_id=str(test_user.id),
+        id=uuid4(),
+        user_id=test_user.id,
         prompt={"text": "prompt 1"},
         params={},
         image_path="path1.png",
         created_at=datetime(2024, 1, 1),
     )
     gen2 = Generation(
-        id=str(uuid4()),
-        user_id=str(test_user.id),
+        id=uuid4(),
+        user_id=test_user.id,
         prompt={"text": "prompt 2"},
         params={},
         image_path="path2.png",
@@ -120,15 +119,15 @@ async def test_generation_repository_count_by_user(
     
     # Add some generations
     gen1 = Generation(
-        id=str(uuid4()),
-        user_id=str(test_user.id),
+        id=uuid4(),
+        user_id=test_user.id,
         prompt={"text": "prompt 1"},
         params={},
         image_path="path1.png",
     )
     gen2 = Generation(
-        id=str(uuid4()),
-        user_id=str(test_user.id),
+        id=uuid4(),
+        user_id=test_user.id,
         prompt={"text": "prompt 2"},
         params={},
         image_path="path2.png",
@@ -155,8 +154,8 @@ async def test_generation_repository_update_status(
     """Test updating generation status."""
     gen_id = uuid4()
     generation = Generation(
-        id=str(gen_id),
-        user_id=str(test_user.id),
+        id=gen_id,
+        user_id=test_user.id,
         prompt={"text": "test prompt"},
         params={},
         image_path="test/path.png",
@@ -189,15 +188,15 @@ async def test_generation_repository_list_with_filters(
 ):
     """Test listing generations with filters."""
     gen1 = Generation(
-        id=str(uuid4()),
-        user_id=str(test_user.id),
+        id=uuid4(),
+        user_id=test_user.id,
         prompt={"text": "prompt 1"},
         params={},
         image_path="path1.png",
     )
     gen2 = Generation(
-        id=str(uuid4()),
-        user_id=str(test_user.id),
+        id=uuid4(),
+        user_id=test_user.id,
         prompt={"text": "prompt 2"},
         params={},
         image_path="path2.png",
@@ -224,8 +223,8 @@ async def test_generation_repository_delete(
     """Test deleting a generation."""
     gen_id = uuid4()
     generation = Generation(
-        id=str(gen_id),
-        user_id=str(test_user.id),
+        id=gen_id,
+        user_id=test_user.id,
         prompt={"text": "delete me"},
         params={},
         image_path="delete/path.png",
@@ -242,4 +241,3 @@ async def test_generation_repository_delete(
     
     deleted = await generation_repo.get(str(gen_id))
     assert deleted is None
-
