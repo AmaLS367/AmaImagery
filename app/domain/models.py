@@ -49,9 +49,22 @@ class Generation(Base):
     
     # Stores technical params: width, height, steps, seed, model_id, etc.
     params: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)   
-    
-    image_path: Mapped[str] = mapped_column(Text, nullable=False)
+
+    status: Mapped[str] = mapped_column(String(32), default="queued", nullable=False, index=True)
+    provider_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    provider_job_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    provider_state: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
+    result: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), index=True)
+    started_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 # Composite index for optimizing user history queries
 Index("ix_generations_user_time", Generation.user_id, Generation.created_at.desc())

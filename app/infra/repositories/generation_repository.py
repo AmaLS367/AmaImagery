@@ -76,6 +76,16 @@ class SqlAlchemyGenerationRepository(IGenerationRepository):
         if entity and hasattr(entity, 'status'):
             setattr(entity, 'status', status)  # type: ignore[attr-defined]
             await self.session.flush()
+
+    async def update_fields(self, id: UUID | str, **fields: Any) -> Generation | None:
+        entity = await self.session.get(Generation, id)
+        if entity is None:
+            return None
+        for key, value in fields.items():
+            if hasattr(entity, key):
+                setattr(entity, key, value)
+        await self.session.flush()
+        return entity
     
     async def count_by_user(self, user_id: UUID | str) -> int:
         stmt = select(func.count()).select_from(Generation).filter(
