@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- Core / Environment ---
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # --- Providers ---
     providers_default_name: Annotated[str, Field(alias="PROVIDERS_DEFAULT_NAME")] = "diffusers"
-    providers_enabled: Annotated[List[str], Field(alias="PROVIDERS_ENABLED")] = ["diffusers"]
+    providers_enabled: Annotated[List[str], NoDecode, Field(alias="PROVIDERS_ENABLED")] = ["diffusers"]
     comfyui_base_url: Annotated[Optional[str], Field(alias="COMFYUI_BASE_URL")] = None
     comfyui_websocket_url: Annotated[Optional[str], Field(alias="COMFYUI_WEBSOCKET_URL")] = None
     comfyui_workflow_path: Annotated[Optional[Path], Field(alias="COMFYUI_WORKFLOW_PATH")] = None
