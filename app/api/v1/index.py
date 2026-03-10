@@ -13,7 +13,7 @@ from app.api.v1.health import router as health_router
 api_v1 = APIRouter()
 
 api_v1.include_router(auth_router, prefix="/auth", tags=["auth"])
-api_v1.include_router(auth_users_router, prefix="/auth/users", tags=["auth"])
+api_v1.include_router(auth_users_router, prefix="/users", tags=["users"])
 api_v1.include_router(files_router, tags=["files"])
 api_v1.include_router(generate_router, prefix="/images", tags=["images"])
 api_v1.include_router(status_router, prefix="/images", tags=["images"])

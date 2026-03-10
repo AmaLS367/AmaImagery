@@ -122,7 +122,7 @@ class LoginOut(BaseModel):
     token_type: Literal["bearer"] = "bearer"
     expires_in: int  # seconds
 
-@router.post("/me", response_model=LoginOut, dependencies=[Depends(create_rate_limiter(limit=5, window_sec=60))])
+@router.post("/login", response_model=LoginOut, dependencies=[Depends(create_rate_limiter(limit=5, window_sec=60))])
 async def login(payload: LoginIn, response: Response):
     ident = payload.identifier.strip()
     email_norm = normalize_email(ident)

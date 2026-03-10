@@ -32,9 +32,12 @@ class NSFWCheckResponse(BaseModel):
 async def set_nsfw(toggle: NSFWToggle, user=Depends(current_user)):
     uow = get_uow()
     async with uow:
-        user.nsfw_allow = bool(toggle.allow)
-        await uow.users.add(user)
-    return {"ok": True, "nsfw_allow": user.nsfw_allow}
+        settings_row = await uow.users.get_settings(user.id) or UserSettings(user_id=user.id, data={})
+        payload = dict(settings_row.data or {})
+        payload["nsfw_allow"] = bool(toggle.allow)
+        settings_row.data = payload
+        await uow.users.save_settings(settings_row)
+    return {"ok": True, "nsfw_allow": bool(toggle.allow)}
 
 @router.post("/check", response_model=NSFWCheckResponse)
 def check_text(req: NSFWCheckRequest):
