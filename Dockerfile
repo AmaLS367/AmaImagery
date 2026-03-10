@@ -35,6 +35,17 @@ RUN mkdir -p /app/app \
     && pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir .
 
+# Validate and complete the runtime dependency set explicitly.
+RUN pip install --no-cache-dir \
+    asyncpg \
+    aiosqlite \
+    protobuf \
+    coverage \
+    pytest-asyncio \
+    pytest-cov
+
+RUN python -c "import aiosqlite, asyncpg, google.protobuf"
+
 # Copy only runtime files needed by the API and worker.
 COPY app ./app
 COPY migrations ./migrations
