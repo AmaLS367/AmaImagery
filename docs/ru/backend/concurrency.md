@@ -72,12 +72,12 @@ HTTP Handler (FastAPI) → Use Case → UnitOfWork → Repository → Async DB
 
 5. **TaskQueue** - Асинхронная обработка задач
    - Тяжелые операции ставятся в очередь
-   - Статус отслеживается в Redis
+   - Redis используется только как транспортная очередь
 
 6. **Worker Process** - Фоновая обработка
    - Берет задачи из очереди
    - Выполняет тяжелые операции (ML inference, обработка изображений)
-   - Обновляет статус задачи
+   - Обновляет lifecycle-состояние в PostgreSQL
 
 ## Тяжелые операции
 
@@ -98,7 +98,7 @@ HTTP Handler (FastAPI) → Use Case → UnitOfWork → Repository → Async DB
 - **Валидация** - Проверка входных данных, бизнес-правила
 - **Аутентификация** - Проверка токенов, поиск пользователя
 - **Легкие запросы** - Простые запросы к БД (информация о пользователе, настройки)
-- **Проверка статуса** - Получение статуса задачи из очереди
+- **Проверка статуса** - Получение статуса задачи из DB-backed lifecycle
 - **Форматирование ответа** - Трансформация данных для API ответов
 
 ## Правила и лучшие практики
@@ -124,7 +124,7 @@ HTTP Handler (FastAPI) → Use Case → UnitOfWork → Repository → Async DB
 ### Очередь задач
 
 - **Назначение**: Разделить HTTP запросы и тяжелую обработку
-- **Реализация**: Очередь на основе Redis с отслеживанием статуса
+- **Реализация**: Очередь на основе Redis с хранением lifecycle в базе данных
 - **Жизненный цикл задачи**: `queued` → `running` → `completed`/`failed`
 
 ### Воркеры
@@ -137,7 +137,7 @@ HTTP Handler (FastAPI) → Use Case → UnitOfWork → Repository → Async DB
 
 ```python
 # Handler: Быстрый ответ
-@router.post("/generate")
+@router.post("/api/v1/images/generate")
 async def generate(request: GenReq):
     use_case = GenerateImageUseCase(uow=get_uow())
     result = await use_case(GenerateImageCommand(...))
@@ -146,10 +146,12 @@ async def generate(request: GenReq):
 # Worker: Тяжелая обработка
 async def run_worker():
     while True:
-        task_id = await task_queue.dequeue()
+        generation_id = await task_queue.dequeue()
         # Тяжелый ML inference здесь
-        result = await provider.generate(...)
-        await task_queue.mark_completed(task_id, result)
+        generation = await uow.generations.get(generation_id)
+        submission = await provider.submit(...)
+        result = await provider.wait_for_result(submission, timeout_sec=...)
+        await uow.generations.update_fields(generation_id, status="completed", result=result.metadata)
 ```
 
 ## Безопасность Event Loop
