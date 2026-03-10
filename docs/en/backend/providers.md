@@ -37,12 +37,14 @@ Protocol interface that all image generation providers must implement:
 
 ```python
 class IImageProvider(Protocol):
-    async def generate(request: GenerationRequest) -> GenerationResult
+    async def submit(request: GenerationRequest) -> ProviderSubmission
+    async def wait_for_result(submission: ProviderSubmission, timeout_sec: float) -> ProviderResult
+    async def cancel(submission: ProviderSubmission) -> None
     async def health_check() -> bool
     def supports_features(features: set[str]) -> bool
 ```
 
-**Purpose:** Defines a unified contract for image generation, allowing the application to work with any provider through a consistent interface.
+**Purpose:** Defines a lifecycle-aware contract for image generation, allowing the worker to submit, wait, and fail consistently across local and remote providers.
 
 ### GenerationRequest
 
@@ -61,14 +63,24 @@ Domain DTO containing all parameters needed for image generation:
 
 **Purpose:** Provider-agnostic request format that isolates application code from provider-specific parameter structures.
 
-### GenerationResult
+### ProviderSubmission
 
-Domain DTO containing the output of image generation:
+Submission DTO persisted after `submit()`:
+
+- `provider_name: str`
+- `provider_job_id: Optional[str]`
+- `provider_state: Dict[str, Any]`
+- `metadata: Dict[str, Any]`
+
+### ProviderResult
+
+Result DTO returned after `wait_for_result()`:
 
 - `image_path: str` - Path to the generated image
-- `metadata: Dict[str, Any]` - Technical and business metadata
-
-**Purpose:** Normalizes output from different providers, allowing application code to work with results uniformly.
+- `provider_job_id: Optional[str]`
+- `provider_state: Dict[str, Any]`
+- `metadata: Dict[str, Any]`
+- `artifact_persisted: bool`
 
 ### ProviderRegistry
 
@@ -95,8 +107,10 @@ class ProviderRegistry:
 ### Example Configuration
 
 ```bash
+PROVIDERS_ENABLED=diffusers,comfyui
 PROVIDERS_DEFAULT_NAME=diffusers
-PROVIDERS_ENABLED=diffusers
+COMFYUI_BASE_URL=http://host.docker.internal:8188
+COMFYUI_WEBSOCKET_URL=ws://host.docker.internal:8188/ws
 ```
 
 ### Selecting Default Provider
@@ -117,7 +131,8 @@ from app.domain.providers import get_provider_registry
 registry = get_provider_registry()
 provider = registry.get_default()
 
-result = await provider.generate(request)
+submission = await provider.submit(request)
+result = await provider.wait_for_result(submission, timeout_sec=300)
 ```
 
 ### Checking Provider Health
@@ -151,6 +166,27 @@ Implementation using the diffusers library for local Stable Diffusion inference.
 - Memory management
 
 **Configuration:** Uses existing model configuration (`MODEL_ID`, `DEVICE`, `TORCH_DTYPE`, etc.)
+
+### ComfyUIProvider
+
+Remote provider adapter for ComfyUI workflow execution.
+
+**Location:** `app/infra/providers/comfyui_provider.py`
+
+**Features:**
+- Workflow submit via `/prompt`
+- Completion tracking via websocket with polling fallback
+- Remote artifact retrieval via `/view`
+- Canonical local artifact persistence after download
+
+## Verification Profiles
+
+For live verification and rollout, use:
+
+- `docker/.env.verify.diffusers.example`
+- `docker/.env.verify.comfyui.example`
+
+The rollout target after successful verification is `PROVIDERS_DEFAULT_NAME=comfyui`, while keeping `diffusers` enabled as fallback.
 
 ## Adding New Providers
 

@@ -37,12 +37,14 @@
 
 ```python
 class IImageProvider(Protocol):
-    async def generate(request: GenerationRequest) -> GenerationResult
+    async def submit(request: GenerationRequest) -> ProviderSubmission
+    async def wait_for_result(submission: ProviderSubmission, timeout_sec: float) -> ProviderResult
+    async def cancel(submission: ProviderSubmission) -> None
     async def health_check() -> bool
     def supports_features(features: set[str]) -> bool
 ```
 
-**Назначение:** Определяет единый контракт для генерации изображений, позволяя приложению работать с любым провайдером через единый интерфейс.
+**Назначение:** Определяет lifecycle-aware контракт генерации, чтобы worker мог одинаково работать и с локальными, и с внешними backend-провайдерами.
 
 ### GenerationRequest
 
@@ -61,14 +63,24 @@ class IImageProvider(Protocol):
 
 **Назначение:** Формат запроса, независимый от провайдера, который изолирует код приложения от специфичных для провайдера структур параметров.
 
-### GenerationResult
+### ProviderSubmission
 
-Доменный DTO, содержащий результат генерации изображения:
+DTO сабмита, который сохраняется после `submit()`:
+
+- `provider_name: str`
+- `provider_job_id: Optional[str]`
+- `provider_state: Dict[str, Any]`
+- `metadata: Dict[str, Any]`
+
+### ProviderResult
+
+DTO результата, который возвращается после `wait_for_result()`:
 
 - `image_path: str` - Путь к сгенерированному изображению
-- `metadata: Dict[str, Any]` - Технические и бизнес метаданные
-
-**Назначение:** Нормализует вывод от разных провайдеров, позволяя коду приложения единообразно работать с результатами.
+- `provider_job_id: Optional[str]`
+- `provider_state: Dict[str, Any]`
+- `metadata: Dict[str, Any]`
+- `artifact_persisted: bool`
 
 ### ProviderRegistry
 
@@ -95,8 +107,10 @@ class ProviderRegistry:
 ### Пример конфигурации
 
 ```bash
+PROVIDERS_ENABLED=diffusers,comfyui
 PROVIDERS_DEFAULT_NAME=diffusers
-PROVIDERS_ENABLED=diffusers
+COMFYUI_BASE_URL=http://host.docker.internal:8188
+COMFYUI_WEBSOCKET_URL=ws://host.docker.internal:8188/ws
 ```
 
 ### Выбор провайдера по умолчанию
@@ -117,7 +131,8 @@ from app.domain.providers import get_provider_registry
 registry = get_provider_registry()
 provider = registry.get_default()
 
-result = await provider.generate(request)
+submission = await provider.submit(request)
+result = await provider.wait_for_result(submission, timeout_sec=300)
 ```
 
 ### Проверка состояния провайдера
@@ -151,6 +166,27 @@ supports_ip = provider.supports_features({"ip_adapter"})
 - Управление памятью
 
 **Конфигурация:** Использует существующую конфигурацию моделей (`MODEL_ID`, `DEVICE`, `TORCH_DTYPE` и т.д.)
+
+### ComfyUIProvider
+
+Удаленный adapter для выполнения workflow через ComfyUI.
+
+**Расположение:** `app/infra/providers/comfyui_provider.py`
+
+**Возможности:**
+- submit workflow через `/prompt`
+- tracking completion через websocket с polling fallback
+- загрузка артефакта через `/view`
+- canonical local persistence после скачивания
+
+## Профили Верификации
+
+Для live verification и rollout используйте:
+
+- `docker/.env.verify.diffusers.example`
+- `docker/.env.verify.comfyui.example`
+
+Целевой rollout после успешной верификации: `PROVIDERS_DEFAULT_NAME=comfyui`, при этом `diffusers` остается включенным как fallback.
 
 ## Добавление новых провайдеров
 
