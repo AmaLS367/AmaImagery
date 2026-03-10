@@ -46,10 +46,12 @@ class GenerationService:
     
     def _check_safety_policies(self, request: GenReq, user: Optional[Any]) -> None:
         allow_global = cfg.nsfw_allow
-        allow_user = True
+        allow_user = False
         
-        if user is not None and hasattr(user, "nsfw_allow"):
-            allow_user = bool(user.nsfw_allow)
+        if user is not None:
+            settings_blob = getattr(getattr(user, "settings", None), "data", None)
+            if isinstance(settings_blob, dict):
+                allow_user = bool(settings_blob.get("nsfw_allow", False))
         
         if not allow_global:
             if is_blocked_forced(request.prompt):

@@ -1,12 +1,10 @@
 """
 Use case for image generation.
-
-Orchestrates the image generation workflow including validation,
-queue enqueueing, and database persistence.
 """
 
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, Literal
+from uuid import UUID
 
 from app.application.use_cases.base import Command, UseCaseResult, UseCase
 from app.domain.providers import ProviderRegistry, get_provider_registry
@@ -15,6 +13,7 @@ from app.infra.uow import SqlAlchemyUnitOfWork
 from app.metrics.queue import record_queue_enqueue
 from app.services.generation_service import GenerationService
 from app.core.logging import lg
+from app.domain.models import Generation
 from app.domain.schemas import GenReq
 
 Style = Literal['realistic', 'anime']
@@ -93,13 +92,14 @@ class GenerateImageUseCase:
             if command.user_id != "anon":
                 async with self.uow:
                     user = await self.uow.users.get(command.user_id)
+                    if user is not None:
+                        user.settings = await self.uow.users.get_settings(user.id)
             
             self.generation_service._validate_request(gen_req)
             self.generation_service._check_safety_policies(gen_req, user)
             
-            payload: Dict[str, Any] = {
+            params: Dict[str, Any] = {
                 "prompt": command.prompt,
-                "negative_prompt": command.negative_prompt,
                 "seed": command.seed,
                 "width": command.width,
                 "height": command.height,
@@ -108,10 +108,37 @@ class GenerateImageUseCase:
                 "ref_image_b64": command.ref_image_b64,
                 "ip_scale": command.ip_scale,
                 "style": command.style,
-                "user_id": command.user_id,
             }
-            
-            task_id = await self.task_queue.enqueue(payload)
+            prompt_blob: Dict[str, Any] = {
+                "prompt": command.prompt,
+                "negative_prompt": command.negative_prompt,
+            }
+
+            generation = Generation(
+                user_id=None if command.user_id == "anon" else getattr(user, "id", None),
+                prompt=prompt_blob,
+                params=params,
+                status="queued",
+                provider_state={},
+                result={},
+            )
+
+            async with self.uow:
+                await self.uow.generations.add(generation)
+
+            task_id = str(generation.id)
+
+            try:
+                await self.task_queue.enqueue(task_id)
+            except Exception as exc:
+                async with self.uow:
+                    await self.uow.generations.update_fields(
+                        generation.id,
+                        status="failed",
+                        error=f"Failed to enqueue task: {exc}",
+                    )
+                raise
+
             record_queue_enqueue()
             
             lg("api").info(
