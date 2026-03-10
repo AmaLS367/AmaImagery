@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 import sys
 from typing import Any
 
@@ -92,7 +92,7 @@ def run_pending_migrations() -> None:
             [sys.executable, "-m", "alembic", "upgrade", "head"], 
             capture_output=True, 
             text=True
-        )
+        )  # nosec B603
         if r.returncode != 0:
             raise RuntimeError(f"Alembic migration failed (code {r.returncode}):\n{r.stdout}\n{r.stderr}")
             

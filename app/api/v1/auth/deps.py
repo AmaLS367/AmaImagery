@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infra.db import get_db
 from app.domain.models import User
+from app.core.logging import lg
 from app.core.security import decode_access_token
 from app.infra.repositories import SqlAlchemyUserRepository
 
 bearer = HTTPBearer(auto_error=False)
+auth_log = lg("auth")
 
 
 def _extract_access_token(
@@ -26,11 +28,18 @@ def _extract_access_token(
         or request.cookies.get("token")
     )
 
+
+def _has_query_access_token(request: Request) -> bool:
+    return bool(request.query_params.get("access_token"))
+
 async def current_user(
     request: Request,
     cred: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    if _has_query_access_token(request):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Query token authentication is not supported")
+
     token = _extract_access_token(request, cred)
 
     if not token:
@@ -54,6 +63,8 @@ async def optional_user(
   cred: HTTPAuthorizationCredentials | None = Depends(bearer),
   db: AsyncSession = Depends(get_db),
 ) -> User | None:
+  if _has_query_access_token(request):
+    return None
   token = _extract_access_token(request, cred)
   if not token:
     return None
@@ -82,8 +93,8 @@ async def get_user_or_ip_identifier(request: Request) -> str:
             sub = payload.get("sub")
             if sub:
                 return f"user:{sub}"
-        except Exception:
-            pass
+        except Exception as exc:
+            auth_log.debug("auth.identifier_token_invalid", error=str(exc))
     
     # Fallback to IP address
     host = getattr(request.client, "host", "unknown")

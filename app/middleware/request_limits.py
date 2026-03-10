@@ -17,6 +17,24 @@ class RequestLimitsMiddleware:
         if scope.get("type") != "http":
             return await self.app(scope, receive, send)
 
+        headers = {
+            key.decode("latin1").lower(): value.decode("latin1")
+            for key, value in scope.get("headers", [])
+        }
+        content_length = headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > self.max_body:
+                    return await JSONResponse(
+                        {"error": "request_too_large", "message": "request body exceeds limit"},
+                        status_code=413,
+                    )(scope, receive, send)
+            except ValueError:
+                return await JSONResponse(
+                    {"error": "bad_request", "message": "invalid content-length header"},
+                    status_code=400,
+                )(scope, receive, send)
+
         # Query-string limits
         qs = scope.get("query_string", b"")
         if qs:

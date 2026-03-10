@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.config import settings
-
 
 class ProviderBootstrapError(RuntimeError):
     """Raised when a provider cannot be safely bootstrapped from current settings."""
 
 
 def validate_diffusers_provider_settings() -> None:
+    from app.config import settings
+
     model_id = str(settings.model_id or "").strip()
     vae_id = str(settings.vae_id or "").strip() or None
 
@@ -21,6 +21,8 @@ def validate_diffusers_provider_settings() -> None:
 
 
 def validate_comfyui_provider_settings() -> None:
+    from app.config import settings
+
     if not str(settings.comfyui_base_url or "").strip():
         raise ProviderBootstrapError("ComfyUI provider requires COMFYUI_BASE_URL")
 

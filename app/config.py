@@ -97,8 +97,8 @@ class Settings(BaseSettings):
                 try:
                     data = json.loads(s)
                     return [str(x).strip() for x in data if str(x).strip()]
-                except Exception:
-                    pass
+                except (TypeError, ValueError):
+                    return [p.strip() for p in s.replace(";", ",").split(",") if p.strip()]
             parts = s.replace(";", ",").split(",")
             return [p.strip() for p in parts if p.strip()]
         return v
@@ -138,8 +138,8 @@ class Settings(BaseSettings):
             try:
                 data = json.loads(s)
                 return [str(x).strip() for x in data if str(x).strip()]
-            except Exception:
-                pass
+            except (TypeError, ValueError):
+                return [p.strip() for p in re.split(r"[;,]", s) if p.strip()]
         return [p.strip() for p in re.split(r"[;,]", s) if p.strip()]
     
     @field_validator("feature_flags", mode="before")
@@ -159,8 +159,18 @@ class Settings(BaseSettings):
                     return {str(k): bool(v) for k, v in data.items()}
                 if isinstance(data, list):
                     return {str(item): True for item in data}
-            except Exception:
-                pass
+            except (TypeError, ValueError):
+                flags: Dict[str, bool] = {}
+                for part in re.split(r"[;,]", s):
+                    part = part.strip()
+                    if not part:
+                        continue
+                    if "=" in part:
+                        k, flag_value = part.split("=", 1)
+                        flags[k.strip()] = flag_value.strip().lower() in ("true", "1", "yes", "on")
+                    else:
+                        flags[part] = True
+                return flags
         flags = {}
         for part in re.split(r"[;,]", s):
             part = part.strip()
@@ -381,16 +391,15 @@ def _create_directories(settings: Settings) -> None:
 
 
 def _validate_production_settings(settings: Settings) -> None:
-    """Validate critical settings for production environment."""
-    if not settings.is_production:
-        return  # Skip validation in dev/staging
-    
-    # Validate SECRET_KEY
+    """Validate critical settings required for secure runtime."""
     if not settings.secret_key or settings.secret_key in {"CHANGE_ME", "CHANGE_ME_LONG_RANDOM"}:
         raise RuntimeError(
-            "SECRET_KEY must be set to a secure value in production. "
+            "SECRET_KEY must be set to a secure value. "
             "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(48))'"
         )
+
+    if not settings.is_production:
+        return  # Skip production-only validation in dev/staging
     
     # Validate DATABASE_URL for production
     db_url = urlparse(settings.database_url)

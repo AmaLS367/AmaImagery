@@ -150,6 +150,13 @@ def get_provider_registry() -> ProviderRegistry:
     return _provider_registry_cache
 
 
+def reset_provider_registry() -> None:
+    global _provider_registry_cache
+    global _provider_registry_signature
+    _provider_registry_cache = None
+    _provider_registry_signature = None
+
+
 def _build_provider_registry() -> ProviderRegistry:
     from app.config import settings
 

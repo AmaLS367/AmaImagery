@@ -223,8 +223,11 @@ class DiffusersProvider(IImageProvider):
             pipeline = self._get_pipeline()
             if hasattr(pipeline, "ip_adapter") or hasattr(pipeline, "image_encoder"):
                 supported.add("ip_adapter")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(
+                "generation.supports_features_probe_failed",
+                extra={"event_type": "app", "error_message": str(exc)},
+            )
         return features.issubset(supported)
 
     # --- Private Helpers ---
@@ -299,8 +302,11 @@ class DiffusersProvider(IImageProvider):
             if hasattr(pipeline, "set_ip_adapter_scale"):
                 try:
                     pipeline.set_ip_adapter_scale(ip_scale)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug(
+                        "generation.ip_adapter_scale_failed",
+                        extra={"event_type": "app", "error_message": str(exc)},
+                    )
             
             # Ensure encoders are on correct device for processing
             try:
@@ -385,8 +391,11 @@ class DiffusersProvider(IImageProvider):
         try:
             if not bool(getattr(pipeline.scheduler.config, "use_karras_sigmas", False)):
                 pipeline.scheduler.set_timesteps(steps, device=device)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(
+                "generation.scheduler_timestep_setup_failed",
+                extra={"event_type": "app", "error_message": str(exc)},
+            )
 
         # Prepare kwargs
         call_kwargs: dict[str, Any] = {
@@ -473,7 +482,8 @@ class DiffusersProvider(IImageProvider):
             metadata={
                 "width": width,
                 "height": height,
-                "steps": steps,
+                "steps": int(request.steps or 28),
+                "effective_steps": steps,
                 "guidance_scale": float(request.guidance_scale or 7.5),
                 "seed": request.seed,
                 "device": str(device),
@@ -491,15 +501,18 @@ class DiffusersProvider(IImageProvider):
         try:
             if hasattr(pipeline, "enable_model_cpu_offload"):
                 pipeline.enable_model_cpu_offload()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("generation.cpu_offload_unavailable", extra={"event_type": "app", "error_message": str(exc)})
 
     def _cleanup_resources(self) -> None:
         try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(
+                "generation.cuda_cache_cleanup_failed",
+                extra={"event_type": "app", "error_message": str(exc)},
+            )
         gc.collect()
 
 
