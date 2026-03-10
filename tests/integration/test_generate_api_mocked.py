@@ -83,7 +83,7 @@ def test_generate_mock(app_client, monkeypatch, tmp_path):
     out.write_bytes(b"\x89PNG\r\n\x1a\n")
     monkeypatch.setattr(pl, "generate_image", lambda *a, **k: str(out), raising=False)
 
-    # 2) читаем OpenAPI и находим схему тела для POST /generate
+    # 2) читаем OpenAPI и находим схему тела для POST /api/v1/images/generate
     r = app_client.get("/openapi.json")
     if r.status_code != 200:
         pytest.skip("OpenAPI недоступен")
@@ -91,17 +91,17 @@ def test_generate_mock(app_client, monkeypatch, tmp_path):
     _build_min_payload._openapi = openapi  # для резолва $ref
 
     paths = openapi.get("paths", {})
-    gen = paths.get("/generate") or {}
+    gen = paths.get("/api/v1/images/generate") or {}
     post = gen.get("post") or {}
     content = ((post.get("requestBody") or {}).get("content") or {}).get("application/json") or {}
     schema = content.get("schema")
     if not schema:
-        pytest.skip("Нет схемы requestBody у POST /generate")
+        pytest.skip("Нет схемы requestBody у POST /api/v1/images/generate")
 
     payload = _build_min_payload(schema)
 
     # 3) запрос
-    resp = app_client.post("/generate", json=payload)
+    resp = app_client.post("/api/v1/images/generate", json=payload)
     if resp.status_code in (200, 201, 202):
         assert True
         return
@@ -112,5 +112,5 @@ def test_generate_mock(app_client, monkeypatch, tmp_path):
     except Exception:
         detail = resp.text
     if resp.status_code == 400:
-        pytest.skip(f"Валидация /generate: {detail}")
-    pytest.fail(f"/generate вернул {resp.status_code}: {detail}")
+        pytest.skip(f"Валидация /api/v1/images/generate: {detail}")
+    pytest.fail(f"/api/v1/images/generate вернул {resp.status_code}: {detail}")
