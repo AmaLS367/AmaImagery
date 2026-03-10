@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import time
-from typing import Callable
-import redis.asyncio as redis
+from typing import Any, Callable
+
+try:
+    import redis.asyncio as redis
+except Exception:  # pragma: no cover - used only in minimal envs
+    redis = None  # type: ignore[assignment]
 from fastapi import Depends, HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -19,9 +23,11 @@ class RateLimitLoggingMiddleware(BaseHTTPMiddleware):
 def create_rate_limiter(limit: int, window_sec: int) -> Callable:
     async def _dep(
         request: Request,
-        redis_client: redis.Redis = Depends(get_redis),
+        redis_client: Any = Depends(get_redis),
         user_key: str = Depends(get_user_or_ip_identifier),
     ) -> None:
+        if redis_client is None:
+            return
         now = int(time.time())
         bucket = now // window_sec
         key = f"ratelimit:{user_key}:{bucket}"

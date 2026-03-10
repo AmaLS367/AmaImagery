@@ -2,8 +2,32 @@
 Metrics for task queue and worker processing.
 """
 
-from prometheus_client import Counter, Histogram, Gauge
 from typing import Optional
+
+try:
+    from prometheus_client import Counter, Gauge, Histogram
+except Exception:  # pragma: no cover - minimal env fallback
+    class _NoopMetric:
+        def labels(self, **kwargs):
+            return self
+
+        def inc(self, *args, **kwargs):
+            return None
+
+        def set(self, *args, **kwargs):
+            return None
+
+        def observe(self, *args, **kwargs):
+            return None
+
+    def Counter(*args, **kwargs):
+        return _NoopMetric()
+
+    def Histogram(*args, **kwargs):
+        return _NoopMetric()
+
+    def Gauge(*args, **kwargs):
+        return _NoopMetric()
 
 # Queue metrics
 queue_size = Gauge(
