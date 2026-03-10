@@ -2,6 +2,7 @@
 Redis implementation of the TaskQueue interface.
 """
 
+import asyncio
 import logging
 
 from typing import Any
@@ -74,11 +75,44 @@ class RedisTaskQueue(ITaskQueue):
             pass
 
 
+class InMemoryTaskQueue(ITaskQueue):
+    """Process-local queue fallback for dev/test environments without Redis."""
+
+    def __init__(self) -> None:
+        self._queue: asyncio.Queue[str] = asyncio.Queue()
+
+    async def enqueue(self, generation_id: str) -> str:
+        await self._queue.put(generation_id)
+        try:
+            update_queue_size("generation", self._queue.qsize())
+        except Exception:
+            pass
+        logger.warning("TaskQueue fallback in use; enqueued %s in memory.", generation_id)
+        return generation_id
+
+    async def dequeue(self, timeout: float = 0.0) -> str | None:
+        try:
+            if timeout > 0:
+                generation_id = await asyncio.wait_for(self._queue.get(), timeout=timeout)
+            else:
+                generation_id = self._queue.get_nowait()
+        except asyncio.TimeoutError:
+            return None
+        except asyncio.QueueEmpty:
+            return None
+
+        try:
+            update_queue_size("generation", self._queue.qsize())
+        except Exception:
+            pass
+        return generation_id
+
+
 # Global instance cache
-_task_queue_instance: RedisTaskQueue | None = None
+_task_queue_instance: ITaskQueue | None = None
 
 
-def get_task_queue() -> RedisTaskQueue:
+def get_task_queue() -> ITaskQueue:
     """
     Factory function that returns a singleton TaskQueue instance.
     
@@ -88,12 +122,16 @@ def get_task_queue() -> RedisTaskQueue:
     
     if _task_queue_instance is None:
         if not _REDIS_AVAILABLE:
-            raise RuntimeError("Redis package is not available. Cannot create TaskQueue.")
+            logger.warning("Redis package is unavailable. Falling back to InMemoryTaskQueue.")
+            _task_queue_instance = InMemoryTaskQueue()
+            return _task_queue_instance
         from app.infra.redis import get_redis
         
         redis_client = get_redis()
         if redis_client is None:
-            raise RuntimeError("Redis client is not available. Cannot create TaskQueue.")
+            logger.warning("Redis client is unavailable. Falling back to InMemoryTaskQueue.")
+            _task_queue_instance = InMemoryTaskQueue()
+            return _task_queue_instance
         
         _task_queue_instance = RedisTaskQueue(redis_client)
     
