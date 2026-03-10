@@ -279,21 +279,6 @@ class Settings(BaseSettings):
             raise ValueError("TORCH_DTYPE must be fp16|bf16|fp32")
         return s
 
-    @field_validator("model_id", "vae_id", mode="after")
-    @classmethod
-    def _check_local_when_offline(cls, v: Optional[str], info: Any) -> Optional[str]:
-        # Now no_network is defined at the top, so it should be available in validation info
-        try:
-            no_net = bool(info.data.get("no_network"))
-        except Exception:
-            no_net = True # Safe fallback
-            
-        if no_net and v:
-            p = Path(str(v))
-            if not p.exists():
-                raise ValueError(f"{info.field_name} not found locally: {p}")
-        return v
-    
     @field_validator("hf_token", "hf_home", "transformers_cache", "base_url", mode="before")
     @classmethod
     def _empty_to_none(cls, v: Any) -> Any:
@@ -369,6 +354,9 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.env.lower() in ("dev", "development", "local")
+
+    def is_provider_enabled(self, provider_name: str) -> bool:
+        return provider_name in (self.providers_enabled or [])
 
 
 # === Initialization and validation ===

@@ -7,7 +7,12 @@ Manages the lifecycle and retrieval of registered providers strategies.
 import asyncio
 from typing import Dict, Optional, List
 
+from app.core.logging import lg
 from app.domain.providers.interfaces import IImageProvider
+from app.domain.providers.validation import (
+    validate_comfyui_provider_settings,
+    validate_diffusers_provider_settings,
+)
 
 
 class ProviderRegistry:
@@ -18,9 +23,15 @@ class ProviderRegistry:
     (Diffusers, OpenAI, etc.) dynamically.
     """
     
-    def __init__(self, providers: Optional[Dict[str, IImageProvider]] = None, default_name: Optional[str] = None):
+    def __init__(
+        self,
+        providers: Optional[Dict[str, IImageProvider]] = None,
+        default_name: Optional[str] = None,
+        boot_errors: Optional[Dict[str, str]] = None,
+    ):
         self._providers: Dict[str, IImageProvider] = providers or {}
         self._default_name = default_name
+        self._boot_errors: Dict[str, str] = boot_errors or {}
     
     def register(self, name: str, provider: IImageProvider) -> None:
         self._providers[name] = provider
@@ -48,6 +59,9 @@ class ProviderRegistry:
     
     def list_providers(self) -> List[str]:
         return list[str](self._providers.keys())
+
+    def boot_errors(self) -> Dict[str, str]:
+        return dict(self._boot_errors)
     
     async def health_report(self) -> Dict[str, bool]:
         """
@@ -77,15 +91,31 @@ def get_provider_registry() -> ProviderRegistry:
     from app.config import settings
     
     providers: Dict[str, IImageProvider] = {}
-    
+    boot_errors: Dict[str, str] = {}
+    logger = lg("providers")
+
     if "diffusers" in settings.providers_enabled:
-        from app.infra.providers.diffusers_provider import DiffusersProvider
-        providers["diffusers"] = DiffusersProvider()
+        try:
+            validate_diffusers_provider_settings()
+            from app.infra.providers.diffusers_provider import DiffusersProvider
+
+            providers["diffusers"] = DiffusersProvider()
+        except Exception as exc:
+            boot_errors["diffusers"] = str(exc)
+            logger.warning("provider.bootstrap_failed", extra={"provider": "diffusers", "error": str(exc)})
+
     if "comfyui" in settings.providers_enabled:
-        from app.infra.providers.comfyui_provider import ComfyUIProvider
-        providers["comfyui"] = ComfyUIProvider()
-    
+        try:
+            validate_comfyui_provider_settings()
+            from app.infra.providers.comfyui_provider import ComfyUIProvider
+
+            providers["comfyui"] = ComfyUIProvider()
+        except Exception as exc:
+            boot_errors["comfyui"] = str(exc)
+            logger.warning("provider.bootstrap_failed", extra={"provider": "comfyui", "error": str(exc)})
+
     return ProviderRegistry(
         providers=providers,
         default_name=settings.providers_default_name,
+        boot_errors=boot_errors,
     )
