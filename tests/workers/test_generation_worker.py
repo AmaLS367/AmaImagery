@@ -1,261 +1,141 @@
-"""
-Tests for generation worker.
-
-Tests worker lifecycle, task processing, and error handling.
-"""
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-import pytest_asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from pathlib import Path
 
-from app.domain.providers.interfaces import GenerationRequest, GenerationResult
-from app.infra.queue.task_queue import RedisTaskQueue
+from app.domain.providers.interfaces import ProviderResult, ProviderSubmission
+from app.workers.generation_worker import run_worker
 
 
-@pytest_asyncio.fixture
-async def mock_task_queue():
-    """Create a mock task queue."""
-    queue = AsyncMock(spec=RedisTaskQueue)
-    
-    # Mock storage
-    queue._tasks = {}
-    queue._queue = []
-    
-    async def enqueue(payload):
-        import uuid
-        task_id = str(uuid.uuid4())
-        queue._tasks[task_id] = {
-            "task_id": task_id,
-            "status": "queued",
-            "payload": payload,
-        }
-        queue._queue.append(task_id)
-        return task_id
-    
-    queue.enqueue = Mock(side_effect=enqueue)
-    
-    async def get_status(task_id):
-        return queue._tasks.get(task_id)
-    
-    queue.get_status = Mock(side_effect=get_status)
-    
-    async def update_status(task_id, status, result=None, error=None):
-        if task_id in queue._tasks:
-            queue._tasks[task_id]["status"] = status
-            if result is not None:
-                queue._tasks[task_id]["result"] = result
-            if error is not None:
-                queue._tasks[task_id]["error"] = error
-    
-    queue.update_status = Mock(side_effect=update_status)
-    
-    async def dequeue(timeout=0.0):
-        if queue._queue:
-            return queue._queue.pop(0)
-        return None
-    
-    queue.dequeue = Mock(side_effect=dequeue)
-    
-    async def mark_completed(task_id, result):
-        await update_status(task_id, "completed", result=result)
-    
-    queue.mark_completed = Mock(side_effect=mark_completed)
-    
-    async def mark_failed(task_id, error):
-        await update_status(task_id, "failed", error=error)
-    
-    queue.mark_failed = Mock(side_effect=mark_failed)
-    
-    return queue
+def _generation(status: str = "queued") -> SimpleNamespace:
+    return SimpleNamespace(
+        id="gen-1",
+        user_id=None,
+        prompt={"prompt": "test prompt", "negative_prompt": ""},
+        params={"width": 512, "height": 512, "steps": 10, "guidance_scale": 7.5},
+        status=status,
+    )
 
 
-@pytest_asyncio.fixture
-async def mock_provider():
-    """Create a mock provider."""
-    provider = AsyncMock()
-    
-    async def generate(request):
-        return GenerationResult(
-            image_path="/tmp/test_image.png",
-            metadata={"width": 512, "height": 512, "steps": 20},
+class DiffusersProviderFake:
+    provider_name = "diffusers"
+
+    def __init__(self) -> None:
+        self.submit = AsyncMock(
+            return_value=ProviderSubmission(
+                provider_name="diffusers",
+                provider_job_id="gen-1",
+                provider_state={"request": {"prompt": "test prompt"}},
+            )
         )
-    
-    provider.generate = Mock(side_effect=generate)
-    
-    return provider
+        self.wait_for_result = AsyncMock(
+            return_value=ProviderResult(
+                provider_name="diffusers",
+                image_path="C:/tmp/gen-1.png",
+                provider_job_id="gen-1",
+                provider_state={"local": True},
+                metadata={"width": 512},
+                artifact_persisted=True,
+            )
+        )
 
 
-@pytest_asyncio.fixture
-async def mock_provider_registry(mock_provider):
-    """Create a mock provider registry."""
-    registry = Mock()
-    registry.get_default = Mock(return_value=mock_provider)
-    return registry
+class ComfyuiProviderFake:
+    provider_name = "comfyui"
 
-
-@pytest_asyncio.fixture
-async def mock_uow():
-    """Create a mock UnitOfWork."""
-    uow = AsyncMock()
-    uow.generations = AsyncMock()
-    uow.generations.add = AsyncMock()
-    
-    async def __aenter__():
-        return uow
-    
-    async def __aexit__(*args):
-        pass
-    
-    uow.__aenter__ = Mock(side_effect=__aenter__)
-    uow.__aexit__ = Mock(side_effect=__aexit__)
-    
-    return uow
+    def __init__(self) -> None:
+        self.submit = AsyncMock(
+            return_value=ProviderSubmission(
+                provider_name="comfyui",
+                provider_job_id="prompt-1",
+                provider_state={"prompt_id": "prompt-1"},
+            )
+        )
+        self.wait_for_result = AsyncMock(side_effect=RuntimeError("history malformed"))
 
 
 @pytest.mark.asyncio
-async def test_worker_dequeues_task(mock_task_queue):
-    """Test that worker dequeues a task from the queue."""
-    payload = {"prompt": "test prompt", "width": 512, "height": 512}
-    task_id = await mock_task_queue.enqueue(payload)
-    
-    dequeued_id = await mock_task_queue.dequeue(timeout=0.0)
-    
-    assert dequeued_id == task_id
-    mock_task_queue.dequeue.assert_called()
+async def test_worker_transitions_generation_to_completed():
+    queue = AsyncMock()
+    queue.dequeue = AsyncMock(side_effect=["gen-1", KeyboardInterrupt()])
+
+    provider = DiffusersProviderFake()
+    provider_registry = Mock()
+    provider_registry.get_default = Mock(return_value=provider)
+
+    update_generation = AsyncMock()
+    event_bus = AsyncMock()
+    event_bus.publish = AsyncMock()
+
+    with (
+        patch("app.workers.generation_worker.get_task_queue", return_value=queue),
+        patch("app.workers.generation_worker.get_provider_registry", return_value=provider_registry),
+        patch("app.workers.generation_worker._load_generation", AsyncMock(side_effect=[_generation(), _generation()])),
+        patch("app.workers.generation_worker._update_generation", update_generation),
+        patch("app.workers.generation_worker._persist_artifact", AsyncMock(return_value="C:/tmp/gen-1.png")),
+        patch("app.workers.generation_worker.get_event_bus", Mock(return_value=event_bus)),
+    ):
+        await run_worker()
+
+    running_call = update_generation.await_args_list[0]
+    assert running_call.args[0] == "gen-1"
+    assert running_call.kwargs["status"] == "running"
+    assert running_call.kwargs["provider_name"] == "diffusers"
+    assert running_call.kwargs["started_at"] is not None
+
+    completed_call = update_generation.await_args_list[-1]
+    assert completed_call.args[0] == "gen-1"
+    assert completed_call.kwargs["status"] == "completed"
+    assert completed_call.kwargs["provider_job_id"] == "gen-1"
+    assert completed_call.kwargs["completed_at"] is not None
+    assert completed_call.kwargs["image_path"] == "C:/tmp/gen-1.png"
+    assert completed_call.kwargs["result"] == {"width": 512}
 
 
 @pytest.mark.asyncio
-async def test_worker_updates_status_to_running(mock_task_queue):
-    """Test that worker updates task status to running."""
-    payload = {"prompt": "test"}
-    task_id = await mock_task_queue.enqueue(payload)
-    
-    await mock_task_queue.update_status(task_id, "running")
-    
-    status = await mock_task_queue.get_status(task_id)
-    assert status["status"] == "running"
-    mock_task_queue.update_status.assert_called_with(task_id, "running")
+async def test_worker_transitions_generation_to_failed():
+    queue = AsyncMock()
+    queue.dequeue = AsyncMock(side_effect=["gen-1", KeyboardInterrupt()])
+
+    provider = ComfyuiProviderFake()
+    provider_registry = Mock()
+    provider_registry.get_default = Mock(return_value=provider)
+
+    update_generation = AsyncMock()
+    event_bus = AsyncMock()
+    event_bus.publish = AsyncMock()
+
+    with (
+        patch("app.workers.generation_worker.get_task_queue", return_value=queue),
+        patch("app.workers.generation_worker.get_provider_registry", return_value=provider_registry),
+        patch("app.workers.generation_worker._load_generation", AsyncMock(side_effect=[_generation(), _generation()])),
+        patch("app.workers.generation_worker._update_generation", update_generation),
+        patch("app.workers.generation_worker.get_event_bus", Mock(return_value=event_bus)),
+    ):
+        await run_worker()
+
+    failed_call = update_generation.await_args_list[-1]
+    assert failed_call.args[0] == "gen-1"
+    assert failed_call.kwargs["status"] == "failed"
+    assert failed_call.kwargs["provider_name"] == "comfyui"
+    assert failed_call.kwargs["completed_at"] is not None
+    assert "history malformed" in failed_call.kwargs["error"]
 
 
 @pytest.mark.asyncio
-async def test_worker_calls_provider(mock_task_queue, mock_provider, mock_provider_registry):
-    """Test that worker calls provider to generate image."""
-    payload = {
-        "prompt": "a beautiful landscape",
-        "width": 512,
-        "height": 512,
-        "steps": 20,
-    }
-    task_id = await mock_task_queue.enqueue(payload)
-    
-    status = await mock_task_queue.get_status(task_id)
-    gen_request = GenerationRequest(
-        prompt=payload["prompt"],
-        width=payload["width"],
-        height=payload["height"],
-        steps=payload["steps"],
-    )
-    
-    result = await mock_provider.generate(gen_request)
-    
-    assert result is not None
-    assert result.image_path is not None
-    mock_provider.generate.assert_called_once()
+async def test_worker_skips_terminal_generation():
+    queue = AsyncMock()
+    queue.dequeue = AsyncMock(side_effect=["gen-1", KeyboardInterrupt()])
+    provider_registry = Mock()
+    provider_registry.get_default = Mock()
 
+    with (
+        patch("app.workers.generation_worker.get_task_queue", return_value=queue),
+        patch("app.workers.generation_worker.get_provider_registry", return_value=provider_registry),
+        patch("app.workers.generation_worker._load_generation", AsyncMock(return_value=_generation(status="completed"))),
+        patch("app.workers.generation_worker._update_generation", AsyncMock()) as update_generation,
+    ):
+        await run_worker()
 
-@pytest.mark.asyncio
-async def test_worker_marks_task_completed(mock_task_queue, mock_provider):
-    """Test that worker marks task as completed after successful generation."""
-    payload = {"prompt": "test", "width": 512, "height": 512}
-    task_id = await mock_task_queue.enqueue(payload)
-    
-    result = GenerationResult(
-        image_path="/tmp/test_image.png",
-        metadata={"width": 512, "height": 512},
-    )
-    
-    await mock_task_queue.mark_completed(
-        task_id,
-        {
-            "image_path": result.image_path,
-            "image_filename": Path(result.image_path).name,
-            "metadata": result.metadata,
-        },
-    )
-    
-    status = await mock_task_queue.get_status(task_id)
-    assert status["status"] == "completed"
-    assert "result" in status
-    mock_task_queue.mark_completed.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_worker_marks_task_failed_on_provider_error(mock_task_queue, mock_provider):
-    """Test that worker marks task as failed when provider raises error."""
-    payload = {"prompt": "test"}
-    task_id = await mock_task_queue.enqueue(payload)
-    
-    # Make provider raise an error
-    mock_provider.generate = AsyncMock(side_effect=RuntimeError("Generation failed"))
-    
-    error_msg = "Generation failed"
-    await mock_task_queue.mark_failed(task_id, error_msg)
-    
-    status = await mock_task_queue.get_status(task_id)
-    assert status["status"] == "failed"
-    assert status["error"] == error_msg
-    mock_task_queue.mark_failed.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_worker_handles_missing_payload(mock_task_queue):
-    """Test that worker handles missing payload gracefully."""
-    task_id = "test-task-id"
-    
-    # Task exists but has no payload
-    mock_task_queue._tasks[task_id] = {
-        "task_id": task_id,
-        "status": "queued",
-    }
-    
-    status = await mock_task_queue.get_status(task_id)
-    
-    # Worker should detect missing payload and mark as failed
-    if status and "payload" not in status:
-        await mock_task_queue.mark_failed(task_id, "Task payload not found")
-        status = await mock_task_queue.get_status(task_id)
-        assert status["status"] == "failed"
-        assert "payload not found" in status["error"].lower()
-
-
-@pytest.mark.asyncio
-async def test_worker_handles_nonexistent_task(mock_task_queue):
-    """Test that worker handles nonexistent task gracefully."""
-    task_id = "non-existent-task"
-    
-    status = await mock_task_queue.get_status(task_id)
-    
-    # Task doesn't exist
-    assert status is None
-
-
-@pytest.mark.asyncio
-async def test_worker_saves_generation_to_db(mock_uow):
-    """Test that worker saves generation to database."""
-    from app.domain.models import Generation
-    
-    generation = Generation(
-        user_id="test-user",
-        prompt={"text": "test prompt"},
-        params={"width": 512, "height": 512},
-        image_path="/tmp/test_image.png",
-    )
-    
-    async with mock_uow:
-        await mock_uow.generations.add(generation)
-    
-    mock_uow.generations.add.assert_called_once()
-    mock_uow.__aenter__.assert_called_once()
-    mock_uow.__aexit__.assert_called_once()
-
+    update_generation.assert_not_awaited()
+    provider_registry.get_default.assert_not_called()

@@ -51,12 +51,22 @@ async def run_worker() -> None:
                 record_task_error(task_type=task_type, error_type="missing_generation")
                 continue
 
+            if generation.status in {"completed", "failed"}:
+                worker_log.info(
+                    "worker.task_already_terminal",
+                    extra={"task_id": generation_id, "status": generation.status},
+                )
+                continue
+
             user_id = str(generation.user_id) if generation.user_id else None
 
             try:
+                provider = provider_registry.get_default()
+                provider_name = _provider_name(provider)
                 await _update_generation(
                     generation_id,
                     status="running",
+                    provider_name=provider_name,
                     started_at=datetime.now(timezone.utc),
                     error=None,
                 )
@@ -64,7 +74,6 @@ async def run_worker() -> None:
                 if generation is None:
                     raise RuntimeError("Generation disappeared during processing")
 
-                provider = provider_registry.get_default()
                 request = _generation_to_request(generation)
                 record_task_start(task_type=task_type)
 
@@ -105,6 +114,7 @@ async def run_worker() -> None:
                 await _update_generation(
                     generation_id,
                     status="failed",
+                    provider_name=locals().get("provider_name"),
                     error=error_msg,
                     completed_at=datetime.now(timezone.utc),
                 )
@@ -168,4 +178,13 @@ async def _persist_submission(generation_id: str, submission: ProviderSubmission
 
 async def _persist_artifact(generation_id: str, result: ProviderResult) -> str:
     artifact_service = get_artifact_service()
+    if result.artifact_persisted:
+        return str(result.image_path)
     return artifact_service.persist_local(generation_id, result.image_path)
+
+
+def _provider_name(provider: Any) -> str:
+    explicit_name = getattr(provider, "provider_name", None)
+    if isinstance(explicit_name, str) and explicit_name.strip():
+        return explicit_name
+    return type(provider).__name__.removesuffix("Provider").lower()
