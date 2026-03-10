@@ -38,8 +38,8 @@ class RedisTaskQueue(ITaskQueue):
         try:
             queue_len = await self.redis.llen(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
             update_queue_size("generation", queue_len)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("queue_metric_update_failed", extra={"queue_key": self.queue_key, "error": str(exc)})
         
         logger.info("Task %s enqueued.", generation_id)
         return generation_id
@@ -71,8 +71,8 @@ class RedisTaskQueue(ITaskQueue):
         try:
             queue_len = await self.redis.llen(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
             update_queue_size("generation", queue_len)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("queue_metric_update_failed", extra={"queue_key": self.queue_key, "error": str(exc)})
 
 
 class InMemoryTaskQueue(ITaskQueue):
@@ -85,8 +85,8 @@ class InMemoryTaskQueue(ITaskQueue):
         await self._queue.put(generation_id)
         try:
             update_queue_size("generation", self._queue.qsize())
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("queue_metric_update_failed", extra={"queue_key": "in_memory", "error": str(exc)})
         logger.warning("TaskQueue fallback in use; enqueued %s in memory.", generation_id)
         return generation_id
 
@@ -103,8 +103,8 @@ class InMemoryTaskQueue(ITaskQueue):
 
         try:
             update_queue_size("generation", self._queue.qsize())
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("queue_metric_update_failed", extra={"queue_key": "in_memory", "error": str(exc)})
         return generation_id
 
 

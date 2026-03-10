@@ -15,6 +15,13 @@ _OrigConnectEx = socket.socket.connect_ex
 _OrigCreateConn = socket.create_connection
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on", "dev", "debug", "development"}
+
+
 def _blocked_connect(self, address):
     """Block outbound connections except to localhost."""
     host = address[0] if isinstance(address, (tuple, list)) and address else address
@@ -48,7 +55,7 @@ def apply():
     # Import settings here to avoid circular dependency
     from app.config import settings
     
-    if not settings.no_network:
+    if not _env_bool("NO_NETWORK", settings.no_network):
         return
     
     # Patch socket methods

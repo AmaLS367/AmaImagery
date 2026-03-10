@@ -16,6 +16,7 @@ from app.domain.providers.errors import ProviderOperationError
 from app.domain.providers.registry import (
     ProviderRegistry,
     get_provider_registry,
+    reset_provider_registry,
 )
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "ProviderOperationError",
     "ProviderRegistry",
     "get_provider_registry",
+    "reset_provider_registry",
 ]
 

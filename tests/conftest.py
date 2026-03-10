@@ -36,6 +36,19 @@ def _tmp_outputs(monkeypatch):
     shutil.rmtree(tmp, ignore_errors=True)
 
 
+@pytest.fixture(autouse=True)
+def _reset_provider_registry_cache():
+    try:
+        from app.domain.providers.registry import reset_provider_registry
+    except Exception:
+        yield
+        return
+
+    reset_provider_registry()
+    yield
+    reset_provider_registry()
+
+
 @pytest.fixture
 def app_client():
     try:

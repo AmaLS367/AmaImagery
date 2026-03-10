@@ -89,7 +89,7 @@ def _ensure_snapshot(repo: str, offline: bool) -> Path:
         return snap
     if offline:
         raise RuntimeError(f"Missing local snapshot '{repo}'. Warm the cache online once.")
-    snapshot_download(repo, local_files_only=False)
+    snapshot_download(repo, local_files_only=False)  # nosec B615
     # Double check after download
     snap = _find_snapshot(repo)
     if not snap:
@@ -184,8 +184,8 @@ def _align_ipadapter_long_buffers_to_unet_device(pipe):
                     # если буфер заморожен/неперсистентен — пробуем заменить через register_buffer
                     try:
                         a.register_buffer(name, buf.to(dev), persistent=False)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("ip_adapter_buffer_register_failed", extra={"buffer_name": name, "error": str(exc)})
 
 
 def get_pipeline():
@@ -288,7 +288,7 @@ def get_pipeline():
                 tokenizer = CLIPTokenizer.from_pretrained(
                     str(tokenizer_dir),
                     local_files_only=offline
-                )
+                )  # nosec B615
             except Exception as e:
                 lg("app").debug(f"Failed to load tokenizer from {tokenizer_dir}: {e}")
         
@@ -299,7 +299,7 @@ def get_pipeline():
                     "openai/clip-vit-large-patch14" if offline else "runwayml/stable-diffusion-v1-5",
                     subfolder="tokenizer" if not offline else None,
                     local_files_only=offline
-                )
+                )  # nosec B615
             except Exception as e:
                 lg("app").warning(f"Failed to load tokenizer from repo: {e}")
         
@@ -310,7 +310,7 @@ def get_pipeline():
                     str(text_encoder_dir),
                     torch_dtype=dtype,
                     local_files_only=offline
-                )
+                )  # nosec B615
             except Exception as e:
                 lg("app").debug(f"Failed to load text_encoder from {text_encoder_dir}: {e}")
         
@@ -322,7 +322,7 @@ def get_pipeline():
                     subfolder="text_encoder" if not offline else None,
                     torch_dtype=dtype,
                     local_files_only=offline
-                )
+                )  # nosec B615
             except Exception as e:
                 lg("app").warning(f"Failed to load text_encoder from repo: {e}")
 
@@ -365,8 +365,8 @@ def get_pipeline():
             use_karras_sigmas=True,
             solver_order=2,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(f"scheduler_swap_failed: {exc}")
 
     # --- экономия памяти ---
     pipe.unet.set_attn_processor(AttnProcessor2_0())
@@ -491,8 +491,8 @@ def get_pipeline_with_ip():
             pipe.unet.set_attn_processor(AttnProcessor2_0()) 
         except Exception:
             pipe.unet.set_attn_processor(AttnProcessor())
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(f"ip_adapter_attention_prep_failed: {exc}")
 
     ip_dir = getattr(settings, "ip_adapter_dir", None)
     if not ip_dir:

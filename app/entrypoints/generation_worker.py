@@ -58,8 +58,8 @@ def main():
         worker_log.info("worker.shutdown_signal", extra={"signal": sig})
         try:
             loop.stop()
-        except Exception:
-            pass
+        except RuntimeError as exc:
+            worker_log.warning("worker.loop_stop_failed", extra={"error": str(exc)})
     
     try:
         signal.signal(signal.SIGINT, signal_handler)
@@ -83,8 +83,8 @@ def main():
         # Don't exit immediately, try to cleanup
         try:
             loop.run_until_complete(close_redis())
-        except Exception:
-            pass
+        except Exception as cleanup_exc:
+            worker_log.warning("worker.emergency_cleanup_failed", extra={"error": str(cleanup_exc)})
         sys.exit(1)
     finally:
         # Cleanup Redis connection

@@ -8,8 +8,6 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.config import settings
-
 
 class ComfyUIError(RuntimeError):
     """Base error for ComfyUI transport and payload failures."""
@@ -55,6 +53,8 @@ class ComfyUIClient:
         http_client: httpx.AsyncClient | None = None,
         websocket_connect: Callable[..., Any] | None = None,
     ) -> None:
+        from app.config import settings
+
         root = (base_url or settings.comfyui_base_url or "").rstrip("/")
         if not root:
             raise ComfyUIConfigurationError("COMFYUI_BASE_URL is not configured")

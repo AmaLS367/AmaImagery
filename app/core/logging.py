@@ -61,7 +61,7 @@ class InterceptHandler(logging.Handler):
                 if record.args:
                     return f"{base} | args={tuple(map(repr, record.args))}"
             except Exception:
-                pass
+                return base
             return base
 
     def emit(self, record):
@@ -76,7 +76,7 @@ class InterceptHandler(logging.Handler):
             try:
                 logger.opt(exception=True).warning("logging_emit_failed")
             except Exception:
-                pass
+                logging.Handler.handleError(self, record)
 
 def _patch_std_logging():
     logging.root.handlers = [InterceptHandler()]
@@ -117,7 +117,7 @@ def setup_logging(level: str = "INFO") -> None:
     try:
         _logger.remove()
     except Exception:
-        pass
+        logger.debug("logging.remove_failed")
 
     is_dev = bool(getattr(settings, "debug", False))
     

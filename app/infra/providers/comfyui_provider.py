@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.config import settings
 from app.domain.providers.errors import ProviderOperationError
 from app.domain.providers.interfaces import GenerationRequest, IImageProvider, ProviderResult, ProviderSubmission
 from app.files.artifacts import get_artifact_service
@@ -23,6 +22,8 @@ class ComfyUIProvider(IImageProvider):
     provider_name = "comfyui"
 
     def __init__(self, client: ComfyUIClient | None = None) -> None:
+        from app.config import settings
+
         self.client = client or ComfyUIClient()
         self.timeout_sec = float(settings.comfyui_timeout_sec)
 

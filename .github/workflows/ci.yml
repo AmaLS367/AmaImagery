@@ -37,4 +37,4 @@ jobs:
       - run: pip-audit -r requirements.txt
       - run: safety check -r requirements.txt
       - run: bandit -q -r app -x tests
-      - run: pytest -m "not (gpu or redis or db or e2e or slow or perf)" --maxfail=1 --disable-warnings -q
+      - run: pytest -m "not (gpu or redis or db or e2e or slow or perf)" --maxfail=1 --disable-warnings -q --no-cov

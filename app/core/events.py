@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 import asyncio
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -111,10 +115,8 @@ class EventBus:
                     await handler(event)
                 else:
                     handler(event)
-            except Exception:
-                # Log error but don't fail event publishing
-                # In production, this should use proper logging
-                pass
+            except Exception as exc:
+                logger.warning("event_handler_failed", extra={"event_name": event.name, "error": str(exc)})
 
 
 _event_bus: Optional[EventBus] = None
