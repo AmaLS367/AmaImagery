@@ -26,10 +26,23 @@ class ArtifactService:
     def local_path(self, filename: str) -> Path:
         return safe_join(filename)
 
+    def canonical_path(self, generation_id: str, source_path: str | Path | None = None, default_ext: str = "png") -> Path:
+        filename = self.canonical_name(generation_id, source_path=source_path, default_ext=default_ext)
+        return self.outputs_dir / filename
+
+    def is_canonical_path(self, generation_id: str, image_path: str | Path | None, default_ext: str = "png") -> bool:
+        if not image_path:
+            return False
+        try:
+            source = Path(image_path).resolve()
+            expected = self.canonical_path(generation_id, source_path=image_path, default_ext=default_ext).resolve()
+            return source == expected
+        except Exception:
+            return False
+
     def persist_local(self, generation_id: str, source_path: str | Path, default_ext: str = "png") -> str:
         src = Path(source_path)
-        filename = self.canonical_name(generation_id, src, default_ext=default_ext)
-        dst = self.outputs_dir / filename
+        dst = self.canonical_path(generation_id, src, default_ext=default_ext)
         if src.resolve() != dst.resolve():
             shutil.copy2(src, dst)
         return str(dst)

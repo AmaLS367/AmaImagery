@@ -6,11 +6,19 @@ from typing import Any
 from app.config import settings
 from app.domain.providers.interfaces import GenerationRequest, IImageProvider, ProviderResult, ProviderSubmission
 from app.files.artifacts import get_artifact_service
-from app.infra.providers.comfyui_client import ComfyUIClient
+from app.infra.providers.comfyui_client import (
+    ComfyUIArtifactError,
+    ComfyUIClient,
+    ComfyUICompletion,
+    ComfyUIHistoryError,
+    ComfyUISubmitError,
+)
 from app.infra.providers.comfyui_workflows import inject_request, load_workflow_bundle, output_node_id
 
 
 class ComfyUIProvider(IImageProvider):
+    provider_name = "comfyui"
+
     def __init__(self, client: ComfyUIClient | None = None) -> None:
         self.client = client or ComfyUIClient()
         self.timeout_sec = float(settings.comfyui_timeout_sec)
@@ -33,9 +41,9 @@ class ComfyUIProvider(IImageProvider):
         payload = await self.client.submit_prompt(rendered)
         prompt_id = payload.get("prompt_id")
         if not prompt_id:
-            raise RuntimeError("ComfyUI did not return prompt_id")
+            raise ComfyUISubmitError("ComfyUI did not return prompt_id")
         return ProviderSubmission(
-            provider_name="comfyui",
+            provider_name=self.provider_name,
             provider_job_id=str(prompt_id),
             provider_state={
                 "prompt_id": str(prompt_id),
@@ -47,8 +55,9 @@ class ComfyUIProvider(IImageProvider):
     async def wait_for_result(self, submission: ProviderSubmission, timeout_sec: float) -> ProviderResult:
         prompt_id = submission.provider_job_id or submission.provider_state.get("prompt_id")
         if not prompt_id:
-            raise RuntimeError("Missing ComfyUI prompt_id")
-        history = await self.client.wait_for_completion(str(prompt_id), timeout_sec)
+            raise ComfyUIHistoryError("Missing ComfyUI prompt_id")
+        completion = await self.client.wait_for_completion(str(prompt_id), timeout_sec)
+        history = completion.history
         image_info = _extract_image_info(history, submission.provider_state.get("workflow_map") or {})
         payload = await self.client.fetch_image_bytes(
             image_info["filename"],
@@ -57,15 +66,20 @@ class ComfyUIProvider(IImageProvider):
         )
         generation_id = submission.provider_state.get("generation_id")
         if not generation_id:
-            raise RuntimeError("Missing generation_id for ComfyUI artifact persistence")
+            raise ComfyUIArtifactError("Missing generation_id for ComfyUI artifact persistence")
         ext = Path(image_info["filename"]).suffix.lstrip(".") or "png"
         image_path = await get_artifact_service().persist_bytes(str(generation_id), payload, ext=ext)
         return ProviderResult(
-            provider_name="comfyui",
+            provider_name=self.provider_name,
             image_path=image_path,
             provider_job_id=str(prompt_id),
-            provider_state={"history": history, "image": image_info},
-            metadata={"history": history},
+            provider_state=_provider_state(history, image_info, completion),
+            metadata={
+                "history": history,
+                "wait_strategy": completion.wait_strategy,
+                "websocket_error": completion.websocket_error,
+            },
+            artifact_persisted=True,
         )
 
     async def cancel(self, submission: ProviderSubmission) -> None:
@@ -86,8 +100,17 @@ def _extract_image_info(history: dict[str, Any], workflow_map: dict[str, Any]) -
     elif outputs:
         node_output = next(iter(outputs.values()))
     else:
-        raise RuntimeError("ComfyUI history did not contain outputs")
+        raise ComfyUIHistoryError("ComfyUI history did not contain outputs")
     images = node_output.get("images") or []
     if not images:
-        raise RuntimeError("ComfyUI output did not contain images")
+        raise ComfyUIHistoryError("ComfyUI output did not contain images")
     return images[0]
+
+
+def _provider_state(history: dict[str, Any], image_info: dict[str, Any], completion: ComfyUICompletion) -> dict[str, Any]:
+    return {
+        "history": history,
+        "image": image_info,
+        "wait_strategy": completion.wait_strategy,
+        "websocket_error": completion.websocket_error,
+    }
