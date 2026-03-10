@@ -104,7 +104,7 @@ export default function Login() {
     setSuccess(false)
     try {
       if (mode === 'login') {
-        const res = await fetch('/api/v1/auth/me', {
+        const res = await fetch('/api/v1/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

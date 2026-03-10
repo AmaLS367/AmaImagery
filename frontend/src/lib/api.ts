@@ -109,6 +109,8 @@ export type TaskResp = {
 export type TaskStatusResp = {
   task_id: string
   status: string
+  provider_name?: string | null
+  provider_state?: Record<string, any> | null
   image_path?: string | null
   image_filename?: string | null
   image_url?: string | null
@@ -262,6 +264,7 @@ export type GenerationItem = {
   prompt: any
   params: any
   created_at: string
+  image_url?: string
   exp?: number
   sig?: string
 }
@@ -288,7 +291,6 @@ export async function patchMySettings(payload: any) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
-
 
 
 
