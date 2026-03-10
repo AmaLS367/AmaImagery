@@ -1,7 +1,7 @@
-from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import StableDiffusionPipeline
-from diffusers.pipelines.auto_pipeline import AutoPipelineForText2Image 
-from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL 
-from diffusers.models.attention_processor import AttnProcessor2_0, AttnProcessor 
+from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import StableDiffusionPipeline # type: ignore
+from diffusers.pipelines.auto_pipeline import AutoPipelineForText2Image # type: ignore
+from diffusers.models.autoencoders.autoencoder_kl import AutoencoderKL # type: ignore
+from diffusers.models.attention_processor import AttnProcessor2_0, AttnProcessor # type: ignore
 from diffusers import DPMSolverMultistepScheduler # type: ignore
 from huggingface_hub import snapshot_download
 
@@ -19,30 +19,6 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 _pipe = None
 _ip_ready = False
-
-# --- dtype alignment helpers ---
-def get_unet_dtype(pipe) -> torch.dtype:
-    try:
-        dtype = next(pipe.unet.parameters()).dtype
-        # If dtype is float16 but device is CPU, convert to float32
-        if dtype == torch.float16:
-            device = next(pipe.unet.parameters()).device
-            if device.type == "cpu":
-                return torch.float32
-        return dtype
-    except Exception:
-        # Fallback: check device type
-        try:
-            device = next(pipe.unet.parameters()).device
-            return torch.float16 if device.type == "cuda" else torch.float32
-        except Exception:
-            return torch.float32
-
-def align_to_unet_dtype(tensor: torch.Tensor, pipe) -> torch.Tensor:
-    try:
-        return tensor.to(dtype=get_unet_dtype(pipe), device=pipe.device)
-    except Exception:
-        return tensor
 
 
 # --- online/offline switch & cache helpers ---
@@ -114,6 +90,7 @@ def _ensure_snapshot(repo: str, offline: bool) -> Path:
     if offline:
         raise RuntimeError(f"Missing local snapshot '{repo}'. Warm the cache online once.")
     snapshot_download(repo, local_files_only=False)
+    # Double check after download
     snap = _find_snapshot(repo)
     if not snap:
         raise RuntimeError(f"Snapshot '{repo}' not found after download")
@@ -296,7 +273,7 @@ def get_pipeline():
 
         # Explicitly load tokenizer and text_encoder to avoid "vocab_file is None" errors
         # Load from the config repo (runwayml/stable-diffusion-v1-5) which should have them
-        from transformers import CLIPTokenizer, CLIPTextModel
+        from transformers import CLIPTokenizer, CLIPTextModel # type: ignore
         
         tokenizer = None
         text_encoder = None
@@ -430,10 +407,12 @@ def get_pipeline():
             pipe.vae.to(device=dev, dtype=dtype)
 
         # text_encoder оставляем FP32 (на том же девайсе), image_encoder — всегда CPU/FP32
-        if getattr(pipe, "text_encoder", None) is not None:
-            pipe.text_encoder.to(device=dev, dtype=torch.float32)
-        if getattr(pipe, "image_encoder", None) is not None:
-            pipe.image_encoder.to(device="cpu", dtype=torch.float32)
+        text_encoder = getattr(pipe, "text_encoder", None)
+        if text_encoder is not None:
+            text_encoder.to(device=dev, dtype=torch.float32)
+        image_encoder = getattr(pipe, "image_encoder", None)
+        if image_encoder is not None:
+            image_encoder.to(device="cpu", dtype=torch.float32)
         
     except Exception:
         logger.exception("device_sync_failed")

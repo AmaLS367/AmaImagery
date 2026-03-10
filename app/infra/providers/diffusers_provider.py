@@ -7,16 +7,13 @@ import gc
 import logging
 import time
 from contextlib import nullcontext
-from torch._C import Generator
-from torch._C import Generator
-from torch._C import Generator
 from typing import Any, Callable, cast
 
 import torch
 
 from app.config import settings
 from app.domain.providers.interfaces import GenerationRequest, GenerationResult, IImageProvider
-from app.inference.pipeline import get_unet_dtype, align_to_unet_dtype
+from app.inference.dtype_helpers import get_unet_dtype, align_to_unet_dtype
 from app.metrics.providers import (
     record_generation_start,
     record_generation_success,
