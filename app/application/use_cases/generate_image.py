@@ -113,12 +113,15 @@ class GenerateImageUseCase:
                 "prompt": command.prompt,
                 "negative_prompt": command.negative_prompt,
             }
+            default_provider = self.provider_registry.get_default()
+            provider_name = _provider_name(default_provider)
 
             generation = Generation(
                 user_id=None if command.user_id == "anon" else getattr(user, "id", None),
                 prompt=prompt_blob,
                 params=params,
                 status="queued",
+                provider_name=provider_name,
                 provider_state={},
                 result={},
             )
@@ -146,6 +149,7 @@ class GenerateImageUseCase:
                 extra={
                     "task_id": task_id,
                     "user_id": command.user_id,
+                    "provider_name": provider_name,
                 },
             )
             
@@ -165,4 +169,11 @@ class GenerateImageUseCase:
                 success=False,
                 error=f"Failed to enqueue task: {str(e)}",
             )
+
+
+def _provider_name(provider: Any) -> str:
+    explicit_name = getattr(provider, "provider_name", None)
+    if isinstance(explicit_name, str) and explicit_name.strip():
+        return explicit_name
+    return type(provider).__name__.removesuffix("Provider").lower()
 
