@@ -19,6 +19,7 @@ from app.domain.providers.interfaces import (
     ProviderResult,
     ProviderSubmission,
 )
+from app.files.artifacts import get_artifact_service
 from app.inference.dtype_helpers import get_unet_dtype, align_to_unet_dtype
 from app.metrics.providers import (
     record_generation_start,
@@ -36,6 +37,7 @@ class DiffusersProvider(IImageProvider):
     
     Handles device management, dtype alignment, IP-Adapter setup, and timeout enforcement.
     """
+    provider_name = "diffusers"
     
     def __init__(
         self,
@@ -60,7 +62,7 @@ class DiffusersProvider(IImageProvider):
 
     async def submit(self, request: GenerationRequest) -> ProviderSubmission:
         return ProviderSubmission(
-            provider_name="diffusers",
+            provider_name=self.provider_name,
             provider_job_id=request.generation_id,
             provider_state={"request": _request_to_state(request)},
         )
@@ -69,11 +71,12 @@ class DiffusersProvider(IImageProvider):
         request = _state_to_request(submission.provider_state.get("request") or {})
         result = await self._generate(request)
         return ProviderResult(
-            provider_name="diffusers",
+            provider_name=self.provider_name,
             image_path=result.image_path,
             provider_job_id=submission.provider_job_id,
-            provider_state={"local": True},
+            provider_state={"local": True, "artifact_kind": "canonical_local_path"},
             metadata=result.metadata,
+            artifact_persisted=True,
         )
 
     async def cancel(self, submission: ProviderSubmission) -> None:
@@ -86,7 +89,7 @@ class DiffusersProvider(IImageProvider):
         """
         Executes the generation pipeline.
         """
-        provider_name = "diffusers"
+        provider_name = self.provider_name
         record_generation_start(provider_name)
         start_time = time.time()
         
@@ -447,11 +450,19 @@ class DiffusersProvider(IImageProvider):
         logger.info("generation.extracting_image", extra={"event_type": "app"})
         image = self._image_service.extract_image_from_result(result)
         
-        from app.utils import prompt_hash
-        p_hash = prompt_hash(request.prompt, request.negative_prompt or "")
-        
-        logger.info("generation.saving_image", extra={"event_type": "app", "hash": p_hash})
-        output_path = self._image_service.save_image(image, p_hash)
+        stem = request.generation_id
+        output_path: str
+        if stem:
+            artifact_service = get_artifact_service()
+            output_path = str(artifact_service.canonical_path(stem, default_ext="png"))
+            logger.info("generation.saving_image", extra={"event_type": "app", "path": output_path, "canonical": True})
+            image.save(output_path)
+        else:
+            from app.utils import prompt_hash
+
+            p_hash = prompt_hash(request.prompt, request.negative_prompt or "")
+            logger.info("generation.saving_image", extra={"event_type": "app", "hash": p_hash})
+            output_path = self._image_service.save_image(image, p_hash)
         logger.info("generation.image_saved", extra={"event_type": "app", "path": output_path})
         
         duration = time.time() - start_time

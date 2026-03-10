@@ -54,6 +54,7 @@ class GenerationResult:
 
 @dataclass
 class ProviderSubmission:
+    """Normalized provider submission state persisted after submit()."""
     provider_name: str
     provider_job_id: str | None = None
     provider_state: Dict[str, Any] = field(default_factory=dict)
@@ -62,11 +63,13 @@ class ProviderSubmission:
 
 @dataclass
 class ProviderResult:
+    """Normalized provider result returned after wait_for_result()."""
     provider_name: str
     image_path: str
     provider_job_id: str | None = None
     provider_state: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    artifact_persisted: bool = False
 
     def __post_init__(self) -> None:
         if not self.image_path:
