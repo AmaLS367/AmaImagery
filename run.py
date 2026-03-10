@@ -1,37 +1,12 @@
 """
-Main entry point for the application.
-Starts both the FastAPI server and the generation worker.
+Main entry point for the application server.
 """
-import asyncio
-import multiprocessing
 import signal
 import sys
 import uvicorn
-from app.config import settings
+
 from app.core.logging import lg
-from app.infra.redis import get_redis, init_redis
-
-
-def run_worker_process():
-    """Run the generation worker in a separate process."""
-    from app.entrypoints.generation_worker import main
-    main()
-
-
-async def check_redis_available() -> bool:
-    """Check if Redis is available for worker."""
-    if settings.no_redis:
-        return False
-    
-    try:
-        await init_redis()
-        redis_client = get_redis()
-        if redis_client:
-            await redis_client.ping()
-            return True
-    except Exception:
-        pass
-    return False
+from app.config import settings
 
 
 def run_server():
@@ -62,11 +37,9 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
     
     logger = lg("app")
-    logger.info("Starting application server. Worker will be started via FastAPI lifespan hooks.")
+    logger.info("Starting application server. Run the generation worker separately if queue processing is needed.")
     
     try:
-        # Run the server (this blocks)
-        # Worker is started automatically via lifespan hooks in app/main.py
         run_server()
     except KeyboardInterrupt:
         logger.info("Shutting down...")

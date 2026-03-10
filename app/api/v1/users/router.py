@@ -2,16 +2,12 @@ from __future__ import annotations
 from typing import Any
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from pathlib import Path
-import time
 
 from app.api.v1.auth.deps import current_user
 from app.domain.models import User, UserSettings
-from app.infra.repositories import SqlAlchemyGenerationRepository
 from app.infra.uow import get_uow
 from app.core.logging import lg
-from app.config import settings
-from app.files.signing import make_signature
+from app.files.artifacts import get_artifact_service
 
 router = APIRouter()
 
@@ -64,24 +60,27 @@ async def my_generations(
     async with uow:
         total = await uow.generations.count_by_user(user.id)
         rows = await uow.generations.list_by_user(user.id, limit=limit, offset=offset)
-    now = int(time.time())
-    ttl = int(settings.file_download_ttl_sec)
+    artifacts = get_artifact_service()
 
     items = []
     for r in rows:
-        name = Path(r.image_path).name 
-        exp = now + ttl
-        sig = make_signature(name, exp)
-        image_url = f"/api/v1/file?path={name}&exp={exp}&sig={sig}"
+        signed = artifacts.build_signed_download(r.image_path)
         items.append(GenItem(
             id=str(r.id),
-            image_path=r.image_path,
+            image_path=r.image_path or "",
             prompt=r.prompt or {},
-            params=r.params or {},
+            params={
+                **(r.params or {}),
+                "status": r.status,
+                "provider_name": r.provider_name,
+                "provider_state": r.provider_state or {},
+                "result": r.result or {},
+                "error": r.error,
+            },
             created_at=r.created_at.isoformat(),
-            exp=exp,
-            sig=sig,
-            image_url=image_url,
+            exp=signed["exp"],
+            sig=signed["sig"],
+            image_url=signed["image_url"],
         ))
     lg("app").bind(scope="users", action="list_generations").info("users.generations.list")
     return GenList(total=total, items=items)

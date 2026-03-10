@@ -52,7 +52,7 @@ class RequestLimitsMiddleware:
 
         path = scope.get("path", "") or ""
         effective_timeout = self.timeout
-        if path == "/generate":
+        if path == "/api/v1/images/generate":
             # Keep public behavior: extend a bit for generation endpoint
             effective_timeout = max(self.timeout, int(settings.generation_timeout_seconds) + 10)
 
