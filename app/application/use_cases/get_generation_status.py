@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 from app.application.use_cases.base import Command, UseCaseResult, UseCase
+from app.domain.generation_lifecycle import build_generation_public_payload
 from app.files.artifacts import ArtifactService, get_artifact_service
 from app.infra.uow import SqlAlchemyUnitOfWork
 
@@ -78,24 +79,24 @@ class GetGenerationStatusUseCase:
                     success=False,
                     error="Task not found",
                 )
-            signed = self.artifacts.build_signed_download(generation.image_path)
+            payload = build_generation_public_payload(generation, artifacts=self.artifacts)
             return UseCaseResult(
                 success=True,
                 data=GenerationStatusResult(
-                    task_id=command.task_id,
-                    status=generation.status,
-                    provider_name=generation.provider_name,
-                    provider_state=generation.provider_state or {},
-                    image_path=generation.image_path,
-                    image_filename=signed["image_filename"],
-                    image_url=signed["image_url"],
-                    exp=signed["exp"],
-                    sig=signed["sig"],
-                    metadata=generation.result or {},
-                    error=generation.error,
-                    created_at=int(generation.created_at.timestamp()) if generation.created_at else None,
-                    started_at=int(generation.started_at.timestamp()) if generation.started_at else None,
-                    completed_at=int(generation.completed_at.timestamp()) if generation.completed_at else None,
+                    task_id=payload.task_id,
+                    status=payload.status,
+                    provider_name=payload.provider_name,
+                    provider_state=payload.provider_state,
+                    image_path=payload.image_path,
+                    image_filename=payload.image_filename,
+                    image_url=payload.image_url,
+                    exp=payload.exp,
+                    sig=payload.sig,
+                    metadata=payload.metadata,
+                    error=payload.error,
+                    created_at=payload.created_at,
+                    started_at=payload.started_at,
+                    completed_at=payload.completed_at,
                 ),
             )
             

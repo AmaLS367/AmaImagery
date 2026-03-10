@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from app.api.v1.auth.deps import current_user
+from app.domain.generation_lifecycle import build_generation_public_payload, isoformat_or_none
 from app.domain.models import User, UserSettings
 from app.infra.uow import get_uow
 from app.core.logging import lg
@@ -41,6 +42,7 @@ class GenItem(BaseModel):
     task_id: str
     status: str
     provider_name: str | None = None
+    provider_job_id: str | None = None
     provider_state: dict[str, Any] | None = None
     image_path: str
     image_filename: str | None = None
@@ -73,25 +75,26 @@ async def my_generations(
 
     items = []
     for r in rows:
-        signed = artifacts.build_signed_download(r.image_path)
+        payload = build_generation_public_payload(r, artifacts=artifacts)
         items.append(GenItem(
             id=str(r.id),
-            task_id=str(r.id),
-            status=r.status,
-            provider_name=r.provider_name,
-            provider_state=r.provider_state or {},
-            image_path=r.image_path or "",
-            image_filename=signed["image_filename"],
-            metadata=r.result or {},
-            error=r.error,
+            task_id=payload.task_id,
+            status=payload.status,
+            provider_name=payload.provider_name,
+            provider_job_id=payload.provider_job_id,
+            provider_state=payload.provider_state,
+            image_path=payload.image_path or "",
+            image_filename=payload.image_filename,
+            metadata=payload.metadata,
+            error=payload.error,
             prompt=r.prompt or {},
             params=r.params or {},
-            created_at=r.created_at.isoformat(),
-            started_at=r.started_at.isoformat() if r.started_at else None,
-            completed_at=r.completed_at.isoformat() if r.completed_at else None,
-            exp=signed["exp"],
-            sig=signed["sig"],
-            image_url=signed["image_url"],
+            created_at=isoformat_or_none(r.created_at) or "",
+            started_at=isoformat_or_none(r.started_at),
+            completed_at=isoformat_or_none(r.completed_at),
+            exp=payload.exp,
+            sig=payload.sig,
+            image_url=payload.image_url,
         ))
     lg("app").bind(scope="users", action="list_generations").info("users.generations.list")
     return GenList(total=total, items=items)

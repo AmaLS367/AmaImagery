@@ -14,13 +14,16 @@ if str(ROOT) not in sys.path:
 
 load_dotenv("docker/.env.local", override=False)
 
-os.environ.setdefault("SECRET_KEY", "test_secret_key")
-os.environ.setdefault("MODEL_ID", "mock")
-os.environ.setdefault("DEVICE", "cpu")
-os.environ.setdefault("UI_MOUNT_ENABLED", "false")
-os.environ.setdefault("NSFW_ALLOW", "false")
-os.environ.setdefault("ALLOWED_HOSTS", '["localhost","127.0.0.1","testserver"]')
-os.environ.setdefault("LIMITS_ENABLED", "true")
+os.environ["SECRET_KEY"] = "test_secret_key"
+os.environ["MODEL_ID"] = "mock"
+os.environ["DEVICE"] = "cpu"
+os.environ["UI_MOUNT_ENABLED"] = "false"
+os.environ["NSFW_ALLOW"] = "false"
+os.environ["ALLOWED_HOSTS"] = '["localhost","127.0.0.1","testserver"]'
+os.environ["LIMITS_ENABLED"] = "true"
+os.environ["NO_REDIS"] = "true"
+os.environ["DEBUG"] = "true"
+os.environ["REFRESH_COOKIE_SECURE"] = "false"
 if "DATABASE_URL" not in os.environ:
     os.environ["DATABASE_URL"] = f"sqlite:///{(ROOT / '.pytest-app.db').as_posix()}"
 

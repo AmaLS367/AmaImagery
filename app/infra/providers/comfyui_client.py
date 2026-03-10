@@ -64,6 +64,13 @@ class ComfyUIClient:
         self._client = http_client or httpx.AsyncClient(timeout=settings.comfyui_timeout_sec)
         self._websocket_connect = websocket_connect
 
+    async def ping(self) -> bool:
+        try:
+            response = await self._client.get(self.base_url)
+            return response.status_code < 500
+        except Exception:
+            return False
+
     async def submit_prompt(self, workflow: dict[str, Any]) -> dict[str, Any]:
         try:
             response = await self._client.post(urljoin(self.base_url, "prompt"), json={"prompt": workflow})

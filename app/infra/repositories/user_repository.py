@@ -5,7 +5,7 @@ SQLAlchemy implementation of User repository.
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models import User, UserSettings
@@ -27,15 +27,16 @@ class SqlAlchemyUserRepository(IUserRepository):
         await self.session.flush()
     
     async def get(self, id: UUID | str) -> User | None:
-        return await self.session.get(User, id)
+        return await self.session.get(User, _uuid_value(id))
     
     async def list(self, limit: int = 100, offset: int = 0, **filters: Any) -> list[User]:
         stmt = select(User)
         
         for key, value in filters.items():
             if hasattr(User, key):
-                stmt = stmt.filter(getattr(User, key) == value)
+                stmt = stmt.filter(getattr(User, key) == _coerce_filter_value(key, value))
         
+        stmt = stmt.order_by(desc(User.created_at))
         stmt = stmt.limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -45,13 +46,13 @@ class SqlAlchemyUserRepository(IUserRepository):
         
         for key, value in filters.items():
             if hasattr(User, key):
-                stmt = stmt.filter(getattr(User, key) == value)
+                stmt = stmt.filter(getattr(User, key) == _coerce_filter_value(key, value))
                 
         result = await self.session.execute(stmt)
         return result.scalar() or 0
     
     async def delete(self, id: UUID | str) -> None:
-        entity = await self.session.get(User, id)
+        entity = await self.session.get(User, _uuid_value(id))
         if entity:
             await self.session.delete(entity)
             await self.session.flush()
@@ -74,8 +75,23 @@ class SqlAlchemyUserRepository(IUserRepository):
         return result.scalar_one_or_none()
     
     async def get_settings(self, user_id: UUID | str) -> UserSettings | None:
-        return await self.session.get(UserSettings, user_id)
+        return await self.session.get(UserSettings, _uuid_value(user_id))
     
     async def save_settings(self, settings: UserSettings) -> None:
         self.session.add(settings)
         await self.session.flush()
+
+
+def _uuid_value(value: UUID | str) -> UUID | str:
+    if isinstance(value, UUID):
+        return value
+    try:
+        return UUID(str(value))
+    except Exception:
+        return value
+
+
+def _coerce_filter_value(key: str, value: Any) -> Any:
+    if key.endswith("_id") or key == "id":
+        return _uuid_value(value)
+    return value

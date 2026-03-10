@@ -25,9 +25,8 @@ async def user_repo(test_db_session: AsyncSession):
 async def test_user_repository_add_and_get(user_repo: SqlAlchemyUserRepository):
     """Test adding and retrieving a user."""
     user_id = uuid4()
-    # For SQLite, convert UUID to string
     user = User(
-        id=str(user_id),
+        id=user_id,
         email="test@example.com",
         username="testuser",
         password_hash="hashed_password",
@@ -36,10 +35,8 @@ async def test_user_repository_add_and_get(user_repo: SqlAlchemyUserRepository):
     await user_repo.add(user)
     await user_repo.session.commit()
     
-    # For SQLite, convert UUID to string for lookup
     retrieved = await user_repo.get(str(user_id))
     assert retrieved is not None
-    # SQLite stores UUID as string, so compare as strings
     assert str(retrieved.id) == str(user_id)
     assert retrieved.email == "test@example.com"
     assert retrieved.username == "testuser"
@@ -49,7 +46,7 @@ async def test_user_repository_add_and_get(user_repo: SqlAlchemyUserRepository):
 async def test_user_repository_get_by_email(user_repo: SqlAlchemyUserRepository):
     """Test retrieving user by email."""
     user = User(
-        id=str(uuid4()),
+        id=uuid4(),
         email="findme@example.com",
         username="findme",
         password_hash="hashed",
@@ -72,7 +69,7 @@ async def test_user_repository_get_by_username(user_repo: SqlAlchemyUserReposito
     """Test retrieving user by username."""
     user_id = uuid4()
     user = User(
-        id=str(user_id),
+        id=user_id,
         email="user@example.com",
         username="unique_username",
         password_hash="hashed",
@@ -94,7 +91,7 @@ async def test_user_repository_get_by_email_or_username(user_repo: SqlAlchemyUse
     """Test retrieving user by email or username."""
     user_id = uuid4()
     user = User(
-        id=str(user_id),
+        id=user_id,
         email="either@example.com",
         username="either_user",
         password_hash="hashed",
@@ -119,13 +116,13 @@ async def test_user_repository_get_by_email_or_username(user_repo: SqlAlchemyUse
 async def test_user_repository_list_with_filters(user_repo: SqlAlchemyUserRepository):
     """Test listing users with filters."""
     user1 = User(
-        id=str(uuid4()),
+        id=uuid4(),
         email="user1@example.com",
         username="user1",
         password_hash="hashed",
     )
     user2 = User(
-        id=str(uuid4()),
+        id=uuid4(),
         email="user2@example.com",
         username="user2",
         password_hash="hashed",
@@ -148,7 +145,7 @@ async def test_user_repository_delete(user_repo: SqlAlchemyUserRepository):
     """Test deleting a user."""
     user_id = uuid4()
     user = User(
-        id=str(user_id),
+        id=user_id,
         email="delete@example.com",
         username="delete",
         password_hash="hashed",
@@ -172,7 +169,7 @@ async def test_user_repository_get_settings(user_repo: SqlAlchemyUserRepository)
     """Test retrieving user settings."""
     user_id = uuid4()
     user = User(
-        id=str(user_id),
+        id=user_id,
         email="settings@example.com",
         username="settings",
         password_hash="hashed",
@@ -182,7 +179,7 @@ async def test_user_repository_get_settings(user_repo: SqlAlchemyUserRepository)
     await user_repo.session.commit()
     
     settings = UserSettings(
-        user_id=str(user_id),
+        user_id=user_id,
         data={"nsfw_allow": True, "autocorrect": True},
     )
     
@@ -201,7 +198,7 @@ async def test_user_repository_save_settings(user_repo: SqlAlchemyUserRepository
     """Test saving user settings."""
     user_id = uuid4()
     user = User(
-        id=str(user_id),
+        id=user_id,
         email="save@example.com",
         username="save",
         password_hash="hashed",
@@ -211,7 +208,7 @@ async def test_user_repository_save_settings(user_repo: SqlAlchemyUserRepository
     await user_repo.session.commit()
     
     settings = UserSettings(
-        user_id=str(user_id),
+        user_id=user_id,
         data={"nsfw_allow": False, "autocorrect": False},
     )
     

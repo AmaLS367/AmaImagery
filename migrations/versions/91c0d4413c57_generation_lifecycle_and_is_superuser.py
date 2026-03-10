@@ -23,25 +23,46 @@ JSONB = postgresql.JSONB(astext_type=sa.Text())
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("is_superuser", sa.Boolean(), nullable=False, server_default=sa.false()))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    op.add_column("generations", sa.Column("status", sa.String(length=32), nullable=False, server_default="queued"))
-    op.add_column("generations", sa.Column("provider_name", sa.String(length=64), nullable=True))
-    op.add_column("generations", sa.Column("provider_job_id", sa.String(length=255), nullable=True))
-    op.add_column("generations", sa.Column("provider_state", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")))
-    op.add_column("generations", sa.Column("result", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")))
-    op.add_column("generations", sa.Column("error", sa.Text(), nullable=True))
-    op.add_column("generations", sa.Column("started_at", sa.TIMESTAMP(timezone=True), nullable=True))
-    op.add_column("generations", sa.Column("completed_at", sa.TIMESTAMP(timezone=True), nullable=True))
-    op.add_column(
-        "generations",
-        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
-    )
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    generation_columns = {column["name"] for column in inspector.get_columns("generations")}
+    generation_indexes = {index["name"] for index in inspector.get_indexes("generations")}
 
-    op.alter_column("generations", "image_path", existing_type=sa.Text(), nullable=True)
+    if "is_superuser" not in user_columns:
+        op.add_column("users", sa.Column("is_superuser", sa.Boolean(), nullable=False, server_default=sa.false()))
 
-    op.create_index("ix_generations_status", "generations", ["status"], unique=False)
-    op.create_index("ix_generations_provider_job_id", "generations", ["provider_job_id"], unique=False)
+    if "status" not in generation_columns:
+        op.add_column("generations", sa.Column("status", sa.String(length=32), nullable=False, server_default="queued"))
+    if "provider_name" not in generation_columns:
+        op.add_column("generations", sa.Column("provider_name", sa.String(length=64), nullable=True))
+    if "provider_job_id" not in generation_columns:
+        op.add_column("generations", sa.Column("provider_job_id", sa.String(length=255), nullable=True))
+    if "provider_state" not in generation_columns:
+        op.add_column("generations", sa.Column("provider_state", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")))
+    if "result" not in generation_columns:
+        op.add_column("generations", sa.Column("result", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")))
+    if "error" not in generation_columns:
+        op.add_column("generations", sa.Column("error", sa.Text(), nullable=True))
+    if "started_at" not in generation_columns:
+        op.add_column("generations", sa.Column("started_at", sa.TIMESTAMP(timezone=True), nullable=True))
+    if "completed_at" not in generation_columns:
+        op.add_column("generations", sa.Column("completed_at", sa.TIMESTAMP(timezone=True), nullable=True))
+    if "updated_at" not in generation_columns:
+        op.add_column(
+            "generations",
+            sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
+        )
+
+    image_path_column = next((column for column in inspector.get_columns("generations") if column["name"] == "image_path"), None)
+    if image_path_column is not None and image_path_column.get("nullable", True) is False:
+        op.alter_column("generations", "image_path", existing_type=sa.Text(), nullable=True)
+
+    if "ix_generations_status" not in generation_indexes:
+        op.create_index("ix_generations_status", "generations", ["status"], unique=False)
+    if "ix_generations_provider_job_id" not in generation_indexes:
+        op.create_index("ix_generations_provider_job_id", "generations", ["provider_job_id"], unique=False)
 
 
 def downgrade() -> None:

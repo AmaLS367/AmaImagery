@@ -27,11 +27,11 @@ class GenResp(BaseModel):
 
 class TaskResp(BaseModel):
     task_id: str = Field(description="Unique task identifier")
-    status: str = Field(description="Task status (queued, running, completed, failed)")
+    status: str = Field(description="Task status (queued, running, completed, failed, canceled)")
 
 class TaskStatusResp(BaseModel):
     task_id: str = Field(description="Unique task identifier")
-    status: str = Field(description="Task status (queued, running, completed, failed)")
+    status: str = Field(description="Task status (queued, running, completed, failed, canceled)")
     provider_name: Optional[str] = Field(None, description="Selected provider name")
     provider_state: Optional[Dict[str, Any]] = Field(None, description="Provider-specific execution state")
     image_path: Optional[str] = Field(None, description="Path to generated image (completed only)")
