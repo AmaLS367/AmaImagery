@@ -1,11 +1,12 @@
 import os
 
 import httpx
+import pytest
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
-LOGIN_URL = f"{BASE_URL}/auth/me"
-REFRESH_URL = f"{BASE_URL}/auth/refresh"
-LOGOUT_URL = f"{BASE_URL}/auth/logout"
+LOGIN_URL = f"{BASE_URL}/api/v1/auth/login"
+REFRESH_URL = f"{BASE_URL}/api/v1/auth/refresh"
+LOGOUT_URL = f"{BASE_URL}/api/v1/auth/logout"
 REFRESH_COOKIE_NAME = os.getenv("REFRESH_COOKIE_NAME", "refresh_token")
 
 IDENTIFIER = os.getenv("TEST_IDENTIFIER", "tester")
@@ -21,7 +22,10 @@ def test_refresh_flow_end_to_end():
     client = httpx.Client(timeout=10.0, follow_redirects=False)
 
     # 1) Логин → access в JSON и refresh-cookie
-    r = client.post(LOGIN_URL, json={"identifier": IDENTIFIER, "password": PASSWORD})
+    try:
+        r = client.post(LOGIN_URL, json={"identifier": IDENTIFIER, "password": PASSWORD})
+    except httpx.ConnectError as exc:
+        pytest.skip(f"live server unavailable: {exc}")
     assert r.status_code == 200, f"login failed: {r.status_code}, {r.text}"
     data = r.json()
     assert isinstance(data.get("access_token", ""), str) and len(data["access_token"]) > 20
@@ -38,7 +42,7 @@ def test_refresh_flow_end_to_end():
 
     # 3) Reuse-атака старой кукой → 401 и бан семьи
     rogue = httpx.Client(timeout=10.0, follow_redirects=False)
-    rogue.cookies.set(REFRESH_COOKIE_NAME, rt1, domain="127.0.0.1", path="/auth")
+    rogue.cookies.set(REFRESH_COOKIE_NAME, rt1, domain="127.0.0.1", path="/api/v1/auth")
     r3 = rogue.post(REFRESH_URL)
     assert r3.status_code == 401, f"reuse must be 401, got {r3.status_code}"
 
@@ -59,6 +63,6 @@ def test_refresh_flow_end_to_end():
     client.post(LOGOUT_URL)
 
     rogue2 = httpx.Client(timeout=10.0, follow_redirects=False)
-    rogue2.cookies.set(REFRESH_COOKIE_NAME, rt_live, domain="127.0.0.1", path="/auth")
+    rogue2.cookies.set(REFRESH_COOKIE_NAME, rt_live, domain="127.0.0.1", path="/api/v1/auth")
     r7 = rogue2.post(REFRESH_URL)
     assert r7.status_code == 401, f"refresh after logout must be 401, got {r7.status_code}"
