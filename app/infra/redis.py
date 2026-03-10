@@ -5,7 +5,14 @@ Handles connection lifecycle (init/close) and provides a global accessor.
 """
 
 import logging
-from redis.asyncio import Redis
+from typing import Any
+
+try:
+    from redis.asyncio import Redis
+    _REDIS_AVAILABLE = True
+except Exception:  # pragma: no cover - exercised only in minimal test envs
+    Redis = Any  # type: ignore[assignment]
+    _REDIS_AVAILABLE = False
 
 from app.config import settings
 
@@ -19,6 +26,9 @@ async def init_redis() -> None:
     
     if settings.no_redis:
         logger.info("Redis disabled via configuration (NO_REDIS=True).")
+        return
+    if not _REDIS_AVAILABLE:
+        logger.warning("Redis package is not installed; Redis features are disabled.")
         return
 
     if _redis_client is not None:

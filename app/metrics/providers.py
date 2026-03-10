@@ -2,8 +2,26 @@
 Metrics for image generation providers.
 """
 
-from prometheus_client import Counter, Histogram
 from typing import Optional
+
+try:
+    from prometheus_client import Counter, Histogram
+except Exception:  # pragma: no cover - minimal env fallback
+    class _NoopMetric:
+        def labels(self, **kwargs):
+            return self
+
+        def inc(self, *args, **kwargs):
+            return None
+
+        def observe(self, *args, **kwargs):
+            return None
+
+    def Counter(*args, **kwargs):
+        return _NoopMetric()
+
+    def Histogram(*args, **kwargs):
+        return _NoopMetric()
 
 # Provider generation metrics
 provider_generation_total = Counter(
