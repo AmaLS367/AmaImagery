@@ -1,14 +1,12 @@
 """
 Use case for retrieving generation task status.
-
-Retrieves task status from the queue and maps it to API response format.
 """
 
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 from app.application.use_cases.base import Command, UseCaseResult, UseCase
-from app.infra.queue import TaskQueue, get_task_queue
+from app.files.artifacts import ArtifactService, get_artifact_service
 from app.infra.uow import SqlAlchemyUnitOfWork
 
 
@@ -32,8 +30,13 @@ class GenerationStatusResult:
     """
     task_id: str
     status: str
+    provider_name: Optional[str] = None
+    provider_state: Optional[Dict[str, Any]] = None
     image_path: Optional[str] = None
     image_filename: Optional[str] = None
+    image_url: Optional[str] = None
+    exp: Optional[int] = None
+    sig: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     created_at: Optional[int] = None
@@ -50,11 +53,11 @@ class GetGenerationStatusUseCase:
     
     def __init__(
         self,
-        task_queue: Optional[TaskQueue] = None,
         uow: Optional[SqlAlchemyUnitOfWork] = None,
+        artifacts: Optional[ArtifactService] = None,
     ):
-        self.task_queue = task_queue or get_task_queue()
-        self.uow = uow
+        self.uow = uow or SqlAlchemyUnitOfWork()
+        self.artifacts = artifacts or get_artifact_service()
     
     async def __call__(self, command: GetGenerationStatusCommand) -> UseCaseResult[GenerationStatusResult]:
         """
@@ -67,52 +70,32 @@ class GetGenerationStatusUseCase:
             UseCaseResult with status data on success, error message if task not found
         """
         try:
-            status_data = await self.task_queue.get_status(command.task_id)
-            
-            if not status_data:
+            async with self.uow:
+                generation = await self.uow.generations.get(command.task_id)
+
+            if not generation:
                 return UseCaseResult(
                     success=False,
                     error="Task not found",
                 )
-            
-            status = status_data.get("status", "unknown")
-            
-            if status == "completed":
-                result = status_data.get("result", {})
-                return UseCaseResult(
-                    success=True,
-                    data=GenerationStatusResult(
-                        task_id=command.task_id,
-                        status=status,
-                        image_path=result.get("image_path"),
-                        image_filename=result.get("image_filename"),
-                        metadata=result.get("metadata"),
-                        created_at=status_data.get("created_at"),
-                        started_at=status_data.get("started_at"),
-                        completed_at=status_data.get("completed_at"),
-                    ),
-                )
-            
-            if status == "failed":
-                return UseCaseResult(
-                    success=True,
-                    data=GenerationStatusResult(
-                        task_id=command.task_id,
-                        status=status,
-                        error=status_data.get("error"),
-                        created_at=status_data.get("created_at"),
-                        started_at=status_data.get("started_at"),
-                        completed_at=status_data.get("completed_at"),
-                    ),
-                )
-            
+            signed = self.artifacts.build_signed_download(generation.image_path)
             return UseCaseResult(
                 success=True,
                 data=GenerationStatusResult(
                     task_id=command.task_id,
-                    status=status,
-                    created_at=status_data.get("created_at"),
-                    started_at=status_data.get("started_at"),
+                    status=generation.status,
+                    provider_name=generation.provider_name,
+                    provider_state=generation.provider_state or {},
+                    image_path=generation.image_path,
+                    image_filename=signed["image_filename"],
+                    image_url=signed["image_url"],
+                    exp=signed["exp"],
+                    sig=signed["sig"],
+                    metadata=generation.result or {},
+                    error=generation.error,
+                    created_at=int(generation.created_at.timestamp()) if generation.created_at else None,
+                    started_at=int(generation.started_at.timestamp()) if generation.started_at else None,
+                    completed_at=int(generation.completed_at.timestamp()) if generation.completed_at else None,
                 ),
             )
             
