@@ -42,6 +42,9 @@ class IGenerationRepository(IRepository[Generation]):
     async def list_by_user(self, user_id: UUID | str, limit: Optional[int] = None, offset: int = 0) -> List[Generation]:
         ...
 
+    async def update_fields(self, id: UUID | str, **fields: Any) -> Optional[Generation]:
+        ...
+
 
 class IUserRepository(IRepository[User]):
     """
