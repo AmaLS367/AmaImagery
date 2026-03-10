@@ -72,12 +72,12 @@ HTTP Handler (FastAPI) → Use Case → UnitOfWork → Repository → Async DB
 
 5. **TaskQueue** - Asynchronous task processing
    - Heavy operations are enqueued
-   - Status tracked in Redis
+   - Redis is used as transport queue only
 
 6. **Worker Process** - Background processing
    - Picks up tasks from queue
    - Performs heavy operations (ML inference, image processing)
-   - Updates task status
+   - Updates lifecycle state in PostgreSQL
 
 ## Heavy Operations
 
@@ -99,6 +99,7 @@ The following operations are **acceptable** in HTTP handlers:
 - **Authentication** - Token verification, user lookup
 - **Light Queries** - Simple database lookups (user info, settings)
 - **Status Checks** - Task status retrieval from queue
+ - **Status Checks** - Task status retrieval from database-backed lifecycle
 - **Response Formatting** - Data transformation for API responses
 
 ## Rules and Best Practices
@@ -124,7 +125,7 @@ The following operations are **acceptable** in HTTP handlers:
 ### Task Queue
 
 - **Purpose**: Decouple HTTP requests from heavy processing
-- **Implementation**: Redis-based queue with status tracking
+- **Implementation**: Redis-based transport queue with DB-backed lifecycle tracking
 - **Task Lifecycle**: `queued` → `running` → `completed`/`failed`
 
 ### Workers
@@ -137,7 +138,7 @@ The following operations are **acceptable** in HTTP handlers:
 
 ```python
 # Handler: Quick response
-@router.post("/generate")
+@router.post("/api/v1/images/generate")
 async def generate(request: GenReq):
     use_case = GenerateImageUseCase(uow=get_uow())
     result = await use_case(GenerateImageCommand(...))
@@ -146,10 +147,12 @@ async def generate(request: GenReq):
 # Worker: Heavy processing
 async def run_worker():
     while True:
-        task_id = await task_queue.dequeue()
+        generation_id = await task_queue.dequeue()
         # Heavy ML inference here
-        result = await provider.generate(...)
-        await task_queue.mark_completed(task_id, result)
+        generation = await uow.generations.get(generation_id)
+        submission = await provider.submit(...)
+        result = await provider.wait_for_result(submission, timeout_sec=...)
+        await uow.generations.update_fields(generation_id, status="completed", result=result.metadata)
 ```
 
 ## Event Loop Safety

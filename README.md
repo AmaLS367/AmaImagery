@@ -80,8 +80,11 @@ pip install -e .
 # Run migrations
 alembic upgrade head
 
-# Start the server (includes API and generation worker)
+# Start the API server
 python run.py
+
+# Start the generation worker in a separate process
+python -m app.entrypoints.generation_worker
 ```
 
 **Note:** The project uses `pyproject.toml` for modern dependency management. For legacy systems, `requirements.txt` is also available.

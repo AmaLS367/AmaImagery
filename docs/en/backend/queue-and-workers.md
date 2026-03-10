@@ -44,23 +44,20 @@ The application uses an asynchronous task queue model for image generation, allo
 
 The `TaskQueue` protocol provides a unified interface for task management:
 
-- `enqueue(payload)` - Adds task to queue, returns `task_id`
-- `get_status(task_id)` - Retrieves current task status
-- `update_status(task_id, status, result, error)` - Updates task status
+- `enqueue(generation_id)` - Adds a persisted generation ID to queue
 - `dequeue(timeout)` - Removes task from queue (worker use)
-- `mark_completed(task_id, result)` - Marks task as completed
-- `mark_failed(task_id, error)` - Marks task as failed
+
+Task lifecycle is tracked in PostgreSQL `generations`, not in Redis status hashes.
 
 ### Redis Implementation
 
 The `RedisTaskQueue` implementation uses:
-- **Redis List** (`tasks:queue`) - Queue of task IDs
-- **Redis Hash** (`task:{id}`) - Task status and metadata
+- **Redis List** (`tasks:queue`) - Queue of persisted generation IDs
 
 This design enables:
 - Concurrent task consumption by multiple workers
-- Task state persistence across worker restarts
 - Distributed task processing
+- Redis to remain transport-only while PostgreSQL stores lifecycle state
 
 ## Task Status
 
@@ -81,9 +78,9 @@ Task IDs are UUIDs (e.g., `550e8400-e29b-41d4-a716-446655440000`).
 
 The `generation_worker` process:
 - Continuously polls the queue for new tasks
+- Loads generation state from database
 - Processes tasks via provider registry
-- Saves results to database
-- Updates task status in Redis
+- Persists provider state, artifact metadata and final lifecycle status in database
 
 ### Running Workers
 
