@@ -31,20 +31,6 @@ async def current_user(
             or request.cookies.get("token")
         )
 
-    # Query Param
-    if not token:
-        token = (
-            request.query_params.get("access_token")
-            or request.query_params.get("token")
-        )
-
-    if not token:
-        raw = request.headers.get("authorization", "").strip()
-        if raw and " " not in raw:
-            token = raw
-    if not token:
-        token = request.headers.get("x-access-token") or request.headers.get("x-token")
-
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 

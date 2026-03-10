@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.config import settings
 from app.infra.uow import get_uow
 from app.api.v1.auth.deps import current_user
+from app.domain.models import UserSettings
 from app.core.safety import (
     is_blocked,
     is_blocked_forced,
