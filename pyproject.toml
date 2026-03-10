@@ -163,7 +163,7 @@ Issues = "https://github.com/AmaLS367/AmaImagery/issues"
 packages = ["app"]
 
 [tool.setuptools.package-data]
-app = ["config/*.txt", "config/*.md"]
+app = ["config/*.txt", "config/*.md", "templates/**/*.html"]
 
 # Pytest configuration
 [tool.pytest.ini_options]

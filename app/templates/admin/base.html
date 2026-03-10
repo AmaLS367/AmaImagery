@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AmaImagery Admin{% endblock %}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --ink: #172033;
+      --muted: #5f6b85;
+      --border: #d8dfeb;
+      --accent: #1d4ed8;
+      --danger: #b91c1c;
+      --success: #166534;
+      --warning: #92400e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background: linear-gradient(180deg, #eef3fb 0%, #f7f9fc 100%);
+      color: var(--ink);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .topbar h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .nav {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .nav a {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(29, 78, 216, 0.08);
+      font-weight: 600;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(23, 32, 51, 0.05);
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .filters input {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-width: 180px;
+    }
+    .filters button {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-top: 1px solid var(--border);
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .pill {
+      display: inline-flex;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(95, 107, 133, 0.1);
+    }
+    .status-completed { color: var(--success); background: rgba(22, 101, 52, 0.1); }
+    .status-failed, .status-canceled { color: var(--danger); background: rgba(185, 28, 28, 0.1); }
+    .status-running { color: var(--warning); background: rgba(146, 64, 14, 0.1); }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #101827;
+      color: #f8fafc;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 13px;
+      overflow-x: auto;
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div>
+        <h1>AmaImagery Admin</h1>
+        <div class="meta">Signed in as {{ admin_user.username }}{% if admin_user.email %} ({{ admin_user.email }}){% endif %}</div>
+      </div>
+    </div>
+    <div class="nav">
+      <a href="/admin/generations">Generations</a>
+      <a href="/admin/users">Users</a>
+      <a href="/api/v1/health">Health</a>
+      <a href="/api/v1/healthz">Readiness</a>
+    </div>
+    <div class="card">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</body>
+</html>

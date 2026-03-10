@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin Users{% endblock %}
+{% block content %}
+<h2>Users</h2>
+<p class="meta">Total users: {{ total }}. Showing {{ items|length }} starting at offset {{ offset }}.</p>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Email</th>
+      <th>Username</th>
+      <th>Role</th>
+      <th>Created</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.id }}</td>
+      <td>{{ item.email }}</td>
+      <td>{{ item.username }}</td>
+      <td>{% if item.is_superuser %}<span class="pill">superuser</span>{% else %}user{% endif %}</td>
+      <td>{{ item.created_at or "-" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
