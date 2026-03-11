@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from app.domain.providers.errors import ProviderOperationError
 from app.domain.providers.interfaces import GenerationRequest, IImageProvider, ProviderResult, ProviderSubmission
@@ -198,7 +198,7 @@ def _extract_image_info(history: dict[str, Any], workflow_map: dict[str, Any]) -
     images = node_output.get("images") or []
     if not images:
         raise ComfyUIHistoryError("ComfyUI output did not contain images")
-    return images[0]
+    return cast(dict[str, Any], images[0])
 
 
 def _provider_state(

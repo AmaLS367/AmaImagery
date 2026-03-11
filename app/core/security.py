@@ -1,31 +1,44 @@
 from __future__ import annotations
-from datetime import datetime, timedelta, timezone
-from jwt import InvalidTokenError, ExpiredSignatureError
-from app.config import settings
-from uuid import UUID
-from app.infra.redis import get_redis
 
-import re, jwt, uuid, time, secrets
+import re
+import secrets
+import time
+import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast
+from uuid import UUID
 
 import bcrypt
+import jwt
+from jwt import ExpiredSignatureError, InvalidTokenError
+
+from app.config import settings
+from app.infra.redis import get_redis
+
 _EMAIL_RX = re.compile(r"\s+")
 RESET_TYP = "pwd_reset"
+
 
 def normalize_email(s: str) -> str:
     return _EMAIL_RX.sub("", s).strip().lower()
 
+
 def hash_password(raw: str) -> str:
-    hashed = bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt(rounds=settings.bcrypt_rounds))
+    hashed = cast(bytes, bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt(rounds=settings.bcrypt_rounds)))
     return hashed.decode("utf-8")
+
 
 def verify_password(raw: str, hashed: str) -> bool:
     try:
-        return bcrypt.checkpw(raw.encode("utf-8"), hashed.encode("utf-8"))
+        return cast(bool, bcrypt.checkpw(raw.encode("utf-8"), hashed.encode("utf-8")))
     except ValueError:
         return False
 
-def create_access_token(sub: str | int | UUID, extra: dict | None = None, expires_minutes: int | None = None) -> tuple[str, int]:
-    now = datetime.now(timezone.utc)
+
+def create_access_token(
+    sub: str | int | UUID, extra: dict | None = None, expires_minutes: int | None = None
+) -> tuple[str, int]:
+    now = datetime.now(UTC)
     exp_minutes = expires_minutes or settings.access_ttl_min
     exp = now + timedelta(minutes=exp_minutes)
     payload = {
@@ -41,25 +54,30 @@ def create_access_token(sub: str | int | UUID, extra: dict | None = None, expire
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_alg)
     return token, exp_minutes * 60
 
-def decode_access_token(token: str) -> dict:
-  try:
-    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg], options={"verify_aud": False})
-    if "sub" not in payload or "exp" not in payload:
-      raise InvalidTokenError("malformed")
 
-    now_ts = int(datetime.now(timezone.utc).timestamp())
-    if int(payload["exp"]) <= now_ts:
-        raise ExpiredSignatureError()
-    return payload
+def decode_access_token(token: str) -> dict[str, Any]:
+    try:
+        payload = cast(
+            dict[str, Any],
+            jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg], options={"verify_aud": False}),
+        )
+        if "sub" not in payload or "exp" not in payload:
+            raise InvalidTokenError("malformed")
 
-  except ExpiredSignatureError as e:
-    raise e
-  except Exception as e:
-    raise InvalidTokenError(str(e))
+        now_ts = int(datetime.now(UTC).timestamp())
+        if int(payload["exp"]) <= now_ts:
+            raise ExpiredSignatureError()
+        return payload
+
+    except ExpiredSignatureError:
+        raise
+    except Exception as e:
+        raise InvalidTokenError(str(e)) from e
+
 
 def create_reset_token(*, sub: str, ttl_min: int | None = None) -> tuple[str, int]:
     ttl = int(ttl_min or settings.reset_token_ttl_min)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     exp = now + timedelta(minutes=ttl)
     payload = {
         "sub": str(sub),
@@ -71,8 +89,9 @@ def create_reset_token(*, sub: str, ttl_min: int | None = None) -> tuple[str, in
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_alg)
     return token, ttl
 
-def decode_reset_token(token: str) -> dict:
-    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg])
+
+def decode_reset_token(token: str) -> dict[str, Any]:
+    payload = cast(dict[str, Any], jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg]))
     if payload.get("typ") != RESET_TYP:
         raise jwt.InvalidTokenError("invalid reset token type")
     return payload
@@ -84,7 +103,7 @@ def _now_ts() -> int:
 
 
 def _now_dt() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # Constants for token management
@@ -98,6 +117,7 @@ _in_memory_families: dict[str, dict[str, int | str]] = {}
 _in_memory_revoked: dict[str, int] = {}
 _in_memory_logged_out: dict[str, int] = {}
 
+
 def _family_record(new_jti: str, exp_ts: int) -> dict[str, int | str]:
     """Build family record for Redis with unified structure."""
     return {
@@ -105,6 +125,7 @@ def _family_record(new_jti: str, exp_ts: int) -> dict[str, int | str]:
         "exp": exp_ts,
         "created": _now_ts(),
     }
+
 
 def _family_key(user_id: str, session_id: str) -> str:
     """Generate family key for token management."""
@@ -168,7 +189,7 @@ async def issue_tokens_rotating(user_id: str, session_id: str) -> dict[str, str]
     else:
         await r.hset(family_key, mapping=_family_record(rjti, exp_ts))
         await r.expire(family_key, REFRESH_TTL_SEC)
-    
+
     return {"access": access, "refresh": refresh}
 
 
@@ -180,7 +201,7 @@ async def check_family_current(user_id: str, session_id: str, jti: str) -> bool:
         _cleanup_in_memory_security_state()
         current_jti = (_in_memory_families.get(family_key) or {}).get("current_jti")
         return current_jti == jti
-    current_jti = await r.hget(family_key, "current_jti")
+    current_jti = cast(str | None, await r.hget(family_key, "current_jti"))
     return current_jti == jti
 
 
@@ -196,7 +217,7 @@ async def rotate_refresh(user_id: str, session_id: str, old_jti: str) -> dict[st
             raise ValueError("Invalid old JTI")
         _in_memory_revoked[old_jti] = _now_ts() + 86400
     else:
-        current_jti = await r.hget(family_key, "current_jti")
+        current_jti = cast(str | None, await r.hget(family_key, "current_jti"))
         if current_jti != old_jti:
             raise ValueError("Invalid old JTI")
         await r.setex(f"{REVOKE_PREFIX}{old_jti}", 86400, "1")
@@ -208,7 +229,7 @@ async def rotate_refresh(user_id: str, session_id: str, old_jti: str) -> dict[st
     else:
         await r.hset(family_key, mapping=_family_record(new_jti, exp_ts))
         await r.expire(family_key, REFRESH_TTL_SEC)
-    
+
     return {"access": access, "refresh": refresh}
 
 
@@ -242,10 +263,10 @@ async def revoke_jti(jti: str, exp_ts: int) -> None:
     r = get_redis()
     ttl = max(0, exp_ts - _now_ts())
     if ttl > 0:
-       if r is None:
-           _in_memory_revoked[jti] = exp_ts
-           return
-       await r.setex(f"{REVOKE_PREFIX}{jti}", ttl, "1")
+        if r is None:
+            _in_memory_revoked[jti] = exp_ts
+            return
+        await r.setex(f"{REVOKE_PREFIX}{jti}", ttl, "1")
 
 
 async def is_revoked(jti: str) -> bool:
@@ -254,7 +275,7 @@ async def is_revoked(jti: str) -> bool:
         _cleanup_in_memory_security_state()
         exp_ts = _in_memory_revoked.get(jti)
         return bool(exp_ts and exp_ts > _now_ts())
-    return bool(await r.exists(f"{REVOKE_PREFIX}{jti}"))
+    return bool(cast(int, await r.exists(f"{REVOKE_PREFIX}{jti}")))
 
 
 async def mark_user_logged_out(user_id: str) -> None:
@@ -272,7 +293,8 @@ async def is_user_logged_out(user_id: str) -> bool:
         _cleanup_in_memory_security_state()
         exp_ts = _in_memory_logged_out.get(user_id)
         return bool(exp_ts and exp_ts > _now_ts())
-    return bool(await r.exists(f"{LOGOUT_PREFIX}{user_id}"))
+    return bool(cast(int, await r.exists(f"{LOGOUT_PREFIX}{user_id}")))
+
 
 async def clear_user_logged_out(user_id: str) -> None:
     """Clear user logged out status."""
@@ -290,10 +312,6 @@ def _cleanup_in_memory_security_state() -> None:
         for key in expired:
             store.pop(key, None)
 
-    expired_families = [
-        key
-        for key, record in _in_memory_families.items()
-        if int(record.get("exp", 0)) <= now_ts
-    ]
+    expired_families = [key for key, record in _in_memory_families.items() if int(record.get("exp", 0)) <= now_ts]
     for key in expired_families:
         _in_memory_families.pop(key, None)

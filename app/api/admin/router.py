@@ -92,8 +92,9 @@ async def admin_generation_detail(
     async with uow:
         generation = await uow.generations.get(generation_id)
         owner = None
-        if generation is not None and getattr(generation, "user_id", None):
-            owner = await uow.users.get(generation.user_id)
+        generation_user_id = getattr(generation, "user_id", None) if generation is not None else None
+        if generation_user_id is not None:
+            owner = await uow.users.get(generation_user_id)
 
     payload = None
     prompt_blob: dict[str, Any] = {}

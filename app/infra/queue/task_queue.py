@@ -4,14 +4,14 @@ Redis implementation of the TaskQueue interface.
 
 import asyncio
 import logging
-
-from typing import Any
+from typing import Any, cast
 
 try:
     from redis.asyncio import Redis
+
     _REDIS_AVAILABLE = True
 except Exception:  # pragma: no cover - minimal env fallback
-    Redis = Any  # type: ignore[assignment]
+    Redis = Any
     _REDIS_AVAILABLE = False
 
 from app.domain.providers.interfaces import ITaskQueue
@@ -27,49 +27,52 @@ class RedisTaskQueue(ITaskQueue):
     """
     Redis implementation using a list as a pure transport queue.
     """
-    
+
     def __init__(self, redis_client: Redis, queue_key: str = "tasks:queue") -> None:
         self.redis = redis_client
         self.queue_key = queue_key
-    
+
     async def enqueue(self, generation_id: str) -> str:
         await self.redis.lpush(self.queue_key, generation_id)
-        
+
         try:
-            queue_len = await self.redis.llen(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
+            queue_len = cast(int, await self.redis.llen(self.queue_key))
             update_queue_size("generation", queue_len)
         except Exception as exc:
             logger.debug("queue_metric_update_failed", extra={"queue_key": self.queue_key, "error": str(exc)})
-        
+
         logger.info("Task %s enqueued.", generation_id)
         return generation_id
-    
+
     async def dequeue(self, timeout: float = 0.0) -> str | None:
         try:
             if timeout > 0:
                 # brpop requires integer timeout (seconds), not float
                 timeout_int = int(timeout)
                 # brpop returns (key, value) tuple or None
-                res = await self.redis.brpop([self.queue_key], timeout=timeout_int)  # type: ignore[awaitable-is-not-awaitable]
-                if res:
-                    task_id = res[1]  # type: ignore[index]
+                blocking_result = cast(
+                    tuple[str, str] | None,
+                    await self.redis.brpop([self.queue_key], timeout=timeout_int),
+                )
+                if blocking_result:
+                    task_id = blocking_result[1]
                     await self._update_metrics()
                     logger.debug(f"Dequeued task {task_id} from {self.queue_key}")
-                    return task_id  # type: ignore[return-value]
+                    return task_id
             else:
-                res = await self.redis.rpop(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
-                if res:
+                popped_task_id = cast(str | None, await self.redis.rpop(self.queue_key))
+                if popped_task_id:
                     await self._update_metrics()
-                    logger.debug(f"Dequeued task {res} from {self.queue_key}")
-                    return res  # type: ignore[return-value]
+                    logger.debug(f"Dequeued task {popped_task_id} from {self.queue_key}")
+                    return popped_task_id
         except Exception as e:
             logger.exception(f"Error during dequeue: {e}")
             raise
         return None
-    
+
     async def _update_metrics(self) -> None:
         try:
-            queue_len = await self.redis.llen(self.queue_key)  # type: ignore[awaitable-is-not-awaitable]
+            queue_len = cast(int, await self.redis.llen(self.queue_key))
             update_queue_size("generation", queue_len)
         except Exception as exc:
             logger.debug("queue_metric_update_failed", extra={"queue_key": self.queue_key, "error": str(exc)})
@@ -96,7 +99,7 @@ class InMemoryTaskQueue(ITaskQueue):
                 generation_id = await asyncio.wait_for(self._queue.get(), timeout=timeout)
             else:
                 generation_id = self._queue.get_nowait()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
         except asyncio.QueueEmpty:
             return None
@@ -115,24 +118,24 @@ _task_queue_instance: ITaskQueue | None = None
 def get_task_queue() -> ITaskQueue:
     """
     Factory function that returns a singleton TaskQueue instance.
-    
+
     Creates the queue using the global Redis client if available.
     """
     global _task_queue_instance
-    
+
     if _task_queue_instance is None:
         if not _REDIS_AVAILABLE:
             logger.warning("Redis package is unavailable. Falling back to InMemoryTaskQueue.")
             _task_queue_instance = InMemoryTaskQueue()
             return _task_queue_instance
         from app.infra.redis import get_redis
-        
+
         redis_client = get_redis()
         if redis_client is None:
             logger.warning("Redis client is unavailable. Falling back to InMemoryTaskQueue.")
             _task_queue_instance = InMemoryTaskQueue()
             return _task_queue_instance
-        
+
         _task_queue_instance = RedisTaskQueue(redis_client)
-    
+
     return _task_queue_instance

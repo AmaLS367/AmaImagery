@@ -10,9 +10,11 @@ from app.domain.providers import get_provider_registry
 
 router = APIRouter()
 
+
 @router.options("/health")
 async def health_options() -> Response:
     return Response(status_code=200)
+
 
 @router.get("/health")
 async def health_check(request: Request) -> dict:
@@ -26,7 +28,8 @@ async def health_check(request: Request) -> dict:
         "infrastructure": infra,
     }
 
-@router.get("/healthz")
+
+@router.get("/healthz", response_model=None)
 async def healthz(request: Request) -> dict[str, Any] | JSONResponse:
     registry = get_provider_registry()
     readiness = await registry.readiness_snapshot()

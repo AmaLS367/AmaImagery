@@ -3,17 +3,16 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from app.config import settings
-
 
 DEFAULT_WORKFLOW_PATH = Path(__file__).resolve().parents[2] / "config" / "comfyui_default_workflow.json"
 DEFAULT_MAP_PATH = Path(__file__).resolve().parents[2] / "config" / "comfyui_default_workflow_map.json"
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
 
 
 def load_workflow_bundle() -> tuple[dict[str, Any], dict[str, Any]]:
