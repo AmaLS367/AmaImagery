@@ -5,8 +5,10 @@ This module patches socket connections to prevent ML models from accessing
 the internet while allowing local connections (localhost, 127.0.0.1).
 Useful for security and ensuring models run in offline mode.
 """
+
 import os
 import socket
+from typing import Any, cast
 
 _APPLIED = False
 
@@ -51,31 +53,35 @@ def apply():
     global _APPLIED
     if _APPLIED:
         return
-    
+
     # Import settings here to avoid circular dependency
     from app.config import settings
-    
+
     if not _env_bool("NO_NETWORK", settings.no_network):
         return
-    
+
     # Patch socket methods
-    socket.socket.connect = _blocked_connect
-    socket.socket.connect_ex = _blocked_connect_ex
-    socket.create_connection = _blocked_create_connection
-    
+    socket_class = cast(Any, socket.socket)
+    socket_module = cast(Any, socket)
+    socket_class.connect = _blocked_connect
+    socket_class.connect_ex = _blocked_connect_ex
+    socket_module.create_connection = _blocked_create_connection
+
     # Set environment variables for ML libraries to use offline mode
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
     os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-    
+
     _APPLIED = True
+
 
 def restore():
     global _APPLIED
     if not _APPLIED:
         return
-    socket.socket.connect = _OrigConnect    
-    socket.socket.connect_ex = _OrigConnectEx 
-    socket.create_connection = _OrigCreateConn
+    socket_class = cast(Any, socket.socket)
+    socket_module = cast(Any, socket)
+    socket_class.connect = _OrigConnect
+    socket_class.connect_ex = _OrigConnectEx
+    socket_module.create_connection = _OrigCreateConn
     _APPLIED = False
-

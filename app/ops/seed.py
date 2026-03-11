@@ -1,26 +1,24 @@
-# app/ops/seed.py
 from __future__ import annotations
-from sqlalchemy import select, or_
+
+import asyncio
+
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
-from app.infra.db import SessionLocal
+
+from app.core.security import hash_password, normalize_email
 from app.domain.models import User, UserSettings
-from app.core.security import normalize_email, hash_password
+from app.infra.db import AsyncSessionLocal
 
 DEFAULT_SETTINGS = {"style": "anime", "steps": 28, "size": 768, "negative": ""}
 
-def run_seed() -> None:
-    db = SessionLocal()
-    try:
+
+async def _run_seed_async() -> None:
+    async with AsyncSessionLocal() as db:
         email = normalize_email("admin@example.com")
         username = "admin"
+        user = (await db.execute(select(User).where(or_(User.email == email, User.username == username)))).scalar_one_or_none()
 
-        # 1) найти по email ИЛИ username
-        user = db.execute(
-            select(User).where(or_(User.email == email, User.username == username))
-        ).scalar_one_or_none()
-
-        # 2) создать при отсутствии; если упали на уникальности — перечитать и жить дальше
-        if not user:
+        if user is None:
             user = User(
                 email=email,
                 username=username,
@@ -28,23 +26,23 @@ def run_seed() -> None:
             )
             db.add(user)
             try:
-                db.commit()
+                await db.commit()
             except IntegrityError:
-                db.rollback()
-                user = db.execute(
-                    select(User).where(or_(User.email == email, User.username == username))
+                await db.rollback()
+                user = (
+                    await db.execute(select(User).where(or_(User.email == email, User.username == username)))
                 ).scalar_one_or_none()
 
-        # 3) настройки — идемпотентно по user_id
         if user is not None:
-            us = db.execute(
-                select(UserSettings).where(UserSettings.user_id == user.id)
+            settings_row = (
+                await db.execute(select(UserSettings).where(UserSettings.user_id == user.id))
             ).scalar_one_or_none()
-            if not us:
-                us = UserSettings(user_id=user.id, data=DEFAULT_SETTINGS.copy())
-                db.add(us)
-            db.commit()
+            if settings_row is None:
+                db.add(UserSettings(user_id=user.id, data=DEFAULT_SETTINGS.copy()))
+            await db.commit()
 
-        print("[seed] ok")
-    finally:
-        db.close()
+    print("[seed] ok")
+
+
+def run_seed() -> None:
+    asyncio.run(_run_seed_async())

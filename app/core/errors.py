@@ -4,14 +4,16 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.responses import Response
 from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
+
 from app.config import settings
 from app.core.exceptions import DomainException, map_exception_to_http
 from app.core.logging import logger
 
+
 def _is_debug() -> bool:
     return bool(getattr(settings, "debug", False))
+
 
 def _req_id(request: Request) -> str | None:
     return request.headers.get("X-Request-ID")
@@ -39,7 +41,7 @@ def install_error_handlers(app: FastAPI) -> None:
                 query_params=str(request.query_params),
             ).warning(f"404 Not Found: {request.method} {request.url.path}")
             return JSONResponse(status_code=404, content=payload)
-        
+
         # Handle other StarletteHTTPException
         detail = exc.detail if exc.detail else exc.__class__.__name__
         payload = {
@@ -52,16 +54,16 @@ def install_error_handlers(app: FastAPI) -> None:
         }
         logger.bind(event_type="error", scope="http", status=exc.status_code, path=request.url.path).info("HTTP error")
         return JSONResponse(status_code=exc.status_code, content=payload)
-    
+
     @app.exception_handler(DomainException)
     async def _domain_exception(request: Request, exc: DomainException):
         status_code, response_data = map_exception_to_http(exc)
-        
+
         payload = {
             **response_data,
             "request_id": _req_id(request),
         }
-        
+
         logger.bind(
             event_type="error",
             scope="domain",
@@ -69,9 +71,8 @@ def install_error_handlers(app: FastAPI) -> None:
             code=exc.code,
             path=request.url.path,
         ).info("Domain exception")
-        
-        return JSONResponse(status_code=status_code, content=payload)
 
+        return JSONResponse(status_code=status_code, content=payload)
 
     @app.exception_handler(HTTPException)
     async def _http(request: Request, exc: HTTPException):
@@ -104,16 +105,17 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError):
+        details: dict[str, object] = {}
+        if _is_debug():
+            details["fields"] = list(exc.errors())
         payload = {
             "error": {
                 "code": "validation_error",
                 "message": "Request validation failed",
-                "details": {},
+                "details": details,
             },
             "request_id": _req_id(request),
         }
-        if _is_debug():
-            payload["error"]["details"]["fields"] = exc.errors()
         logger.bind(event_type="error", scope="validation", path=request.url.path).warning("Validation error")
         return JSONResponse(status_code=HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
 
@@ -122,20 +124,19 @@ def install_error_handlers(app: FastAPI) -> None:
         # Don't handle HTTPException here - it's already handled by specific handlers
         if isinstance(exc, (HTTPException, StarletteHTTPException)):
             raise exc
-        
+
         status_code, response_data = map_exception_to_http(exc)
-        
+
         payload = {
             **response_data,
             "request_id": _req_id(request),
         }
-        
+
         logger.bind(
             event_type="error",
             scope="unhandled",
             error_type=type(exc).__name__,
             path=request.url.path,
         ).exception("Unhandled exception")
-        
-        return JSONResponse(status_code=status_code, content=payload)
 
+        return JSONResponse(status_code=status_code, content=payload)

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, cast
 from urllib.parse import urljoin
 
 import httpx
@@ -164,10 +165,10 @@ class ComfyUIClient:
         connector = self._websocket_connect
         if connector is None:
             try:
-                import websockets  # type: ignore
+                import websockets
             except Exception as exc:
                 raise ComfyUIWebsocketError("ComfyUI websocket support is unavailable") from exc
-            connector = websockets.connect  # type: ignore[attr-defined]
+            connector = websockets.connect
 
         try:
             context = connector(self.websocket_url)
@@ -181,13 +182,13 @@ class ComfyUIClient:
                 recv_timeout = min(self.poll_interval_sec, remaining) or self.poll_interval_sec
                 try:
                     message = await asyncio.wait_for(websocket.recv(), timeout=recv_timeout)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     try:
                         history = await self.fetch_history(prompt_id)
                     except ComfyUIHistoryError:
                         continue
                     if prompt_id in history and isinstance(history[prompt_id], dict):
-                        return history[prompt_id]
+                        return cast(dict[str, Any], history[prompt_id])
                     continue
                 except Exception as exc:
                     raise ComfyUIWebsocketError(f"ComfyUI websocket receive failed: {exc}") from exc
@@ -210,7 +211,7 @@ class ComfyUIClient:
         response: httpx.Response,
         operation: str,
         error_cls: type[ComfyUIError],
-    ) -> Any:
+    ) -> object:
         try:
             return response.json()
         except json.JSONDecodeError as exc:
@@ -218,15 +219,17 @@ class ComfyUIClient:
 
     def _message_mentions_prompt_completion(self, message: str, prompt_id: str) -> bool:
         try:
-            payload = json.loads(message)
+            raw_payload = json.loads(message)
         except Exception:
             return prompt_id in message and "execut" in message.lower()
 
-        if not isinstance(payload, dict):
+        if not isinstance(raw_payload, dict):
             return False
+        payload = cast(dict[str, Any], raw_payload)
 
         event_type = str(payload.get("type") or "").lower()
-        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        raw_data = payload.get("data")
+        data: dict[str, Any] = raw_data if isinstance(raw_data, dict) else {}
         payload_prompt_id = str(data.get("prompt_id") or payload.get("prompt_id") or "")
 
         if payload_prompt_id and payload_prompt_id != prompt_id:
