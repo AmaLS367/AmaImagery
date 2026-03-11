@@ -42,6 +42,11 @@ def _build_engine_kwargs(url: str) -> dict[str, Any]:
         kwargs["connect_args"] = {"check_same_thread": False, "timeout": 5}
         kwargs["poolclass"] = NullPool
         kwargs["pool_pre_ping"] = False
+    elif backend.startswith("postgres") and settings.debug:
+        # TestClient and ad-hoc asyncio.run() calls in debug/test workflows can
+        # cross event-loop boundaries. Avoid reusing asyncpg connections there.
+        kwargs["poolclass"] = NullPool
+        kwargs["pool_pre_ping"] = False
 
     return kwargs
 

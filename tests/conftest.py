@@ -62,9 +62,11 @@ def app_client():
         from starlette.testclient import TestClient
 
         async def _reset_schema() -> None:
+            await async_engine.dispose()
             async with async_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
+            await async_engine.dispose()
 
         asyncio.run(_reset_schema())
 
