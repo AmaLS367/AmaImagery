@@ -90,7 +90,7 @@ The runtime path is intentionally coherent:
 ## Choose Your Lane
 
 <details open>
-  <summary><strong>I want to run the stack</strong></summary>
+  <summary><strong>🚀 I want to run the stack</strong></summary>
   <br/>
 
   <strong>Docker</strong>
@@ -108,7 +108,7 @@ The runtime path is intentionally coherent:
 </details>
 
 <details>
-  <summary><strong>I want to develop locally</strong></summary>
+  <summary><strong>🛠️ I want to develop locally</strong></summary>
   <br/>
 
   ```bash
@@ -122,7 +122,7 @@ The runtime path is intentionally coherent:
 </details>
 
 <details>
-  <summary><strong>I want confidence fast</strong></summary>
+  <summary><strong>✅ I want confidence fast</strong></summary>
   <br/>
 
   ```bash
@@ -155,14 +155,14 @@ The runtime path is intentionally coherent:
 <table>
   <tr>
     <td width="50%">
-      <strong>Core docs</strong><br/><br/>
+      <strong>📚 Core docs</strong><br/><br/>
       <a href="./docs/README.md">Documentation Index</a><br/>
       <a href="./docs/en/README.md">English Documentation</a><br/>
       <a href="./docs/en/backend/admin-and-readiness.md">Backend Admin and Readiness</a><br/>
       <a href="./docs/en/deployment/provider-rollout.md">Provider Rollout Notes</a>
     </td>
     <td width="50%">
-      <strong>Project policies</strong><br/><br/>
+      <strong>🧭 Project policies</strong><br/><br/>
       <a href="./CONTRIBUTING.md">Contributing</a><br/>
       <a href="./SECURITY.md">Security</a><br/>
       <a href="./SUPPORT.md">Support</a><br/>
@@ -193,9 +193,9 @@ Third-party models, datasets, and assets may carry separate obligations. Review:
 
 | Need | Path |
 | --- | --- |
-| Bugs and defects | GitHub Issues |
-| Product or usage discussion | GitHub Discussions |
-| Security disclosure | `amalsdev367@gmail.com` |
-| Commercial licensing | `amalsdev367@gmail.com` |
+| 🐞 Bugs and defects | GitHub Issues |
+| 💬 Product or usage discussion | GitHub Discussions |
+| 🔒 Security disclosure | `amalsdev367@gmail.com` |
+| 💼 Commercial licensing | `amalsdev367@gmail.com` |
 
 AmaImagery is meant to feel sharp, controlled, and inspectable. The docs should set that tone before the code ever runs.

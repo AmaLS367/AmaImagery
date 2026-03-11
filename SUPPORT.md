@@ -1,4 +1,4 @@
-# Support
+# 🧭 Support
 
 > The right lane is part of the product experience.
 
@@ -11,19 +11,19 @@ AmaImagery has a few distinct support paths. Picking the right one gets you a be
 <table>
   <tr>
     <td width="25%">
-      <strong>Bug report</strong><br/>
+      <strong>🐞 Bug report</strong><br/>
       Use GitHub Issues for reproducible defects.
     </td>
     <td width="25%">
-      <strong>Usage or product discussion</strong><br/>
+      <strong>💬 Usage or product discussion</strong><br/>
       Use GitHub Discussions.
     </td>
     <td width="25%">
-      <strong>Security disclosure</strong><br/>
+      <strong>🔒 Security disclosure</strong><br/>
       Use <a href="./SECURITY.md">SECURITY.md</a>.
     </td>
     <td width="25%">
-      <strong>Commercial or private support</strong><br/>
+      <strong>💼 Commercial or private support</strong><br/>
       Email <code>amalsdev367@gmail.com</code>.
     </td>
   </tr>

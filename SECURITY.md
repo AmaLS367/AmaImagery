@@ -1,4 +1,4 @@
-# Security Policy
+# 🔒 Security Policy
 
 > Private first. Clear reproduction. Coordinated disclosure.
 
@@ -14,11 +14,11 @@ Do <strong>not</strong> open a public issue for an unpatched security problem.
 
 | Include | Why it matters |
 | --- | --- |
-| Affected component, route, or subsystem | Speeds up triage |
-| Impact summary | Helps prioritize correctly |
-| Reproduction steps | Makes validation possible |
-| Logs, payloads, screenshots, or proof of concept | Reduces ambiguity |
-| Any sign of active exploitation | Changes response urgency |
+| 🎯 Affected component, route, or subsystem | Speeds up triage |
+| ⚠️ Impact summary | Helps prioritize correctly |
+| 🧪 Reproduction steps | Makes validation possible |
+| 📎 Logs, payloads, screenshots, or proof of concept | Reduces ambiguity |
+| 🚨 Any sign of active exploitation | Changes response urgency |
 
 ---
 

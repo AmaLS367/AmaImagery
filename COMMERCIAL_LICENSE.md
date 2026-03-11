@@ -1,4 +1,4 @@
-# Commercial Licensing
+# 💼 Commercial Licensing
 
 > Open in public. Licensed in private when the business model requires it.
 

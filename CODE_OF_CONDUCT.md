@@ -1,4 +1,4 @@
-# Code of Conduct
+# 🫶 Code of Conduct
 
 > Sharp technical disagreement is welcome. Personal degradation is not.
 
