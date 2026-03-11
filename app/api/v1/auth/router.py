@@ -275,8 +275,11 @@ async def change_password(payload: ChangePwdIn, user: User = Depends(current_use
 
     uow = get_uow()
     async with uow:
-        user.password_hash = hash_password(payload.new_password)
-        await uow.users.add(user)
+        managed_user = await uow.users.get(user.id)
+        if managed_user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        managed_user.password_hash = hash_password(payload.new_password)
+        await uow.users.add(managed_user)
     
     lg("app").bind(scope="auth", action="change_pwd", user=str(user.id)).info("auth.change_pwd.ok")
 

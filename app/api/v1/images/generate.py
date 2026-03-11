@@ -26,8 +26,7 @@ _generation_deps = [Depends(create_rate_limiter(settings.gen_per_user_per_min, 6
 
 def get_generate_image_use_case() -> GenerateImageUseCase:
     """Dependency injection for GenerateImageUseCase."""
-    uow = get_uow()
-    return GenerateImageUseCase(uow=uow)
+    return GenerateImageUseCase(uow_factory=get_uow)
 
 
 @router.post("/generate", response_model=TaskResp, dependencies=_generation_deps)

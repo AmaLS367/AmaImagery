@@ -39,10 +39,7 @@ RUN mkdir -p /app/app \
 RUN pip install --no-cache-dir \
     asyncpg \
     aiosqlite \
-    protobuf \
-    coverage \
-    pytest-asyncio \
-    pytest-cov
+    protobuf
 
 RUN python -c "import aiosqlite, asyncpg, google.protobuf"
 

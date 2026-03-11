@@ -7,6 +7,7 @@ import signal
 import sys
 import os
 
+from app.config import settings
 from app.core.logging import lg
 from app.infra.redis import init_redis, close_redis, get_redis
 from app.infra.queue import get_task_queue
@@ -21,6 +22,15 @@ async def init_worker_infrastructure():
         
         # Initialize Redis
         await init_redis()
+        if settings.no_redis:
+            get_task_queue()
+            worker_log.warning(
+                "worker.no_redis_mode",
+                extra={"queue_backend": "memory"},
+            )
+            worker_log.info("worker.infrastructure_ready", extra={"queue_backend": "memory"})
+            return
+
         redis_client = get_redis()
         if not redis_client:
             raise RuntimeError("Redis client is None after initialization")
