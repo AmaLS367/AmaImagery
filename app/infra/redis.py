@@ -4,23 +4,18 @@ Redis client management for infrastructure layer.
 Handles connection lifecycle (init/close) and provides a global accessor.
 """
 
+import importlib.util
 import logging
 from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
-try:
-    import redis.asyncio as redis_asyncio
+from app.config import settings
 
-    _REDIS_AVAILABLE = True
-except Exception:  # pragma: no cover - exercised only in minimal test envs
-    redis_asyncio = None
-    _REDIS_AVAILABLE = False
+_REDIS_AVAILABLE = importlib.util.find_spec("redis.asyncio") is not None
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis as RedisClient
 else:
     RedisClient: TypeAlias = Any
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +38,8 @@ async def init_redis() -> None:
     logger.info(f"Connecting to Redis at {settings.redis_url}...")
     try:
         # Create async Redis client
-        if redis_asyncio is None:
-            raise RuntimeError("Redis runtime is unavailable")
+        import redis.asyncio as redis_asyncio
+
         client = redis_asyncio.Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
         # Fail fast: Ping to ensure connection works immediately
         ping_result = bool(await cast(Any, client.ping()))
