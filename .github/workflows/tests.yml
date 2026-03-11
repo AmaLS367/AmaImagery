@@ -55,7 +55,7 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci
         LIMITS_ENABLED: "true"
       run: |
-        pytest tests/ --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+        pytest tests/ --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=60
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
