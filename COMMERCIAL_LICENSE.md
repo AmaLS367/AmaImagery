@@ -1,4 +1,4 @@
-# 💼 Commercial Licensing
+# ⚖️ Commercial Licensing
 
 > Open in public. Licensed in private when the business model requires it.
 
@@ -8,14 +8,14 @@ If that does not fit your use case, commercial licensing is available by direct 
 
 ---
 
-## Common Reasons To Reach Out
+## 📌 Common Reasons To Reach Out
 
 - closed-source product integration
 - private redistribution terms
 - internal deployment terms incompatible with AGPL obligations
 - licensing or support negotiations around commercial usage
 
-## Contact
+## 📬 Contact
 
 <p align="center"><strong>amalsdev367@gmail.com</strong></p>
 

@@ -1,4 +1,4 @@
-# 🧭 Support
+# ✦ Support
 
 > The right lane is part of the product experience.
 
@@ -6,7 +6,7 @@ AmaImagery has a few distinct support paths. Picking the right one gets you a be
 
 ---
 
-## Choose The Lane
+## 🧭 Choose The Lane
 
 <table>
   <tr>
@@ -23,7 +23,7 @@ AmaImagery has a few distinct support paths. Picking the right one gets you a be
       Use <a href="./SECURITY.md">SECURITY.md</a>.
     </td>
     <td width="25%">
-      <strong>💼 Commercial or private support</strong><br/>
+      <strong>📨 Commercial or private support</strong><br/>
       Email <code>amalsdev367@gmail.com</code>.
     </td>
   </tr>
@@ -31,13 +31,13 @@ AmaImagery has a few distinct support paths. Picking the right one gets you a be
 
 ---
 
-## Public First
+## 🌐 Public First
 
 If the topic is not security-sensitive and does not require private licensing discussion, prefer the public channel. Public answers compound. Private answers disappear.
 
-## Private Paths
+## 🔐 Private Paths
 
-Use email when the topic is:
+Use private email when the topic is:
 
 - a vulnerability or exploit path
 - a commercial licensing request
@@ -47,4 +47,4 @@ Contact:
 
 <p align="center"><strong>amalsdev367@gmail.com</strong></p>
 
-Clear routing keeps the project fast, clean, and easier to maintain.
+Clear routing keeps the project fast, calm, and easier to maintain.
