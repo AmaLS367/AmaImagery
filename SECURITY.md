@@ -1,4 +1,4 @@
-# 🔒 Security Policy
+# 🛡️ Security Policy
 
 > Private first. Clear reproduction. Coordinated disclosure.
 
@@ -6,23 +6,23 @@ If you believe you found a vulnerability in AmaImagery, report it privately:
 
 <p align="center"><strong>amalsdev367@gmail.com</strong></p>
 
-Do <strong>not</strong> open a public issue for an unpatched security problem.
+Do not open a public issue for an unpatched security problem.
 
 ---
 
-## Send A Report Like This
+## ✉️ What To Send
 
 | Include | Why it matters |
 | --- | --- |
-| 🎯 Affected component, route, or subsystem | Speeds up triage |
-| ⚠️ Impact summary | Helps prioritize correctly |
-| 🧪 Reproduction steps | Makes validation possible |
-| 📎 Logs, payloads, screenshots, or proof of concept | Reduces ambiguity |
-| 🚨 Any sign of active exploitation | Changes response urgency |
+| Affected component, route, or subsystem | Speeds up triage |
+| Impact summary | Helps prioritize correctly |
+| Reproduction steps | Makes validation possible |
+| Logs, payloads, screenshots, or proof of concept | Reduces ambiguity |
+| Any sign of active exploitation | Changes response urgency |
 
 ---
 
-## High-Value Report Categories
+## 🚨 High-Value Report Categories
 
 - authentication or authorization bypass
 - token, cookie, or session handling flaws
@@ -33,14 +33,14 @@ Do <strong>not</strong> open a public issue for an unpatched security problem.
 
 ---
 
-## What Happens Next
+## ⏱️ What Happens Next
 
 1. Receipt is acknowledged
 2. The issue is reproduced and validated
 3. A fix or mitigation is prepared
 4. Disclosure timing is coordinated if the report is valid
 
-## Supported Line
+## 📍 Supported Line
 
 Security fixes are prioritized for the active release path leading to `0.1.0`.
 

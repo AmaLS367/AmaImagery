@@ -6,7 +6,7 @@
 
 # AmaImagery
 
-### Image generation infrastructure for teams that want a real backend, not a toy demo.
+### Self-hosted image generation infrastructure with a real backend, a real worker lifecycle, and an operationally visible runtime.
 
 [![Version](https://img.shields.io/badge/version-0.1.0-black.svg)](./pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.11+-306998.svg)](https://www.python.org/)
@@ -15,7 +15,11 @@
 [![Ruff](https://img.shields.io/badge/lint-ruff-FFDB4D.svg?logo=ruff)](https://github.com/astral-sh/ruff)
 [![MyPy](https://img.shields.io/badge/types-mypy-0E6EB8.svg)](https://mypy.readthedocs.io/)
 
-[Read the docs](./docs/README.md) • [Explore backend notes](./docs/en/backend/README.md) • [Commercial licensing](./COMMERCIAL_LICENSE.md)
+<strong>
+  <a href="./docs/README.md">Docs</a> ·
+  <a href="./docs/en/backend/README.md">Backend Notes</a> ·
+  <a href="./COMMERCIAL_LICENSE.md">Commercial Licensing</a>
+</strong>
 
 </div>
 
@@ -23,55 +27,55 @@ AmaImagery is a self-hosted image generation platform built around a FastAPI bac
 
 ---
 
-## The Frame
+## ✦ A Sharper Shape
 
 <table>
   <tr>
     <td width="33%">
-      <strong>One generation contract</strong><br/>
-      Async job submission, status, history, artifacts, and terminal-state consistency.
+      <strong>🧭 One contract</strong><br/>
+      Jobs, status, history, artifacts, and terminal states stay aligned.
     </td>
     <td width="33%">
-      <strong>One operational story</strong><br/>
-      Health, readiness, queue state, provider state, and admin visibility line up.
+      <strong>🩺 One runtime story</strong><br/>
+      Health, readiness, queue behavior, and provider state are visible.
     </td>
     <td width="33%">
-      <strong>One honest runtime</strong><br/>
-      Not pretending to be lightweight magic. Built for inspectability and control.
+      <strong>🛡️ One honest posture</strong><br/>
+      Built for control and inspectability, not for pretending complexity does not exist.
     </td>
   </tr>
 </table>
 
-> AmaImagery is designed to be legible in motion. If a provider fails, the system should say so clearly. If a generation completes, every public surface should tell the same story.
+> AmaImagery is meant to be legible in motion. If a provider fails, the system should say so clearly. If a generation completes, every public surface should reflect the same final state.
 
 ---
 
-## What Lives Here
+## ⚙️ What Lives Here
 
-| Surface | What it is for |
+| Surface | Purpose |
 | --- | --- |
 | Async generation API | Accepts jobs, persists state, exposes status and history |
 | Provider runtime | Boots providers, classifies failures, reports readiness clearly |
 | Worker lifecycle | Executes jobs, updates terminal state, stores artifacts |
-| Admin surface | Gives superusers a live view of users and generations |
+| Admin surface | Gives superusers a live operational view of users and generations |
 | CI quality gates | Enforces linting, typing, and backend verification |
 
 ---
 
-## Runtime Mood
+## 🎯 Current Posture
 
 AmaImagery is credible, usable, and actively maintained. It is also explicit about its current shape.
 
 - `ComfyUI` is the strongest end-to-end path today
 - the Docker image is still CUDA-oriented and heavy
-- `Diffusers` support exists, but large local model handling remains a real operational cost
+- `Diffusers` support remains available, but large local model handling is still an operational cost
 - the repository is closer to a serious self-hosted platform than to a shrink-wrapped appliance
 
 That tradeoff is deliberate. The project optimizes for correctness, visibility, and control before pretending to be effortless.
 
 ---
 
-## System Rhythm
+## 🌘 Runtime Rhythm
 
 <p align="center">
   <img src="./docs/_shared/assets/architecture-rhythm.svg" alt="AmaImagery runtime rhythm" width="100%" />
@@ -87,13 +91,11 @@ The runtime path is intentionally coherent:
 
 ---
 
-## Choose Your Lane
+## 🚀 Start Here
 
 <details open>
-  <summary><strong>🚀 I want to run the stack</strong></summary>
+  <summary><strong>🧱 Run the stack</strong></summary>
   <br/>
-
-  <strong>Docker</strong>
 
   ```bash
   git clone https://github.com/AmaLS367/AmaImagery
@@ -108,7 +110,7 @@ The runtime path is intentionally coherent:
 </details>
 
 <details>
-  <summary><strong>🛠️ I want to develop locally</strong></summary>
+  <summary><strong>🛠️ Develop locally</strong></summary>
   <br/>
 
   ```bash
@@ -122,7 +124,7 @@ The runtime path is intentionally coherent:
 </details>
 
 <details>
-  <summary><strong>✅ I want confidence fast</strong></summary>
+  <summary><strong>✅ Check confidence fast</strong></summary>
   <br/>
 
   ```bash
@@ -131,7 +133,7 @@ The runtime path is intentionally coherent:
   python -m pytest tests -q
   ```
 
-  Core operational endpoints:
+  Operational endpoints:
 
   - `GET /api/v1/health`
   - `GET /api/v1/healthz`
@@ -140,29 +142,29 @@ The runtime path is intentionally coherent:
 
 ---
 
-## Why It Feels Different
+## ✨ Why The Repository Feels Different
 
-- provider boot state is visible, not hidden in logs
+- provider boot state is visible rather than buried in logs
 - readiness distinguishes "alive" from "able to generate"
-- terminal generation states stay coherent across status, history, admin, and download flows
-- authentication and superuser-only admin access are first-class surfaces, not bolted-on details
-- signed artifact delivery is part of the product contract, not an afterthought
+- terminal states stay coherent across status, history, admin, and download flows
+- authentication and superuser-only admin access are treated as first-class surfaces
+- artifact delivery is part of the contract, not a side effect
 
 ---
 
-## Continue Reading
+## 📚 Continue Reading
 
 <table>
   <tr>
     <td width="50%">
-      <strong>📚 Core docs</strong><br/><br/>
+      <strong>🗂️ Core documentation</strong><br/><br/>
       <a href="./docs/README.md">Documentation Index</a><br/>
       <a href="./docs/en/README.md">English Documentation</a><br/>
       <a href="./docs/en/backend/admin-and-readiness.md">Backend Admin and Readiness</a><br/>
       <a href="./docs/en/deployment/provider-rollout.md">Provider Rollout Notes</a>
     </td>
     <td width="50%">
-      <strong>🧭 Project policies</strong><br/><br/>
+      <strong>📜 Project policies</strong><br/><br/>
       <a href="./CONTRIBUTING.md">Contributing</a><br/>
       <a href="./SECURITY.md">Security</a><br/>
       <a href="./SUPPORT.md">Support</a><br/>
@@ -173,7 +175,7 @@ The runtime path is intentionally coherent:
 
 ---
 
-## Open Source And Commercial
+## ⚖️ Open Source And Commercial
 
 AmaImagery application code is dual-licensed:
 
@@ -189,13 +191,13 @@ Third-party models, datasets, and assets may carry separate obligations. Review:
 
 ---
 
-## Contact Paths
+## 📬 Contact
 
 | Need | Path |
 | --- | --- |
-| 🐞 Bugs and defects | GitHub Issues |
-| 💬 Product or usage discussion | GitHub Discussions |
-| 🔒 Security disclosure | `amalsdev367@gmail.com` |
-| 💼 Commercial licensing | `amalsdev367@gmail.com` |
+| Bugs and defects | GitHub Issues |
+| Product or usage discussion | GitHub Discussions |
+| Security disclosure | `amalsdev367@gmail.com` |
+| Commercial licensing | `amalsdev367@gmail.com` |
 
-AmaImagery is meant to feel sharp, controlled, and inspectable. The docs should set that tone before the code ever runs.
+AmaImagery should feel sharp, calm, and inspectable before the code ever runs. The docs are part of that contract.
