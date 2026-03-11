@@ -52,7 +52,7 @@ The generation runtime supports both `diffusers` and `comfyui` through the same 
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/AmaLS367/AmaImagery
 cd amaimagery
 
 # Copy environment file
