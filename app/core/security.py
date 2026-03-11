@@ -24,13 +24,14 @@ def normalize_email(s: str) -> str:
 
 
 def hash_password(raw: str) -> str:
-    hashed = cast(bytes, bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt(rounds=settings.bcrypt_rounds)))
-    return hashed.decode("utf-8")
+    hashed_bytes: bytes = bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt(rounds=settings.bcrypt_rounds))
+    return hashed_bytes.decode("utf-8")
 
 
 def verify_password(raw: str, hashed: str) -> bool:
     try:
-        return cast(bool, bcrypt.checkpw(raw.encode("utf-8"), hashed.encode("utf-8")))
+        verified: bool = bcrypt.checkpw(raw.encode("utf-8"), hashed.encode("utf-8"))
+        return verified
     except ValueError:
         return False
 
@@ -57,9 +58,8 @@ def create_access_token(
 
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
-        payload = cast(
-            dict[str, Any],
-            jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg], options={"verify_aud": False}),
+        payload: dict[str, Any] = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.jwt_alg], options={"verify_aud": False}
         )
         if "sub" not in payload or "exp" not in payload:
             raise InvalidTokenError("malformed")
@@ -91,7 +91,7 @@ def create_reset_token(*, sub: str, ttl_min: int | None = None) -> tuple[str, in
 
 
 def decode_reset_token(token: str) -> dict[str, Any]:
-    payload = cast(dict[str, Any], jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg]))
+    payload: dict[str, Any] = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_alg])
     if payload.get("typ") != RESET_TYP:
         raise jwt.InvalidTokenError("invalid reset token type")
     return payload
@@ -201,7 +201,7 @@ async def check_family_current(user_id: str, session_id: str, jti: str) -> bool:
         _cleanup_in_memory_security_state()
         current_jti = (_in_memory_families.get(family_key) or {}).get("current_jti")
         return current_jti == jti
-    current_jti = cast(str | None, await r.hget(family_key, "current_jti"))
+    current_jti = cast(str | None, await cast(Any, r.hget(family_key, "current_jti")))
     return current_jti == jti
 
 
@@ -217,7 +217,7 @@ async def rotate_refresh(user_id: str, session_id: str, old_jti: str) -> dict[st
             raise ValueError("Invalid old JTI")
         _in_memory_revoked[old_jti] = _now_ts() + 86400
     else:
-        current_jti = cast(str | None, await r.hget(family_key, "current_jti"))
+        current_jti = cast(str | None, await cast(Any, r.hget(family_key, "current_jti")))
         if current_jti != old_jti:
             raise ValueError("Invalid old JTI")
         await r.setex(f"{REVOKE_PREFIX}{old_jti}", 86400, "1")
@@ -253,7 +253,7 @@ async def revoke_family_all(user_id: str) -> None:
         for key in keys:
             _in_memory_families.pop(key, None)
         return
-    keys = await r.keys(pattern)
+    keys = cast(list[str], await cast(Any, r.keys(pattern)))
     if keys:
         await r.delete(*keys)
 
@@ -275,7 +275,7 @@ async def is_revoked(jti: str) -> bool:
         _cleanup_in_memory_security_state()
         exp_ts = _in_memory_revoked.get(jti)
         return bool(exp_ts and exp_ts > _now_ts())
-    return bool(cast(int, await r.exists(f"{REVOKE_PREFIX}{jti}")))
+    return bool(await cast(Any, r.exists(f"{REVOKE_PREFIX}{jti}")))
 
 
 async def mark_user_logged_out(user_id: str) -> None:
@@ -293,7 +293,7 @@ async def is_user_logged_out(user_id: str) -> bool:
         _cleanup_in_memory_security_state()
         exp_ts = _in_memory_logged_out.get(user_id)
         return bool(exp_ts and exp_ts > _now_ts())
-    return bool(cast(int, await r.exists(f"{LOGOUT_PREFIX}{user_id}")))
+    return bool(await cast(Any, r.exists(f"{LOGOUT_PREFIX}{user_id}")))
 
 
 async def clear_user_logged_out(user_id: str) -> None:

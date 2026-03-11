@@ -4,15 +4,20 @@ Redis implementation of the TaskQueue interface.
 
 import asyncio
 import logging
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:
-    from redis.asyncio import Redis
+    from redis.asyncio import Redis as RedisRuntime
 
     _REDIS_AVAILABLE = True
 except Exception:  # pragma: no cover - minimal env fallback
-    Redis = Any
+    RedisRuntime = None
     _REDIS_AVAILABLE = False
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+else:
+    Redis = Any
 
 from app.domain.providers.interfaces import ITaskQueue
 from app.metrics.queue import update_queue_size
@@ -33,10 +38,10 @@ class RedisTaskQueue(ITaskQueue):
         self.queue_key = queue_key
 
     async def enqueue(self, generation_id: str) -> str:
-        await self.redis.lpush(self.queue_key, generation_id)
+        await cast(Any, self.redis.lpush(self.queue_key, generation_id))
 
         try:
-            queue_len = cast(int, await self.redis.llen(self.queue_key))
+            queue_len = int(await cast(Any, self.redis.llen(self.queue_key)))
             update_queue_size("generation", queue_len)
         except Exception as exc:
             logger.debug("queue_metric_update_failed", extra={"queue_key": self.queue_key, "error": str(exc)})
@@ -52,7 +57,7 @@ class RedisTaskQueue(ITaskQueue):
                 # brpop returns (key, value) tuple or None
                 blocking_result = cast(
                     tuple[str, str] | None,
-                    await self.redis.brpop([self.queue_key], timeout=timeout_int),
+                    await cast(Any, self.redis.brpop([self.queue_key], timeout=timeout_int)),
                 )
                 if blocking_result:
                     task_id = blocking_result[1]
@@ -60,7 +65,7 @@ class RedisTaskQueue(ITaskQueue):
                     logger.debug(f"Dequeued task {task_id} from {self.queue_key}")
                     return task_id
             else:
-                popped_task_id = cast(str | None, await self.redis.rpop(self.queue_key))
+                popped_task_id = cast(str | None, await cast(Any, self.redis.rpop(self.queue_key)))
                 if popped_task_id:
                     await self._update_metrics()
                     logger.debug(f"Dequeued task {popped_task_id} from {self.queue_key}")
@@ -72,7 +77,7 @@ class RedisTaskQueue(ITaskQueue):
 
     async def _update_metrics(self) -> None:
         try:
-            queue_len = cast(int, await self.redis.llen(self.queue_key))
+            queue_len = int(await cast(Any, self.redis.llen(self.queue_key)))
             update_queue_size("generation", queue_len)
         except Exception as exc:
             logger.debug("queue_metric_update_failed", extra={"queue_key": self.queue_key, "error": str(exc)})

@@ -36,7 +36,7 @@ async def init_worker_infrastructure():
             raise RuntimeError("Redis client is None after initialization")
 
         # Verify Redis connection
-        ping_result = await redis_client.ping()
+        ping_result = bool(await redis_client.ping())
         if not ping_result:
             raise RuntimeError("Redis ping failed")
 
