@@ -4,14 +4,14 @@ Use case for image generation.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, Literal
+from typing import Optional, Dict, Any, Literal, Callable
 from uuid import UUID
 
 from app.application.use_cases.base import Command, UseCaseResult, UseCase
 from app.domain.generation_lifecycle import FAILED, QUEUED
 from app.domain.providers import ProviderRegistry, get_provider_registry
 from app.infra.queue import TaskQueue, get_task_queue
-from app.infra.uow import SqlAlchemyUnitOfWork
+from app.infra.uow import SqlAlchemyUnitOfWork, get_uow
 from app.metrics.queue import record_queue_enqueue
 from app.services.generation_service import GenerationService
 from app.core.logging import lg
@@ -57,11 +57,17 @@ class GenerateImageUseCase:
     
     def __init__(
         self,
-        uow: SqlAlchemyUnitOfWork,
+        uow: Optional[SqlAlchemyUnitOfWork] = None,
+        uow_factory: Optional[Callable[[], SqlAlchemyUnitOfWork]] = None,
         provider_registry: Optional[ProviderRegistry] = None,
         task_queue: Optional[TaskQueue] = None,
     ):
-        self.uow = uow
+        if uow_factory is not None:
+            self._uow_factory = uow_factory
+        elif uow is not None:
+            self._uow_factory = _build_uow_factory(uow)
+        else:
+            self._uow_factory = get_uow
         self.provider_registry = provider_registry or get_provider_registry()
         self.task_queue = task_queue or get_task_queue()
         self.generation_service = GenerationService()
@@ -92,10 +98,10 @@ class GenerateImageUseCase:
             
             user = None
             if command.user_id != "anon":
-                async with self.uow:
-                    user = await self.uow.users.get(command.user_id)
+                async with self._uow_factory() as uow:
+                    user = await uow.users.get(command.user_id)
                     if user is not None:
-                        user.settings = await self.uow.users.get_settings(user.id)
+                        user.settings = await uow.users.get_settings(user.id)
             
             self.generation_service._validate_request(gen_req)
             self.generation_service._check_safety_policies(gen_req, user)
@@ -128,16 +134,16 @@ class GenerateImageUseCase:
                 result={},
             )
 
-            async with self.uow:
-                await self.uow.generations.add(generation)
+            async with self._uow_factory() as uow:
+                await uow.generations.add(generation)
 
             task_id = str(generation.id)
 
             try:
                 await self.task_queue.enqueue(task_id)
             except Exception as exc:
-                async with self.uow:
-                    await self.uow.generations.update_fields(
+                async with self._uow_factory() as uow:
+                    await uow.generations.update_fields(
                         generation.id,
                         status=FAILED,
                         error=f"Failed to enqueue task: {exc}",
@@ -179,4 +185,10 @@ def _provider_name(provider: Any) -> str:
     if isinstance(explicit_name, str) and explicit_name.strip():
         return explicit_name
     return type(provider).__name__.removesuffix("Provider").lower()
+
+
+def _build_uow_factory(uow: SqlAlchemyUnitOfWork) -> Callable[[], SqlAlchemyUnitOfWork]:
+    if isinstance(uow, SqlAlchemyUnitOfWork) and getattr(uow, "_owns_session", False) and getattr(uow, "_session", None) is None:
+        return SqlAlchemyUnitOfWork
+    return lambda: uow
 

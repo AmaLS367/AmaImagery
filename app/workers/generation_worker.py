@@ -195,7 +195,7 @@ def _generation_to_request(generation: Generation) -> GenerationRequest:
     params = generation.params or {}
     return GenerationRequest(
         generation_id=str(generation.id),
-        prompt=prompt_blob["prompt"],
+        prompt=prompt_blob.get("prompt") or "",
         negative_prompt=prompt_blob.get("negative_prompt"),
         seed=params.get("seed"),
         width=params.get("width", 768),
