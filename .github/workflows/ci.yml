@@ -33,7 +33,7 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
       - run: pip install -r requirements.txt
-      - run: pip install pytest pytest-asyncio pip-audit safety bandit
+      - run: pip install pytest pytest-asyncio pytest-cov pip-audit safety bandit
       - run: pip-audit -r requirements.txt
       - run: safety check -r requirements.txt
       - run: bandit -q -r app -x tests
