@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "overrides": {
-    "diff": "4.0.4"
+    "diff": "4.0.4",
+    "vite": "5.4.20"
   }
 }
