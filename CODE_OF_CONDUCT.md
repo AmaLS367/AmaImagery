@@ -2,7 +2,9 @@
 
 > Sharp technical disagreement is welcome. Personal degradation is not.
 
-AmaImagery should stay direct, constructive, and workable for maintainers and contributors.
+AmaImagery should stay direct, constructive, and workable for the people building it.
+
+---
 
 ## Expected Behavior
 
@@ -14,7 +16,7 @@ AmaImagery should stay direct, constructive, and workable for maintainers and co
 ## Not Acceptable
 
 - harassment or intimidation
-- discriminatory behavior or language
+- discriminatory language or behavior
 - doxxing or sharing private information without consent
 - bad-faith disruption of issues, reviews, or discussions
 
@@ -22,6 +24,6 @@ AmaImagery should stay direct, constructive, and workable for maintainers and co
 
 Maintainers may remove comments, reject contributions, or restrict participation when behavior damages the project or the people working on it.
 
-For serious concerns, contact:
+For serious concerns:
 
-`amalsdev367@gmail.com`
+<p align="center"><strong>amalsdev367@gmail.com</strong></p>

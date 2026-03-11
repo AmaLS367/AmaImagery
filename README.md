@@ -1,6 +1,12 @@
+<p align="center">
+  <img src="./docs/_shared/assets/readme-hero.svg" alt="AmaImagery hero" width="100%" />
+</p>
+
+<div align="center">
+
 # AmaImagery
 
-> Image generation infrastructure for teams that want a real backend, not a toy demo.
+### Image generation infrastructure for teams that want a real backend, not a toy demo.
 
 [![Version](https://img.shields.io/badge/version-0.1.0-black.svg)](./pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.11+-306998.svg)](https://www.python.org/)
@@ -9,136 +15,161 @@
 [![Ruff](https://img.shields.io/badge/lint-ruff-FFDB4D.svg?logo=ruff)](https://github.com/astral-sh/ruff)
 [![MyPy](https://img.shields.io/badge/types-mypy-0E6EB8.svg)](https://mypy.readthedocs.io/)
 
+[Read the docs](./docs/README.md) • [Explore backend notes](./docs/en/backend/README.md) • [Commercial licensing](./COMMERCIAL_LICENSE.md)
+
+</div>
+
 AmaImagery is a self-hosted image generation platform built around a FastAPI backend, a React frontend, and an asynchronous worker pipeline. It exposes one operational contract across multiple generation providers, with `ComfyUI` as the practical primary runtime and `Diffusers` still available where local model management makes sense.
 
 ---
 
-## At A Glance
+## The Frame
 
-| Surface | What it does |
-| --- | --- |
-| Async generation API | Accepts jobs, persists state, exposes status and history |
-| Provider runtime | Boots providers, tracks readiness, reports failures clearly |
-| Worker lifecycle | Executes jobs, persists terminal states, stores artifacts |
-| Admin surface | Gives superusers a real operational view of users and generations |
-| Quality gates | Enforced through CI, `ruff`, `mypy`, and backend tests |
+<table>
+  <tr>
+    <td width="33%">
+      <strong>One generation contract</strong><br/>
+      Async job submission, status, history, artifacts, and terminal-state consistency.
+    </td>
+    <td width="33%">
+      <strong>One operational story</strong><br/>
+      Health, readiness, queue state, provider state, and admin visibility line up.
+    </td>
+    <td width="33%">
+      <strong>One honest runtime</strong><br/>
+      Not pretending to be lightweight magic. Built for inspectability and control.
+    </td>
+  </tr>
+</table>
 
-> The project is designed to be operationally legible. Health, readiness, queue behavior, provider state, and artifact visibility are all part of the product surface, not hidden implementation detail.
-
-## What Makes It Interesting
-
-- One backend contract across provider implementations
-- Queue-backed generation flow with durable status and history
-- Provider-aware health and readiness instead of empty "ok" endpoints
-- Superuser admin pages for runtime inspection
-- Signed artifact delivery for completed generations
-- A codebase already wired for linting, typing, and CI enforcement
-
-## Reality Check
-
-AmaImagery is credible, usable, and actively maintained. It is also honest about its current shape.
-
-- `ComfyUI` is the strongest end-to-end path today
-- the Docker runtime is still CUDA-oriented and heavy
-- `Diffusers` support exists, but large local model handling remains a real operational cost
-- the repository is closer to a serious self-hosted platform than to a shrink-wrapped appliance
-
-That is intentional. The project optimizes for correctness, visibility, and control before pretending to be lightweight magic.
+> AmaImagery is designed to be legible in motion. If a provider fails, the system should say so clearly. If a generation completes, every public surface should tell the same story.
 
 ---
 
-## The Shape
+## What Lives Here
 
-The repository is organized around a few clear surfaces:
+| Surface | What it is for |
+| --- | --- |
+| Async generation API | Accepts jobs, persists state, exposes status and history |
+| Provider runtime | Boots providers, classifies failures, reports readiness clearly |
+| Worker lifecycle | Executes jobs, updates terminal state, stores artifacts |
+| Admin surface | Gives superusers a live view of users and generations |
+| CI quality gates | Enforces linting, typing, and backend verification |
 
-- `app/` for the backend, domain logic, providers, repositories, and worker code
-- `frontend/` for the React client
-- `tests/` for unit, integration, worker, security, and performance coverage
-- `migrations/` for Alembic
-- `docker/` for local compose flows and provider verification environments
-- `docs/` for English and Russian documentation
+---
 
-The runtime path is straightforward:
+## Runtime Mood
+
+AmaImagery is credible, usable, and actively maintained. It is also explicit about its current shape.
+
+- `ComfyUI` is the strongest end-to-end path today
+- the Docker image is still CUDA-oriented and heavy
+- `Diffusers` support exists, but large local model handling remains a real operational cost
+- the repository is closer to a serious self-hosted platform than to a shrink-wrapped appliance
+
+That tradeoff is deliberate. The project optimizes for correctness, visibility, and control before pretending to be effortless.
+
+---
+
+## System Rhythm
+
+<p align="center">
+  <img src="./docs/_shared/assets/architecture-rhythm.svg" alt="AmaImagery runtime rhythm" width="100%" />
+</p>
+
+The runtime path is intentionally coherent:
 
 1. The API accepts a generation request.
 2. PostgreSQL becomes the source of truth for lifecycle state.
-3. The worker submits to a provider and observes execution.
-4. The provider result becomes an artifact or an explicit failure.
+3. The worker submits to a provider and watches execution.
+4. The provider result becomes either an artifact or an explicit failure.
 5. Status, history, admin, and download endpoints reflect the same final state.
 
 ---
 
-## Run The Stack
+## Choose Your Lane
 
-### Docker
+<details open>
+  <summary><strong>I want to run the stack</strong></summary>
+  <br/>
 
-```bash
-git clone https://github.com/AmaLS367/AmaImagery
-cd AmaImagery
-docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d --build
-```
+  <strong>Docker</strong>
 
-Useful provider verification presets:
+  ```bash
+  git clone https://github.com/AmaLS367/AmaImagery
+  cd AmaImagery
+  docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d --build
+  ```
 
-- `docker/.env.verify.comfyui.example`
-- `docker/.env.verify.diffusers.example`
+  Provider verification presets:
 
-### Local Development
+  - `docker/.env.verify.comfyui.example`
+  - `docker/.env.verify.diffusers.example`
+</details>
 
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e ".[dev]"
-alembic upgrade head
-python run.py
-python -m app.entrypoints.generation_worker
-```
+<details>
+  <summary><strong>I want to develop locally</strong></summary>
+  <br/>
 
-### Fast Confidence Checks
+  ```bash
+  python -m venv .venv
+  .venv\Scripts\activate
+  pip install -e ".[dev]"
+  alembic upgrade head
+  python run.py
+  python -m app.entrypoints.generation_worker
+  ```
+</details>
 
-```bash
-python -m ruff check app tests
-python -m mypy app
-python -m pytest tests -q
-```
+<details>
+  <summary><strong>I want confidence fast</strong></summary>
+  <br/>
 
-Core operational endpoints:
+  ```bash
+  python -m ruff check app tests
+  python -m mypy app
+  python -m pytest tests -q
+  ```
 
-- `GET /api/v1/health`
-- `GET /api/v1/healthz`
-- `GET /admin/`
+  Core operational endpoints:
+
+  - `GET /api/v1/health`
+  - `GET /api/v1/healthz`
+  - `GET /admin/`
+</details>
 
 ---
 
-## The Trust Surface
+## Why It Feels Different
 
-AmaImagery is built to be inspectable in motion.
-
-- provider boot state is visible
+- provider boot state is visible, not hidden in logs
 - readiness distinguishes "alive" from "able to generate"
-- terminal generation states are coherent across status, history, admin, and artifact delivery
-- authentication and superuser-only admin access are first-class, not afterthoughts
-
-If a provider fails, the system should say so clearly. If a generation completes, the artifact contract should be consistent everywhere. That philosophy runs through the repository.
+- terminal generation states stay coherent across status, history, admin, and download flows
+- authentication and superuser-only admin access are first-class surfaces, not bolted-on details
+- signed artifact delivery is part of the product contract, not an afterthought
 
 ---
 
-## Read Further
+## Continue Reading
 
-Primary docs:
-
-- [Documentation Index](./docs/README.md)
-- [English Documentation](./docs/en/README.md)
-- [Backend Admin and Readiness](./docs/en/backend/admin-and-readiness.md)
-- [Provider Rollout Notes](./docs/en/deployment/provider-rollout.md)
-
-Project policies:
-
-- [Contributing](./CONTRIBUTING.md)
-- [Security](./SECURITY.md)
-- [Support](./SUPPORT.md)
-- [Code of Conduct](./CODE_OF_CONDUCT.md)
-- [Commercial Licensing](./COMMERCIAL_LICENSE.md)
+<table>
+  <tr>
+    <td width="50%">
+      <strong>Core docs</strong><br/><br/>
+      <a href="./docs/README.md">Documentation Index</a><br/>
+      <a href="./docs/en/README.md">English Documentation</a><br/>
+      <a href="./docs/en/backend/admin-and-readiness.md">Backend Admin and Readiness</a><br/>
+      <a href="./docs/en/deployment/provider-rollout.md">Provider Rollout Notes</a>
+    </td>
+    <td width="50%">
+      <strong>Project policies</strong><br/><br/>
+      <a href="./CONTRIBUTING.md">Contributing</a><br/>
+      <a href="./SECURITY.md">Security</a><br/>
+      <a href="./SUPPORT.md">Support</a><br/>
+      <a href="./COMMERCIAL_LICENSE.md">Commercial Licensing</a>
+    </td>
+  </tr>
+</table>
 
 ---
 
