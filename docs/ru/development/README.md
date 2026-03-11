@@ -17,8 +17,8 @@
 
 1. **Клонировать репозиторий**
 ```bash
-git clone <repository-url>
-cd amaimagery
+git clone https://github.com/AmaLS367/AmaImagery
+cd AmaImagery
 ```
 
 2. **Настроить бэкенд**
@@ -66,7 +66,7 @@ npm run dev
 - [Стандарты кодирования](./coding-standards.md) - Стиль кода и соглашения
 - [Git workflow](./git-workflow.md) - Ветвление и коммиты
 - [Отладка](./debugging.md) - Техники отладки
-- [Contributing](./contributing.md) - Как внести вклад
+- [Contributing](../../../CONTRIBUTING.md) - Как внести вклад
 - [Code review](./code-review.md) - Процесс ревью кода
 
 ## Инструменты разработки

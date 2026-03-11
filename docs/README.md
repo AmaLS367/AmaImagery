@@ -84,7 +84,7 @@ We welcome contributions to improve and translate documentation!
 3. Place language-independent images in `_shared/images/`
 4. Update `.translation-status.json` when adding translations
 
-See [Contributing Guide](./en/development/contributing.md) for details.
+See [Contributing Guide](../CONTRIBUTING.md) for details.
 
 ---
 
@@ -95,5 +95,5 @@ See [Legal](./en/legal/README.md) section for license information.
 
 ---
 
-**Last Updated:** December 5, 2025 | **Version:** 0.2.0
+**Last Updated:** March 11, 2026 | **Version:** 0.1.0
 

@@ -126,7 +126,7 @@ See [Architecture Documentation](./backend/architecture.md) for details.
 - [Installation Guide](./development/getting-started.md)
 - [API Documentation](./backend/api/overview.md)
 - [Docker Setup](./docker/getting-started.md)
-- [Contributing](./development/contributing.md)
+- [Contributing](../../CONTRIBUTING.md)
 - [Troubleshooting](./troubleshooting/common-issues.md)
 
 ## 📞 Getting Help
@@ -144,5 +144,5 @@ This project uses multiple licenses. See [Legal](./legal/README.md) for details:
 
 ---
 
-**Version:** 0.2.0 | **Last Updated:** December 5, 2025
+**Version:** 0.1.0 | **Last Updated:** March 11, 2026
 

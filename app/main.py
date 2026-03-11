@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 import re
 from contextlib import asynccontextmanager
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from typing import Any
 
 import torch
@@ -201,9 +203,14 @@ setup_logging(level=settings.log_level)
 # Test logging to ensure it works
 logger.info("Logging system initialized", extra={"log_level": settings.log_level, "debug": settings.debug})
 
+try:
+    APP_VERSION = package_version("AmaImagery")
+except PackageNotFoundError:
+    APP_VERSION = "0.1.0"
+
 app = FastAPI(
     title="AmaImagery",
-    version="0.2.0",
+    version=APP_VERSION,
     debug=settings.debug,
     lifespan=lifespan,
     docs_url=settings.docs_url,
@@ -223,7 +230,7 @@ async def root(user: User | None = Depends(optional_user)) -> dict[str, Any] | R
 
     return {
         "app": "AmaImagery",
-        "version": "0.1.0",
+        "version": APP_VERSION,
         "docs_url": settings.docs_url,
         "frontend_url": settings.frontend_origin,
     }

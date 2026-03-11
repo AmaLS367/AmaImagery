@@ -9,7 +9,8 @@ Legal information, licenses, attributions, and usage restrictions for the AI Ima
 The AI Image Generator project uses multiple licenses:
 
 ### Application Code
-- **License:** See project LICENSE file
+- **Open-source license:** AGPL-3.0-only
+- **Commercial licensing:** Contact amalsdev367@gmail.com
 - **Components:** Backend, Frontend, Scripts
 
 ### ML Models
@@ -116,6 +117,7 @@ For legal questions or licensing inquiries, consult the following:
 - Full license texts in `models/AmaFusion_V1/LICENSES/`
 - Project `ATTRIBUTIONS.md`
 - Project `NOTICE.txt`
+- Repository `COMMERCIAL_LICENSE.md`
 
 **Note:** This documentation is for informational purposes only and does not constitute legal advice. Consult with a legal professional for specific questions.
 

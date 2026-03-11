@@ -81,5 +81,7 @@ The application implements security headers:
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability, please email security@example.com. Do not open public issues for security problems.
+If you discover a security vulnerability, please email amalsdev367@gmail.com. Do not open public issues for security problems.
+
+See the repository-level [SECURITY.md](../../../SECURITY.md) for the current disclosure policy.
 
