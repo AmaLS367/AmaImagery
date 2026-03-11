@@ -5,6 +5,7 @@ Manages the lifecycle and retrieval of registered providers strategies.
 """
 
 import asyncio
+import time
 from dataclasses import asdict, dataclass
 from typing import Dict, Optional, List, Any, Tuple
 
@@ -74,7 +75,7 @@ class ProviderRegistry:
         return next(iter(self._providers.values()))
     
     def list_providers(self) -> List[str]:
-        return list[str](self._providers.keys())
+        return list(self._providers.keys())
 
     def boot_errors(self) -> Dict[str, str]:
         return dict(self._boot_errors)
@@ -108,7 +109,7 @@ class ProviderRegistry:
 
         tasks = [check_provider(name, provider) for name, provider in self._providers.items()]
         results = await asyncio.gather(*tasks)
-        return dict[str, bool](results)
+        return dict(results)
 
     async def readiness_snapshot(self) -> dict[str, Any]:
         boot = self.boot_snapshot()
@@ -142,10 +143,16 @@ def get_provider_registry() -> ProviderRegistry:
     signature = _settings_signature()
     global _provider_registry_cache
     global _provider_registry_signature
+    global _provider_registry_built_at
 
     if _provider_registry_cache is None or _provider_registry_signature != signature:
         _provider_registry_cache = _build_provider_registry()
         _provider_registry_signature = signature
+        _provider_registry_built_at = time.monotonic()
+    elif _should_retry_failed_boots():
+        _provider_registry_cache = _build_provider_registry()
+        _provider_registry_signature = signature
+        _provider_registry_built_at = time.monotonic()
 
     return _provider_registry_cache
 
@@ -153,8 +160,10 @@ def get_provider_registry() -> ProviderRegistry:
 def reset_provider_registry() -> None:
     global _provider_registry_cache
     global _provider_registry_signature
+    global _provider_registry_built_at
     _provider_registry_cache = None
     _provider_registry_signature = None
+    _provider_registry_built_at = None
 
 
 def _build_provider_registry() -> ProviderRegistry:
@@ -216,5 +225,17 @@ def _summarize_error(error: str) -> str:
     return f"{compact[:157]}..."
 
 
+def _should_retry_failed_boots() -> bool:
+    if _provider_registry_cache is None:
+        return False
+    if not _provider_registry_cache.boot_errors():
+        return False
+    if _provider_registry_built_at is None:
+        return True
+    return (time.monotonic() - _provider_registry_built_at) >= _FAILED_PROVIDER_RETRY_INTERVAL_SEC
+
+
 _provider_registry_cache: ProviderRegistry | None = None
 _provider_registry_signature: Tuple[Any, ...] | None = None
+_provider_registry_built_at: float | None = None
+_FAILED_PROVIDER_RETRY_INTERVAL_SEC = 10.0

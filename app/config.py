@@ -9,6 +9,25 @@ from dotenv import load_dotenv
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+
+_TRUE_VALUES = {"true", "1", "yes", "on"}
+_FALSE_VALUES = {"false", "0", "no", "off"}
+
+
+def _coerce_bool_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in _TRUE_VALUES:
+            return True
+        if normalized in _FALSE_VALUES:
+            return False
+    return bool(value)
+
+
 class Settings(BaseSettings):
     # --- Core / Environment ---
     env: Annotated[Literal["dev", "development", "local", "stage", "staging", "prod", "production"], Field(alias="ENV")] = "dev"
@@ -148,7 +167,7 @@ class Settings(BaseSettings):
         if v is None:
             return None
         if isinstance(v, dict):
-            return {str(k): bool(v) for k, v in v.items()}
+            return {str(key): _coerce_bool_value(flag_value) for key, flag_value in v.items()}
         s = str(v).strip()
         if s == "":
             return None
@@ -156,7 +175,7 @@ class Settings(BaseSettings):
             try:
                 data = json.loads(s)
                 if isinstance(data, dict):
-                    return {str(k): bool(v) for k, v in data.items()}
+                    return {str(key): _coerce_bool_value(flag_value) for key, flag_value in data.items()}
                 if isinstance(data, list):
                     return {str(item): True for item in data}
             except (TypeError, ValueError):
@@ -166,8 +185,8 @@ class Settings(BaseSettings):
                     if not part:
                         continue
                     if "=" in part:
-                        k, flag_value = part.split("=", 1)
-                        flags[k.strip()] = flag_value.strip().lower() in ("true", "1", "yes", "on")
+                        key, flag_value = part.split("=", 1)
+                        flags[key.strip()] = _coerce_bool_value(flag_value)
                     else:
                         flags[part] = True
                 return flags
@@ -177,8 +196,8 @@ class Settings(BaseSettings):
             if not part:
                 continue
             if "=" in part:
-                k, v = part.split("=", 1)
-                flags[k.strip()] = v.strip().lower() in ("true", "1", "yes", "on")
+                key, flag_value = part.split("=", 1)
+                flags[key.strip()] = _coerce_bool_value(flag_value)
             else:
                 flags[part] = True
         return flags

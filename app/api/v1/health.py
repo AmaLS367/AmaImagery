@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 
@@ -25,7 +27,7 @@ async def health_check(request: Request) -> dict:
     }
 
 @router.get("/healthz")
-async def healthz(request: Request) -> Response:
+async def healthz(request: Request) -> dict[str, Any] | JSONResponse:
     registry = get_provider_registry()
     readiness = await registry.readiness_snapshot()
     infra = getattr(request.app.state, "infrastructure_status", {})
