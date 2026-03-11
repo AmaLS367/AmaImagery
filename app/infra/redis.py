@@ -5,15 +5,20 @@ Handles connection lifecycle (init/close) and provides a global accessor.
 """
 
 import logging
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:
-    from redis.asyncio import Redis
+    from redis.asyncio import Redis as RedisRuntime
 
     _REDIS_AVAILABLE = True
 except Exception:  # pragma: no cover - exercised only in minimal test envs
-    Redis = Any
+    RedisRuntime = None
     _REDIS_AVAILABLE = False
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+else:
+    Redis = Any
 
 from app.config import settings
 
@@ -38,9 +43,11 @@ async def init_redis() -> None:
     logger.info(f"Connecting to Redis at {settings.redis_url}...")
     try:
         # Create async Redis client
-        client = Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        if RedisRuntime is None:
+            raise RuntimeError("Redis runtime is unavailable")
+        client = RedisRuntime.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
         # Fail fast: Ping to ensure connection works immediately
-        ping_result = cast(bool, await client.ping())
+        ping_result = bool(await cast(Any, client.ping()))
         if not ping_result:
             raise RuntimeError("Redis ping returned False")
         _redis_client = client

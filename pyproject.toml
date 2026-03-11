@@ -267,6 +267,7 @@ module = [
     "wordfreq.*",
     "prometheus_client.*",
     "redis.*",
+    "websockets.*",
     "bcrypt",
 ]
 ignore_missing_imports = true

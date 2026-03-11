@@ -2,8 +2,15 @@
 Metrics for image generation providers.
 """
 
+from collections.abc import Callable
+from typing import Any
+
+_make_counter: Callable[..., Any]
+_make_histogram: Callable[..., Any]
+
 try:
-    from prometheus_client import Counter, Histogram
+    from prometheus_client import Counter as PromCounter
+    from prometheus_client import Histogram as PromHistogram
 except Exception:  # pragma: no cover - minimal env fallback
 
     class _NoopMetric:
@@ -16,28 +23,34 @@ except Exception:  # pragma: no cover - minimal env fallback
         def observe(self, *args, **kwargs):
             return None
 
-    def Counter(*args, **kwargs):
+    def _noop_counter(*args: Any, **kwargs: Any) -> _NoopMetric:
         return _NoopMetric()
 
-    def Histogram(*args, **kwargs):
+    def _noop_histogram(*args: Any, **kwargs: Any) -> _NoopMetric:
         return _NoopMetric()
+
+    _make_counter = _noop_counter
+    _make_histogram = _noop_histogram
+else:
+    _make_counter = PromCounter
+    _make_histogram = PromHistogram
 
 
 # Provider generation metrics
-provider_generation_total = Counter(
+provider_generation_total = _make_counter(
     "provider_generation_total",
     "Total number of generation requests",
     ["provider_name", "status"],
 )
 
-provider_generation_duration_seconds = Histogram(
+provider_generation_duration_seconds = _make_histogram(
     "provider_generation_duration_seconds",
     "Time spent generating images",
     ["provider_name"],
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
 )
 
-provider_generation_errors_total = Counter(
+provider_generation_errors_total = _make_counter(
     "provider_generation_errors_total",
     "Total number of generation errors",
     ["provider_name", "error_type"],
