@@ -17,15 +17,15 @@ Complete guide for developers to set up, develop, and contribute to the AI Image
 
 1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd amaimagery
+git clone https://github.com/AmaLS367/AmaImagery
+cd AmaImagery
 ```
 
 2. **Set up backend**
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 ```
 
 3. **Set up frontend**
@@ -66,7 +66,7 @@ npm run dev
 - [Coding Standards](./coding-standards.md) - Code style and conventions
 - [Git Workflow](./git-workflow.md) - Branching and commits
 - [Debugging](./debugging.md) - Debugging techniques
-- [Contributing](./contributing.md) - How to contribute
+- [Contributing](../../../CONTRIBUTING.md) - How to contribute
 - [Code Review](./code-review.md) - Code review process
 
 ## Development Tools

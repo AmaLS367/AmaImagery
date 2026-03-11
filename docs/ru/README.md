@@ -126,7 +126,7 @@ AI Image Generator — это мощная платформа для генер�
 - [Руководство по установке](./development/getting-started.md)
 - [Документация API](./backend/api/overview.md)
 - [Настройка Docker](./docker/getting-started.md)
-- [Contributing](./development/contributing.md)
+- [Contributing](../../CONTRIBUTING.md)
 - [Устранение неполадок](./troubleshooting/common-issues.md)
 
 ## 📞 Получение помощи
@@ -144,5 +144,5 @@ AI Image Generator — это мощная платформа для генер�
 
 ---
 
-**Версия:** 0.2.0 | **Последнее обновление:** 5 декабря 2025
+**Версия:** 0.1.0 | **Последнее обновление:** 11 марта 2026
 

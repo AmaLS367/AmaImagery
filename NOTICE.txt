@@ -5,14 +5,14 @@ Those components remain under their respective licenses. By using or distributin
 access to them as a service, you agree to comply with all applicable third-party license terms.
 
 Upstream lineage
-Stable Diffusion v1.5 — CreativeML Open RAIL-M
-DreamShaper v6 — CreativeML Open RAIL-M
-VAE sd-vae-ft-mse — MIT
+Stable Diffusion v1.5 - CreativeML Open RAIL-M
+DreamShaper v6 - CreativeML Open RAIL-M
+VAE sd-vae-ft-mse - MIT
 
 Local license files
-models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt       full text of CreativeML Open RAIL-M
-models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt   upstream model record and links
-models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt      full MIT text for sd-vae-ft-mse
+models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt
+models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt
+models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt
 
 Datasets
 See models/AmaFusion_V1/DATA_SOURCES.md for the complete ledger of datasets actually used for training,
@@ -23,5 +23,5 @@ Attribution
 See ATTRIBUTIONS.md for a consolidated view of upstream references and license locations.
 
 Disclaimer
-This repository and model are provided as is, without warranties of any kind. You are responsible for
+This repository and model are provided as-is, without warranties of any kind. You are responsible for
 compliance with local laws and industry standards when deploying or using the model.
