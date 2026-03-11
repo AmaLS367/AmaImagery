@@ -1,14 +1,21 @@
-AmaImagery is dual-licensed.
+AmaImagery Licensing Notice
 
-For open-source use, modification, and redistribution, the application code in this repository is made available under the GNU Affero General Public License, version 3 only (AGPL-3.0-only).
+Application code in this repository is dual-licensed.
 
-For commercial licensing, private deployment terms, or other licensing arrangements that are incompatible with AGPL-3.0-only, contact:
+Open-source use
+- License: GNU Affero General Public License, version 3 only (`AGPL-3.0-only`)
+- Scope: application code in this repository unless a file or dependency states otherwise
 
-amalsdev367@gmail.com
+Commercial use
+- Available by separate written agreement
+- Contact: amalsdev367@gmail.com
 
-Unless a separate commercial agreement is executed in writing, your use of the application code is governed by AGPL-3.0-only.
+Default rule
+- Unless you have a separate commercial agreement, your use of the application code is governed by `AGPL-3.0-only`
 
-The canonical license text for AGPL-3.0 is available at:
-https://www.gnu.org/licenses/agpl-3.0.txt
+Canonical AGPL text
+- https://www.gnu.org/licenses/agpl-3.0.txt
 
-Third-party models, datasets, and assets included in or referenced by this repository may be subject to additional license terms. See `NOTICE.txt`, `ATTRIBUTIONS.md`, and the model-specific license files under `models/`.
+Third-party assets
+- Model weights, datasets, and other third-party assets may carry additional obligations
+- Review `NOTICE.txt`, `ATTRIBUTIONS.md`, and the model-specific license files under `models/`

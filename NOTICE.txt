@@ -1,27 +1,24 @@
 NOTICE
 
-This repository contains model assets and documentation that incorporate or build upon third-party components.
-Those components remain under their respective licenses. By using or distributing the model weights or providing
-access to them as a service, you agree to comply with all applicable third-party license terms.
+This repository includes model assets and documentation that depend on third-party components.
+Those components remain under their own licenses. If you use, redistribute, or expose the model weights as a service, you are responsible for complying with those terms.
 
 Upstream lineage
-Stable Diffusion v1.5 - CreativeML Open RAIL-M
-DreamShaper v6 - CreativeML Open RAIL-M
-VAE sd-vae-ft-mse - MIT
+- Stable Diffusion v1.5 - CreativeML Open RAIL-M
+- DreamShaper v6 - CreativeML Open RAIL-M
+- VAE sd-vae-ft-mse - MIT
 
 Local license files
-models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt
-models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt
-models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt
+- `models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt`
+- `models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt`
+- `models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt`
 
-Datasets
-See models/AmaFusion_V1/DATA_SOURCES.md for the complete ledger of datasets actually used for training,
-including license types, required attribution strings, and evidence files. Avoid CC BY-SA and CC BY-NC for
-commercial full IP transfer scenarios unless you have explicit written permission that waives those conditions.
+Data provenance
+- `models/AmaFusion_V1/DATA_SOURCES.md` contains the dataset ledger, attribution requirements, and evidence references
 
 Attribution
-See ATTRIBUTIONS.md for a consolidated view of upstream references and license locations.
+- `ATTRIBUTIONS.md` consolidates upstream references and license locations
 
 Disclaimer
-This repository and model are provided as-is, without warranties of any kind. You are responsible for
-compliance with local laws and industry standards when deploying or using the model.
+- This repository and the included model materials are provided as-is, without warranties of any kind
+- You remain responsible for legal, policy, and deployment compliance in your environment

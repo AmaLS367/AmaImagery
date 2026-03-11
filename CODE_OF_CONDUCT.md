@@ -1,26 +1,26 @@
 # Code of Conduct
 
-## Our Standard
+> Sharp technical disagreement is welcome. Personal degradation is not.
 
-Participants in this project are expected to be respectful, direct, and constructive.
+AmaImagery should stay direct, constructive, and workable for maintainers and contributors.
 
-Examples of acceptable behavior:
+## Expected Behavior
 
-- giving actionable technical feedback
-- disagreeing on design without personal attacks
-- reporting bugs clearly and honestly
-- helping keep documentation and tests accurate
+- critique ideas without attacking people
+- write feedback that someone can act on
+- keep disagreements technical and specific
+- help preserve clarity in code, docs, and review threads
 
-Unacceptable behavior includes:
+## Not Acceptable
 
 - harassment or intimidation
-- discriminatory language
+- discriminatory behavior or language
 - doxxing or sharing private information without consent
-- bad-faith disruption of discussions or reviews
+- bad-faith disruption of issues, reviews, or discussions
 
 ## Enforcement
 
-Project maintainers may remove comments, reject contributions, or restrict participation when behavior damages the project or community.
+Maintainers may remove comments, reject contributions, or restrict participation when behavior damages the project or the people working on it.
 
 For serious concerns, contact:
 
