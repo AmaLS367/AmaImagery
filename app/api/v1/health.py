@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.domain.providers import get_provider_registry
+from app.domain.providers import get_provider_boot_snapshot, get_provider_registry
 
 router = APIRouter()
 
@@ -18,8 +18,7 @@ async def health_options() -> Response:
 
 @router.get("/health")
 async def health_check(request: Request) -> dict:
-    registry = get_provider_registry()
-    providers = registry.boot_snapshot().as_dict()
+    providers = get_provider_boot_snapshot().as_dict()
     infra = getattr(request.app.state, "infrastructure_status", {})
     return {
         "ok": True,

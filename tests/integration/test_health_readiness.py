@@ -37,7 +37,20 @@ def test_health_exposes_provider_boot_state(app_client):
         "task_queue": {"backend": "memory", "ready": True, "error": None},
     }
 
-    with patch("app.api.v1.health.get_provider_registry", return_value=_RegistryStub()):
+    boot_snapshot = Mock(
+        as_dict=Mock(
+            return_value={
+                "enabled_providers": ["comfyui"],
+                "booted_providers": [],
+                "failed_providers": ["comfyui"],
+                "boot_error_summaries": {"comfyui": "connection refused"},
+                "default_provider": "comfyui",
+                "default_provider_booted": False,
+            }
+        )
+    )
+
+    with patch("app.api.v1.health.get_provider_boot_snapshot", return_value=boot_snapshot):
         response = app_client.get("/api/v1/health")
 
     assert response.status_code == 200

@@ -15,6 +15,7 @@ from app.domain.providers.interfaces import (
 )
 from app.domain.providers.registry import (
     ProviderRegistry,
+    get_provider_boot_snapshot,
     get_provider_registry,
     reset_provider_registry,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "Style",
     "ProviderOperationError",
     "ProviderRegistry",
+    "get_provider_boot_snapshot",
     "get_provider_registry",
     "reset_provider_registry",
 ]

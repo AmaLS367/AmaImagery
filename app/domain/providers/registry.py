@@ -157,6 +157,32 @@ def get_provider_registry() -> ProviderRegistry:
     return _provider_registry_cache
 
 
+def get_provider_boot_snapshot() -> ProviderBootSnapshot:
+    """
+    Return a lightweight provider boot snapshot without forcing provider bootstrap.
+
+    This keeps liveness endpoints fast on cold start while still exposing the
+    configured provider surface. Once the registry has been built elsewhere,
+    the cached snapshot is returned instead.
+    """
+
+    if _provider_registry_cache is not None:
+        return _provider_registry_cache.boot_snapshot()
+
+    from app.config import settings
+
+    enabled_names = list(settings.providers_enabled or [])
+    default_name = settings.providers_default_name or None
+    return ProviderBootSnapshot(
+        enabled_providers=enabled_names,
+        booted_providers=[],
+        failed_providers=[],
+        boot_error_summaries={},
+        default_provider=default_name,
+        default_provider_booted=False,
+    )
+
+
 def reset_provider_registry() -> None:
     global _provider_registry_cache
     global _provider_registry_signature
