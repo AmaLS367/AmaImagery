@@ -94,30 +94,53 @@ export default function App() {
     setAuthHeaders()
     
     // Check if user has valid tokens, if not clear them
+    // Only check once on mount, not on every render
+    let mounted = true
     const checkAuth = async () => {
       try {
-        const response = await fetch('/auth/me', {
+        const token = localStorage.getItem('access_token')
+        if (!token) {
+          // No token, no need to check
+          return
+        }
+        
+        const response = await fetch('/api/v1/auth/me', {
           credentials: 'include',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
+            'Authorization': `Bearer ${token}`
           }
         })
         
-        if (!response.ok) {
-          // If auth check fails, clear all tokens
+        if (!mounted) return
+        
+        if (!response.ok && response.status === 401) {
+          // Only clear on 401, not on other errors
           localStorage.removeItem('access_token')
-          localStorage.removeItem('auth')
+          const authData = localStorage.getItem('auth')
+          if (authData) {
+            try {
+              const auth = JSON.parse(authData)
+              if (auth && auth.user) {
+                delete auth.user.access_token
+                localStorage.setItem('auth', JSON.stringify(auth))
+              }
+            } catch {}
+          }
           window.dispatchEvent(new Event('auth:update'))
         }
       } catch (e) {
-        // If request fails, clear tokens
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('auth')
-        window.dispatchEvent(new Event('auth:update'))
+        // Ignore network errors on initial check
+        if (mounted) {
+          console.warn('Auth check failed:', e)
+        }
       }
     }
     
     checkAuth()
+    
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const { t } = useTranslation()

@@ -1,68 +1,86 @@
 """
 Image generation endpoints.
-
-Handles AI image generation requests and responses.
 """
 
-import asyncio
-from typing import Optional, Any
-import traceback
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from app.api.v1.auth.deps import optional_user
-from app.infra.db import get_db
-from app.core.logging import lg
+from app.application.use_cases.generate_image import (
+    GenerateImageCommand,
+    GenerateImageUseCase,
+)
 from app.config import settings
-from app.domain.schemas import GenReq, GenResp
-from app.services.generation_service import GenerationService
+from app.core.feature_flags import get_feature_flag_service
+from app.core.logging import lg
+from app.domain.schemas import GenReq, TaskResp
+from app.infra.uow import get_uow
 from app.services.rate_limiting import create_rate_limiter
 
 router = APIRouter()
 
-_generation_deps = [Depends(create_rate_limiter(settings.gen_per_user_per_min, 60))] if getattr(settings, "limits_enabled", False) else []
+_generation_deps = (
+    [Depends(create_rate_limiter(settings.gen_per_user_per_min, 60))]
+    if getattr(settings, "limits_enabled", False)
+    else []
+)
 
-@router.post("/generate", response_model=GenResp, dependencies=_generation_deps)
+
+def get_generate_image_use_case() -> GenerateImageUseCase:
+    """Dependency injection for GenerateImageUseCase."""
+    return GenerateImageUseCase(uow_factory=get_uow)
+
+
+@router.post("/generate", response_model=TaskResp, dependencies=_generation_deps)
 async def generate_image(
     request: GenReq,
-    db: Session = Depends(get_db),
-    user: Optional[Any] = Depends(optional_user),
-) -> GenResp:
+    user: Any | None = Depends(optional_user),
+    use_case: GenerateImageUseCase = Depends(get_generate_image_use_case),
+) -> TaskResp:
+    feature_flags = get_feature_flag_service()
+    if not feature_flags.is_enabled("image_generation"):
+        raise HTTPException(
+            status_code=503,
+            detail="Image generation feature is currently disabled",
+        )
 
-    generation_service = GenerationService(db)
+    user_id = str(getattr(user, "id", "anon")) if user is not None else "anon"
 
-    try:
-        result = await generation_service.generate_image(request=request, user=user)
-        return result
+    command = GenerateImageCommand(
+        user_id=user_id,
+        prompt=request.prompt,
+        negative_prompt=request.negative_prompt,
+        steps=request.steps,
+        seed=request.seed,
+        width=request.width,
+        height=request.height,
+        guidance_scale=request.guidance_scale,
+        ref_image_b64=request.ref_image_b64,
+        ip_scale=request.ip_scale,
+        style=request.style,
+    )
 
-    except asyncio.TimeoutError:
-        if settings.debug:
-            traceback.print_exc()
-        raise HTTPException(status_code=429, detail="Service temporarily unavailable. Please try again later.")
+    result = await use_case(command)
 
-    except RuntimeError as e:
-        msg = str(e)
-        if "timed out" in msg.lower():
-            if settings.debug:
-                traceback.print_exc()
-            raise HTTPException(status_code=504, detail="Generation timed out")
-        if settings.debug:
-            traceback.print_exc()
-            lg("app").exception("generate.runtime_error")
-            raise
+    if not result.success or result.data is None:
+        error_msg = result.error or "Unknown error"
+        status_code = 400 if ("Blocked" in error_msg or "too large" in error_msg.lower()) else 500
 
-        raise HTTPException(status_code=500, detail=f"Generation failed: {msg}")
+        lg("app").bind(
+            scope="images",
+            action="generate",
+            user_id=user_id,
+            status_code=status_code,
+            error=error_msg,
+        ).error("Image generation failed")
 
-    except ValueError as e:
-        if settings.debug:
-            traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=status_code,
+            detail=error_msg,
+        )
 
-    except Exception as e:
-        if settings.debug:
-            traceback.print_exc()
-            lg("app").exception("generate.failed")
-            raise
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
-
+    return TaskResp(
+        task_id=result.data.task_id,
+        status=result.data.status,
+    )

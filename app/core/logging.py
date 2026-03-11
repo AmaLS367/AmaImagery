@@ -1,17 +1,21 @@
 from __future__ import annotations
-import logging, re, uuid, time
-import os, contextvars
-from pathlib import Path
-from loguru import logger as _logger
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.concurrency import iterate_in_threadpool
-from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
+import contextvars
+import logging
+import os
+import re
+import time
+import uuid
+from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from loguru import logger as _logger
+from starlette.concurrency import iterate_in_threadpool
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
 
 from app.config import settings
 
@@ -20,28 +24,54 @@ _request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("reques
 _gen_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("gen_id", default=None)
 _client_ip: contextvars.ContextVar[str | None] = contextvars.ContextVar("client_ip", default=None)
 
-def get_request_id() -> str | None: return _request_id.get()
-def set_request_id(v: str | None) -> None: _request_id.set(v)
-def get_gen_id() -> str | None: return _gen_id.get()
-def set_gen_id(v: str | None) -> None: _gen_id.set(v)
+
+def get_request_id() -> str | None:
+    return _request_id.get()
+
+
+def set_request_id(v: str | None) -> None:
+    _request_id.set(v)
+
+
+def get_gen_id() -> str | None:
+    return _gen_id.get()
+
+
+def set_gen_id(v: str | None) -> None:
+    _gen_id.set(v)
+
+
 def new_gen_id() -> str:
     gid = str(uuid.uuid4())
     _gen_id.set(gid)
     return gid
-def set_client_ip(v: str | None) -> None: _client_ip.set(v)
-def get_client_ip() -> str | None: return _client_ip.get()
+
+
+def set_client_ip(v: str | None) -> None:
+    _client_ip.set(v)
+
+
+def get_client_ip() -> str | None:
+    return _client_ip.get()
+
 
 def _console_sink(message: str) -> None:
-    print(_mask_text(message), end="")
+    import sys
+
+    # Write to stderr to avoid buffering issues and ensure visibility
+    sys.stderr.write(_mask_text(message))
+    sys.stderr.flush()
+
 
 # -------- secret sanitizer --------
 _SECRET_RX = re.compile(
-    r"(?P<bearer>Authorization:\s*Bearer\s+)[A-Za-z0-9\-\._~\+/]+=*|(?P<key>(?:api|token|secret|password)\s*=\s*)[^,\s]+",
+    r"(?P<bearer>Authorization:\s*Bearer\s+)[A-Za-z0-9\-\._~\+/]+=*|(?P<key>(?:api|token|secret|password)\s*=\s*)[^,\s]+|(?P<cookie>Set-Cookie:\s*session=)[^;\s]+",
     re.IGNORECASE,
 )
 
 # public logger (will be patched in setup_logging)
 logger = _logger
+
 
 # -------- intercept standard logging -> loguru --------
 class InterceptHandler(logging.Handler):
@@ -58,7 +88,7 @@ class InterceptHandler(logging.Handler):
                 if record.args:
                     return f"{base} | args={tuple(map(repr, record.args))}"
             except Exception:
-                pass
+                return base
             return base
 
     def emit(self, record):
@@ -73,19 +103,34 @@ class InterceptHandler(logging.Handler):
             try:
                 logger.opt(exception=True).warning("logging_emit_failed")
             except Exception:
-                pass
+                logging.Handler.handleError(self, record)
+
 
 def _patch_std_logging():
     logging.root.handlers = [InterceptHandler()]
-    logging.root.setLevel(logging.INFO)
+    # Set root level to DEBUG to capture all logs, filtering happens at sink level
+    logging.root.setLevel(logging.DEBUG)
     for name in ("uvicorn", "uvicorn.access", "uvicorn.error", "fastapi", "asyncio", "gunicorn"):
         logging.getLogger(name).handlers = [InterceptHandler()]
         logging.getLogger(name).propagate = False
-        
+        # Set to DEBUG to ensure all logs are captured
+        logging.getLogger(name).setLevel(logging.DEBUG)
+
+
 # ==============================================
 def _mask_text(text: str) -> str:
     try:
-        return _SECRET_RX.sub(lambda m: (m.group("bearer") or m.group("key") or "") + "***", str(text))
+
+        def replace_match(m):
+            if m.group("bearer"):
+                return m.group("bearer") + "****"
+            elif m.group("key"):
+                return m.group("key") + "****"
+            elif m.group("cookie"):
+                return m.group("cookie") + "****"
+            return ""
+
+        return _SECRET_RX.sub(replace_match, str(text))
     except Exception:
         return str(text)
 
@@ -103,30 +148,39 @@ def setup_logging(level: str = "INFO") -> None:
     try:
         _logger.remove()
     except Exception:
-        pass
+        logger.debug("logging.remove_failed")
 
     is_dev = bool(getattr(settings, "debug", False))
 
-    # Console sink
+    # Parse log level to ensure it's valid
+    try:
+        log_level = level.upper()
+        if log_level not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+            log_level = "INFO"
+    except Exception:
+        log_level = "INFO"
+
+    # Console sink - always use stderr for better visibility
     if is_dev:
         # DEV: maximum diagnostics + traceback in output
         _logger.add(
             sink=_console_sink,
-            level=level,
+            level=log_level,
             backtrace=True,
             diagnose=True,
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-                   "<level>{level: <8}</level> | {message} | {extra}\n{exception}",
+            "<level>{level: <8}</level> | {message} | {extra}\n{exception}",
+            colorize=True,
         )
     else:
         # PROD: clean output without traceback
         _logger.add(
             sink=_console_sink,
-            level=level,
+            level=log_level,
             backtrace=False,
             diagnose=False,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-                   "<level>{level: <8}</level> | {message} | {extra}",
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | {message} | {extra}",
+            colorize=True,
         )
 
     _patch_std_logging()
@@ -136,6 +190,7 @@ def setup_logging(level: str = "INFO") -> None:
 # -------- Access middleware --------
 class AccessLogMiddleware(BaseHTTPMiddleware):
     """Middleware that logs all incoming HTTP requests with duration, status, and size."""
+
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
         rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
@@ -150,10 +205,10 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             body = []
             try:
                 # Use getattr for safe access to body_iterator
-                body_iterator = getattr(response, 'body_iterator', None)
+                body_iterator = getattr(response, "body_iterator", None)
                 if body_iterator is not None:
                     body = [section async for section in body_iterator]
-                    setattr(response, 'body_iterator', iterate_in_threadpool(iter(body)))
+                    response.body_iterator = iterate_in_threadpool(iter(body))
             except (AttributeError, TypeError):
                 # If body_iterator is unavailable, skip byte counting
                 pass
@@ -182,6 +237,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 user_agent=request.headers.get("user-agent"),
             ).error("Access error")
             raise
+
 
 # -------- Exception handlers --------
 def install_exception_handlers(app: FastAPI) -> None:
@@ -221,6 +277,7 @@ def install_exception_handlers(app: FastAPI) -> None:
 def lg(kind: str):
     return logger.bind(event_type=kind)
 
+
 def save_prompt_raw(prompt_hash: str, original: str, negative: str | None) -> None:
     if int(settings.prompts_raw or 0) != 1:
         return
@@ -230,6 +287,7 @@ def save_prompt_raw(prompt_hash: str, original: str, negative: str | None) -> No
         os.chmod(p, 0o600)
     except Exception:
         logger.bind(event_type="app").warning("Failed to save raw prompt", extra={"prompt_hash": prompt_hash})
+
 
 def sec(event: str, **fields):
     payload = {"event": event}

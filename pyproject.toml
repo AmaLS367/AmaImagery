@@ -1,0 +1,325 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "AmaImagery"
+version = "0.1.0"
+description = "AI Image Generator based on Stable Diffusion with FastAPI backend"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "See LICENSE file"}
+authors = [
+    {name = "Ama"}
+]
+keywords = ["ai", "image-generation", "stable-diffusion", "fastapi", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    # Core ML
+    "torch>=2.5.1",
+    "torchvision>=0.20.1",
+    "torchaudio>=2.5.1",
+    "diffusers>=0.37.0",
+    "transformers>=5.3.0",
+    "accelerate>=1.1.0",
+    "safetensors>=0.4.5",
+
+    # Web Framework
+    "fastapi>=0.115.0",
+    "starlette>=0.41.0",
+    "uvicorn>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "pydantic_core>=2.23.0",
+
+    # Database
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14.0",
+    "psycopg2-binary>=2.9.9",
+    "asyncpg>=0.30.0",
+    "aiosqlite>=0.20.0",
+    "greenlet>=3.1.0",
+
+    # Cache & Queue
+    "redis>=5.2.0",
+
+    # Auth & Security
+    "bcrypt>=4.2.0",
+    "PyJWT>=2.9.0",
+    "passlib>=1.7.4",
+
+    # HTTP & Networking
+    "httpx>=0.27.0",
+    "httpcore>=1.0.0",
+    "h11>=0.14.0",
+    "requests>=2.32.0",
+    "urllib3>=2.6.3",
+    "certifi>=2024.8.30",
+    "idna>=3.10",
+    "charset-normalizer>=3.4.0",
+    "sniffio>=1.3.0",
+    "anyio>=4.6.0",
+
+    # Email
+    "aiosmtplib>=3.0.0",
+    "email-validator>=2.2.0",
+    "dnspython>=2.7.0",
+
+    # Logging & Monitoring
+    "loguru>=0.7.2",
+    "prometheus_client>=0.21.0",
+    "psutil>=6.1.0",
+    "pynvml>=11.5.0",
+
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "click>=8.1.0",
+    "colorama>=0.4.6",
+    "filelock>=3.20.3",
+    "packaging>=24.0",
+    "tqdm>=4.66.0",
+
+    # ML Libraries
+    "huggingface-hub>=1.6.0",
+    "tokenizers>=0.20.0",
+    "protobuf>=4.25.0",
+    "numpy>=1.26.0",
+    "pillow>=12.1.1",
+    "fsspec>=2024.10.0",
+
+    # Text Processing
+    "ftfy>=6.3.0",
+    "symspellpy>=6.7.0",
+    "editdistpy>=0.1.4",
+    "regex>=2024.11.0",
+    "langcodes>=3.4.0",
+    "language_data>=1.2.0",
+    "wordfreq>=3.1.0",
+    "marisa-trie>=1.2.0",
+
+    # Templates & Rendering
+    "Jinja2>=3.1.4",
+    "MarkupSafe>=3.0.0",
+    "Mako>=1.3.0",
+    "Pygments>=2.18.0",
+
+    # Testing
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "pluggy>=1.5.0",
+    "iniconfig>=2.0.0",
+    "coverage[toml]>=7.6.0",
+
+    # Data & Serialization
+    "PyYAML>=6.0.2",
+    "msgpack>=1.1.0",
+
+    # Math & Scientific
+    "sympy>=1.13.0",
+    "mpmath>=1.3.0",
+    "networkx>=3.4.0",
+
+    # Type System
+    "annotated-types>=0.7.0",
+    "typing-inspection>=0.4.0",
+    "typing_extensions>=4.12.0",
+
+    # Other
+    "locate>=1.1.1",
+    "wcwidth>=0.2.13",
+    "win32_setctime>=1.1.0",
+    "zipp>=3.20.0",
+    "importlib_metadata>=8.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "ruff>=0.1.0",
+    "black>=23.0",
+    "mypy>=1.0",
+]
+
+# NOTE: xformers requires CUDA-enabled PyTorch
+# Uncomment when using CUDA PyTorch:
+# cuda = [
+#     "xformers==0.0.33.post2",
+# ]
+
+[project.urls]
+Homepage = "https://github.com/AmaLS367/AmaImagery"
+Documentation = "https://github.com/AmaLS367/AmaImagery/tree/main/docs"
+Repository = "https://github.com/AmaLS367/AmaImagery"
+Issues = "https://github.com/AmaLS367/AmaImagery/issues"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.setuptools.package-data]
+app = ["config/*.txt", "config/*.md", "templates/**/*.html"]
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=60",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+    "asyncio: marks tests as async tests",
+]
+
+# Ruff configuration (linter)
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__.py
+"tests/**/*.py" = [
+    "ANN",  # allow missing type annotations in tests
+    "ARG",  # allow unused arguments in test fixtures
+    "S101",  # allow assert statements
+    "PLR2004",  # allow magic values in tests
+    "F841",  # allow unused variables in tests (for pytest fixtures)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+# Black configuration (formatter)
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.venv
+  | build
+  | dist
+  | migrations/versions
+)/
+'''
+
+# MyPy configuration (type checker)
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "diffusers.*",
+    "transformers.*",
+    "xformers.*",
+    "symspellpy.*",
+    "editdistpy.*",
+    "marisa_trie.*",
+    "wordfreq.*",
+    "prometheus_client.*",
+    "redis.*",
+    "websockets.*",
+    "bcrypt",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+warn_return_any = false
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/build/*",
+    "*/dist/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@property",
+    "@.*\\.setter",
+    "if False:",
+    "if 0:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+fail_under = 60
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# Alembic configuration
+[tool.alembic]
+script_location = "migrations"
+prepend_sys_path = "."
+path_separator = "os"
+# sqlalchemy.url is set dynamically from app.config.settings.database_url in migrations/env.py

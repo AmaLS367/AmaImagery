@@ -1,6 +1,6 @@
 const API_BASE =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
-  (typeof window !== 'undefined' ? `${window.location.origin}` : 'http://127.0.0.1:8000')
+  'http://127.0.0.1:8000'
 
 function getAccessToken(): string | null {
   try { return localStorage.getItem('access_token') } catch { return null }
@@ -18,7 +18,7 @@ let refreshPromise: Promise<boolean> | null = null
 async function refreshAccessToken(): Promise<boolean> {
   if (refreshPromise) return refreshPromise
   refreshPromise = (async () => {
-    const resp = await fetch(`${API_BASE}/auth/refresh`, {
+    const resp = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
     })
@@ -101,10 +101,26 @@ export type GeneratePayload = {
   style?: 'realistic' | 'anime'
 }
 
-export type GenerateResponse = {
-  path: string
-  prompt_hash?: string
-  corrections?: Array<[string, string]>
+export type TaskResp = {
+  task_id: string
+  status: string
+}
+
+export type TaskStatusResp = {
+  task_id: string
+  status: string
+  provider_name?: string | null
+  provider_state?: Record<string, any> | null
+  image_path?: string | null
+  image_filename?: string | null
+  image_url?: string | null
+  exp?: number | null
+  sig?: string | null
+  metadata?: Record<string, any> | null
+  error?: string | null
+  created_at?: number | null
+  started_at?: number | null
+  completed_at?: number | null
 }
 
 let headerProvider: (() => Record<string, string>) | null = null
@@ -163,21 +179,18 @@ export async function api(input: string, init: RequestInit = {}) {
 
 export async function health(): Promise<boolean> {
   try {
-    const r = await fetch(`${API_BASE}/health`, { cache: 'no-store', headers: buildHeaders() })
+    const r = await fetch(`${API_BASE}/api/v1/health`, { cache: 'no-store', headers: buildHeaders() })
     return r.ok
   } catch { return false }
 }
 
-export async function generateJSON(body: GeneratePayload, signal?: AbortSignal): Promise<GenerateResponse> {
-  const url = `${API_BASE}/generate`;
-  const headers = buildHeaders();
-  const requestBody = JSON.stringify(body);
-  
+export async function generateJSON(body: GeneratePayload, signal?: AbortSignal): Promise<TaskResp> {
   try {
-    const r = await request('/generate', {
+    const r = await request('/api/v1/images/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     }, true)
     
     if (!r.ok) {
@@ -199,10 +212,47 @@ export async function generateJSON(body: GeneratePayload, signal?: AbortSignal):
       throw new Error(msg);
     }
     
-    const data = await r.json();;
-    return data;
+    const data = await r.json();
+    return data as TaskResp;
   } catch (e) {
     console.error('Request failed:', e);
+    throw e;
+  }
+}
+
+export async function getTaskStatus(task_id: string, signal?: AbortSignal): Promise<TaskStatusResp> {
+  try {
+    const r = await request(`/api/v1/images/status/${encodeURIComponent(task_id)}`, {
+      method: 'GET',
+      signal,
+    }, true)
+    
+    if (!r.ok) {
+      let msg = `HTTP ${r.status}`;
+      try {
+        const text = await r.text();
+        const j = JSON.parse(text);
+        msg = j.detail || msg;
+      } catch {
+        // ignore parsing errors
+      }
+      throw new Error(msg);
+    }
+    
+    const data = await r.json().catch(() => null)
+    if (!data) {
+      throw new Error('Invalid response format')
+    }
+    
+    // Debug logging
+    if (data.status === 'queued') {
+      const age = data.created_at ? Date.now() - (data.created_at * 1000) : 0
+      console.warn(`Task ${task_id} still queued after ${age}ms`, data)
+    }
+    
+    return data as TaskStatusResp
+  } catch (e) {
+    console.error('Failed to get task status:', e);
     throw e;
   }
 }
@@ -210,29 +260,39 @@ export async function generateJSON(body: GeneratePayload, signal?: AbortSignal):
 // Экспорт функций под личные ручки
 export type GenerationItem = {
   id: string
+  task_id?: string
+  status?: string
+  provider_name?: string | null
+  provider_state?: Record<string, any> | null
   image_path: string
+  image_filename?: string | null
+  metadata?: Record<string, any> | null
+  error?: string | null
   prompt: any
   params: any
   created_at: string
+  started_at?: string | null
+  completed_at?: string | null
+  image_url?: string
   exp?: number
   sig?: string
 }
 
 export async function listMyGenerations(limit = 50, offset = 0) {
   const q = new URLSearchParams({ limit: String(limit), offset: String(offset) })
-  const r = await request(`/users/me/generations?${q.toString()}`)
+  const r = await request(`/api/v1/users/me/generations?${q.toString()}`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function getMySettings() {
-  const r = await request(`/users/me/settings`)
+  const r = await request(`/api/v1/users/me/settings`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function patchMySettings(payload: any) {
-  const r = await request(`/users/me/settings`, {
+  const r = await request(`/api/v1/users/me/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: payload }),
@@ -240,7 +300,5 @@ export async function patchMySettings(payload: any) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
-
-
 
 

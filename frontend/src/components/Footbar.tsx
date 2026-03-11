@@ -30,13 +30,13 @@ export const Footbar = memo(function Footbar({ className }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {/* Brand */}
             <div className="space-y-2">
-              <div className="text-lg font-semibold tracking-tight text-foreground">Genai</div>
+              <div className="text-lg font-semibold tracking-tight text-foreground">AmaImagery</div>
               <p className="text-xs leading-relaxed text-foreground/70">
                 {t('footbar.brandTag')}
               </p>
             </div>
 
-            {/* О Genai */}
+            {/* О AmaImagery */}
             <div>
               <div className="mb-2 font-semibold text-foreground">{t('nav.about')}</div>
               <ul className="space-y-1">
@@ -85,7 +85,7 @@ export const Footbar = memo(function Footbar({ className }: Props) {
                   </button>
                 </li>
                 <li>
-                  <a href="mailto:support@genai.local" className="hover:text-foreground underline-offset-4 hover:underline">
+                  <a href="mailto:support@amaimagery.local" className="hover:text-foreground underline-offset-4 hover:underline">
                     {t('footbar.support')}
                   </a>
                 </li>

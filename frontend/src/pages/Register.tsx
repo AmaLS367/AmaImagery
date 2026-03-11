@@ -149,7 +149,7 @@ export default function Register() {
     setServerError(null)
     setSuccess(false)
     try {
-      const res = await fetch('/auth/register', {
+      const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: data.email, password: data.password, username: data.username }),
@@ -161,7 +161,12 @@ export default function Register() {
       const payload = await res.json().catch(() => null)
   
       // Помечаем пользователя как вошедшего, чтобы топбар переключился
-      try { localStorage.setItem('auth', JSON.stringify({ loggedIn: true, user: payload })) } catch {}
+      try { 
+        localStorage.setItem('auth', JSON.stringify({ loggedIn: true, user: payload }))
+        if (payload?.access_token) {
+          localStorage.setItem('access_token', payload.access_token)
+        }
+      } catch {}
       window.dispatchEvent(new CustomEvent('auth:update'))
   
       // Редирект на генерацию

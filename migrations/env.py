@@ -1,17 +1,31 @@
-from logging.config import fileConfig
+"""Alembic migrations environment configuration."""
+import logging
 from sqlalchemy import engine_from_config, pool
-from alembic import context # type: ignore
+from alembic import context
 import os
 from app.infra.db import Base as RuntimeBase
 import app.domain.models
 
-config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# Configure logging programmatically instead of using alembic.ini
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(levelname)-5.5s [%(name)s] %(message)s',
+    datefmt='%H:%M:%S',
+)
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+logging.getLogger('alembic').setLevel(logging.INFO)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+config = context.config
+
+try:
+    from app.config import settings
+    DATABASE_URL = settings.database_url
+except Exception:
+    DATABASE_URL = os.getenv("DATABASE_URL")
+
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL not set")
+    raise RuntimeError("DATABASE_URL not set. Set it via environment variable or .env file")
+
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 target_metadata = RuntimeBase.metadata
 

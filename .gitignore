@@ -64,6 +64,9 @@ build/
 dist/
 coverage/
 
+# === Project specifics ===
+COMFYUI_REFACTOR_IMPLEMENTATION_PLAN.md
+
 # === Logs / runtime ===
 logs/
 *.log
@@ -76,7 +79,7 @@ outputs/
 
 # === Env / secrets ===
 .env
-.env.*
+.env.docker
 .env.local
 .env.dev
 .env.development.local

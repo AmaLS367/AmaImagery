@@ -1,18 +1,27 @@
 import fastapi
-from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
+
 from app.main import app
+
 
 def fake_dep():
     raise fastapi.HTTPException(status_code=429, detail="rate limited")
 
-for r in app.routes:
-    if isinstance(r, APIRoute) and r.path.startswith("/auth"):
-        r.dependant.dependencies = []  # type: ignore[attr-defined]
-        r.dependencies = [fastapi.Depends(fake_dep)]  # type: ignore[assignment]
 
-client = TestClient(app)
+def test_auth_rate_limited_simulated(app_client):
+    overrides = {}
+    for route in app.routes:
+        if not isinstance(route, APIRoute) or route.path != "/api/v1/auth/login":
+            continue
+        for dependency in route.dependant.dependencies:
+            if dependency.call is not None:
+                overrides[dependency.call] = fake_dep
+        break
 
-def test_auth_rate_limited_simulated():
-    resp = client.post("/auth/me", json={"email": "a@b.c", "password": "x"})
-    assert resp.status_code == 429
+    app.dependency_overrides.update(overrides)
+    try:
+        resp = app_client.post("/api/v1/auth/login", json={"identifier": "a@b.c", "password": "pass12345"})
+        assert resp.status_code == 429
+    finally:
+        for dependency in overrides:
+            app.dependency_overrides.pop(dependency, None)

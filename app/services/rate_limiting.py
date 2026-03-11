@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import time
-from typing import Callable
-import redis.asyncio as redis
+from collections.abc import Callable
+from typing import Any
+
 from fastapi import Depends, HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.auth.deps import get_user_or_ip_identifier
-from app.infra.redis import get_redis
 from app.core.logging import sec
+from app.infra.redis import get_redis
+
+
 class RateLimitLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
@@ -16,12 +19,15 @@ class RateLimitLoggingMiddleware(BaseHTTPMiddleware):
             sec("rate_limited", path=str(request.url.path))
         return response
 
+
 def create_rate_limiter(limit: int, window_sec: int) -> Callable:
     async def _dep(
         request: Request,
-        redis_client: redis.Redis = Depends(get_redis),
+        redis_client: Any = Depends(get_redis),
         user_key: str = Depends(get_user_or_ip_identifier),
     ) -> None:
+        if redis_client is None:
+            return
         now = int(time.time())
         bucket = now // window_sec
         key = f"ratelimit:{user_key}:{bucket}"
@@ -34,8 +40,9 @@ def create_rate_limiter(limit: int, window_sec: int) -> Callable:
             pipe.expire(key, window_sec + 1)
             count, _ = await pipe.execute()
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                                detail={"error": "rate_limit_backend_unavailable"}) from e
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"error": "rate_limit_backend_unavailable"}
+            ) from e
 
         try:
             current = int(count) if not isinstance(count, int) else count

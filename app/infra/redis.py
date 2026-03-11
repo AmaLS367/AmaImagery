@@ -1,22 +1,64 @@
-from __future__ import annotations
-import os
-import typing as t
-import redis.asyncio as redis
+"""
+Redis client management for infrastructure layer.
+
+Handles connection lifecycle (init/close) and provides a global accessor.
+"""
+
+import importlib.util
+import logging
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
+
 from app.config import settings
-_redis: t.Any = None
 
-def init_redis() -> t.Any:
-    global _redis
-    if _redis is not None:
-        return _redis
+_REDIS_AVAILABLE = importlib.util.find_spec("redis.asyncio") is not None
 
-    url = os.getenv("REDIS_URL") or os.getenv("REDIS_DSN") or settings.redis_url
-    if not url or redis is None:
-        _redis = None
-        return _redis
+if TYPE_CHECKING:
+    from redis.asyncio import Redis as RedisClient
+else:
+    RedisClient: TypeAlias = Any
 
-    _redis = redis.from_url(url, encoding="utf-8", decode_responses=True)
-    return _redis
+logger = logging.getLogger(__name__)
 
-def get_redis() -> t.Any:
-    return init_redis()
+_redis_client: RedisClient | None = None
+
+
+async def init_redis() -> None:
+    global _redis_client
+
+    if settings.no_redis:
+        logger.info("Redis disabled via configuration (NO_REDIS=True).")
+        return
+    if not _REDIS_AVAILABLE:
+        logger.warning("Redis package is not installed; Redis features are disabled.")
+        return
+
+    if _redis_client is not None:
+        return
+
+    logger.info(f"Connecting to Redis at {settings.redis_url}...")
+    try:
+        # Create async Redis client
+        import redis.asyncio as redis_asyncio
+
+        client = redis_asyncio.Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        # Fail fast: Ping to ensure connection works immediately
+        ping_result = bool(await cast(Any, client.ping()))
+        if not ping_result:
+            raise RuntimeError("Redis ping returned False")
+        _redis_client = client
+        logger.info("Redis connection established.")
+    except Exception as e:
+        logger.error(f"Failed to connect to Redis: {e}")
+        raise
+
+
+async def close_redis() -> None:
+    global _redis_client
+    if _redis_client:
+        await _redis_client.close()
+        logger.info("Redis connection closed.")
+        _redis_client = None
+
+
+def get_redis() -> RedisClient | None:
+    return _redis_client

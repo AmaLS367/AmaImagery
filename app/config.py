@@ -1,60 +1,116 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from urllib.parse import urlparse
-from dotenv import load_dotenv
+import json
+import os
+import re
 from pathlib import Path
-import json, os, re
-from pydantic import Field, field_validator, model_validator
-class Settings(BaseSettings):
-    # --- Inference/model
-    model_id: str = Field("models/dreamshaper_6NoVae.safetensors", alias="MODEL_ID")
-    device: str = Field("cuda", alias="DEVICE")
-    max_steps: int = Field(128, alias="MAX_STEPS")
-    max_size: int = Field(2048, alias="MAX_SIZE")
-    generation_timeout_sec: int = Field(300, alias="GENERATION_TIMEOUT_SEC")
-    vae_id: str | None = Field(None, alias="VAE_ID")
-    torch_dtype: str = Field("fp16", alias="TORCH_DTYPE")  # fp16|bf16|fp32
-    scheduler: str | None = Field(None, alias="SCHEDULER")
-    seed_strict: bool = Field(False, alias="SEED_STRICT")
+from typing import Annotated, Any, Literal
+from urllib.parse import urlparse
 
-    # --- auth/db ---
-    database_url: str = Field("sqlite:///./genai.db", alias="DATABASE_URL")
-    secret_key: str = Field("", alias="SECRET_KEY")
-    jwt_alg: str = Field("HS256", alias="JWT_ALG")
-    
-    # --- logging ---
-    log_dir: str = Field("logs", alias="LOG_DIR")
-    log_level: str = Field("INFO", alias="LOG_LEVEL")                  # DEBUG/INFO/WARNING/ERROR
-    log_rotation: str = Field("00:00", alias="LOG_ROTATION")           # daily rotation
-    log_retention: str = Field("30 days", alias="LOG_RETENTION")
-    log_compression: str = Field("zip", alias="LOG_COMPRESSION")
-    prompts_raw: int = Field(0, alias="PROMPTS_RAW")  
-    log_mask_auth: bool = Field(True, alias="LOG_MASK_AUTH")
+from dotenv import load_dotenv
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+_TRUE_VALUES = {"true", "1", "yes", "on"}
+_FALSE_VALUES = {"false", "0", "no", "off"}
+
+
+def _coerce_bool_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in _TRUE_VALUES:
+            return True
+        if normalized in _FALSE_VALUES:
+            return False
+    return bool(value)
+
+
+class Settings(BaseSettings):
+    # --- Core / Environment ---
+    env: Annotated[
+        Literal["dev", "development", "local", "stage", "staging", "prod", "production"], Field(alias="ENV")
+    ] = "dev"
+    run_in_docker: Annotated[bool, Field(alias="RUN_IN_DOCKER")] = False
+    debug: Annotated[bool, Field(alias="DEBUG")] = False
+
+    # --- Network ---
+    no_network: Annotated[bool, Field(alias="NO_NETWORK")] = True
+
+    # --- Providers ---
+    providers_default_name: Annotated[str, Field(alias="PROVIDERS_DEFAULT_NAME")] = "diffusers"
+    providers_enabled: Annotated[list[str], NoDecode, Field(alias="PROVIDERS_ENABLED")] = ["diffusers"]
+    comfyui_base_url: Annotated[str | None, Field(alias="COMFYUI_BASE_URL")] = None
+    comfyui_websocket_url: Annotated[str | None, Field(alias="COMFYUI_WEBSOCKET_URL")] = None
+    comfyui_workflow_path: Annotated[Path | None, Field(alias="COMFYUI_WORKFLOW_PATH")] = None
+    comfyui_workflow_map_path: Annotated[Path | None, Field(alias="COMFYUI_WORKFLOW_MAP_PATH")] = None
+    comfyui_poll_interval_sec: Annotated[float, Field(alias="COMFYUI_POLL_INTERVAL_SEC")] = 1.5
+    comfyui_timeout_sec: Annotated[int, Field(alias="COMFYUI_TIMEOUT_SEC")] = 300
+
+    # --- Feature Flags ---
+    feature_flags: Annotated[dict[str, bool], Field(alias="FEATURE_FLAGS")] = {
+        "image_generation": True,
+        "image_editing": True,
+        "image_upscaling": True,
+        "ip_adapter": True,
+        "batch_generation": True,
+    }
+
+    # --- Inference/model ---
+    model_id: Annotated[str, Field(alias="MODEL_ID")] = "models/dreamshaper_6NoVae.safetensors"
+    device: Annotated[str, Field(alias="DEVICE")] = "cuda"
+    max_steps: Annotated[int, Field(alias="MAX_STEPS")] = 128
+    max_size: Annotated[int, Field(alias="MAX_SIZE")] = 2048
+    generation_timeout_sec: Annotated[int, Field(alias="GENERATION_TIMEOUT_SEC")] = 300
+    vae_id: Annotated[str | None, Field(alias="VAE_ID")] = None
+    torch_dtype: Annotated[str, Field(alias="TORCH_DTYPE")] = "fp16"  # fp16|bf16|fp32
+    scheduler: Annotated[str | None, Field(alias="SCHEDULER")] = None
+    seed_strict: Annotated[bool, Field(alias="SEED_STRICT")] = False
+
+    # --- Database ---
+    database_url: Annotated[str, Field(alias="DATABASE_URL")] = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/amaimagery"
+    )
+
+    # --- Security ---
+    secret_key: Annotated[str, Field(alias="SECRET_KEY")] = ""
+    jwt_alg: Annotated[str, Field(alias="JWT_ALG")] = "HS256"
+
+    # --- Logging ---
+    log_dir: Annotated[str, Field(alias="LOG_DIR")] = "logs"
+    log_level: Annotated[str, Field(alias="LOG_LEVEL")] = "INFO"  # DEBUG/INFO/WARNING/ERROR
+    log_rotation: Annotated[str, Field(alias="LOG_ROTATION")] = "00:00"  # daily rotation
+    log_retention: Annotated[str, Field(alias="LOG_RETENTION")] = "30 days"
+    log_compression: Annotated[str, Field(alias="LOG_COMPRESSION")] = "zip"
+    prompts_raw: Annotated[int, Field(alias="PROMPTS_RAW")] = 0
+    log_mask_auth: Annotated[bool, Field(alias="LOG_MASK_AUTH")] = True
 
     # SMTP
-    smtp_host: str = Field('localhost', alias='SMTP_HOST')
-    smtp_port: int = Field(1025, alias='SMTP_PORT')
-    smtp_user: str | None = Field(None, alias='SMTP_USER')
-    smtp_pass: str | None = Field(None, alias='SMTP_PASS')
-    smtp_from: str = Field('no-reply@example.com', alias='SMTP_FROM')
-    smtp_security: str = Field('starttls', alias='SMTP_SECURITY')  # ssl | starttls | none
-    smtp_timeout_sec: int = Field(15, alias='SMTP_TIMEOUT_SEC')
-    
+    smtp_host: Annotated[str, Field(alias="SMTP_HOST")] = "localhost"
+    smtp_port: Annotated[int, Field(alias="SMTP_PORT")] = 1025
+    smtp_user: Annotated[str | None, Field(alias="SMTP_USER")] = None
+    smtp_pass: Annotated[str | None, Field(alias="SMTP_PASS")] = None
+    smtp_from: Annotated[str, Field(alias="SMTP_FROM")] = "no-reply@example.com"
+    smtp_security: Annotated[str, Field(alias="SMTP_SECURITY")] = "starttls"  # ssl | starttls | none
+    smtp_timeout_sec: Annotated[int, Field(alias="SMTP_TIMEOUT_SEC")] = 15
+
     # --- General toggles ---
-    autocorrect: bool = Field(False, alias="AUTOCORRECT")
-    base_url: str | None = Field(None, alias="BASE_URL")
+    autocorrect: Annotated[bool, Field(alias="AUTOCORRECT")] = False
+    base_url: Annotated[str | None, Field(alias="BASE_URL")] = None
 
     # Links in emails
-    frontend_origin: str = Field('http://localhost:5173', alias='FRONTEND_ORIGIN')
+    frontend_origin: Annotated[str, Field(alias="FRONTEND_ORIGIN")] = "http://localhost:5173"
 
     # TTL for password reset tokens (minutes)
-    reset_token_ttl_min: int = Field(30, alias='RESET_TOKEN_TTL_MIN')
-    
+    reset_token_ttl_min: Annotated[int, Field(alias="RESET_TOKEN_TTL_MIN")] = 30
+
     # allowed hosts
-    allowed_hosts: list[str] = Field(default_factory=lambda: ["localhost","127.0.0.1"], alias='ALLOWED_HOSTS')
+    allowed_hosts: Annotated[list[str], Field(alias="ALLOWED_HOSTS")] = ["localhost", "127.0.0.1"]
 
     @field_validator("allowed_hosts", mode="before")
     @classmethod
-    def _parse_hosts(cls, v):
+    def _parse_hosts(cls, v: Any) -> list[str] | Any:
         if v is None or v == "":
             return ["localhost", "127.0.0.1"]
         if isinstance(v, str):
@@ -63,41 +119,40 @@ class Settings(BaseSettings):
                 try:
                     data = json.loads(s)
                     return [str(x).strip() for x in data if str(x).strip()]
-                except Exception:
-                    pass
+                except (TypeError, ValueError):
+                    return [p.strip() for p in s.replace(";", ",").split(",") if p.strip()]
             parts = s.replace(";", ",").split(",")
             return [p.strip() for p in parts if p.strip()]
         return v
 
-    # Redis (for rate-limits, queues, etc)
-    redis_url: str = Field("redis://localhost:6379/0", alias='REDIS_URL')
-    enable_hsts: bool = Field(False, alias='ENABLE_HSTS')
+    # --- Redis (for rate-limits, queues, etc) ---
+    redis_url: Annotated[str, Field(alias="REDIS_URL")] = "redis://localhost:6379/0"
+    no_redis: Annotated[bool, Field(alias="NO_REDIS")] = False  # Disable Redis (for dev/testing)
+    enable_hsts: Annotated[bool, Field(alias="ENABLE_HSTS")] = False
 
     # Limits
-    gen_per_user_per_min: int = Field(60, alias="GEN_PER_USER_PER_MIN")
-    gen_per_ip_per_min: int = Field(120, alias="GEN_PER_IP_PER_MIN")
-    limits_enabled: bool = Field(True, alias="LIMITS_ENABLED")
+    gen_per_user_per_min: Annotated[int, Field(alias="GEN_PER_USER_PER_MIN")] = 60
+    gen_per_ip_per_min: Annotated[int, Field(alias="GEN_PER_IP_PER_MIN")] = 120
+    limits_enabled: Annotated[bool, Field(alias="LIMITS_ENABLED")] = True
 
     # Concurrency
-    queue_wait_timeout_sec: float = Field(2.0, alias="QUEUE_WAIT_TIMEOUT_SEC")
+    queue_wait_timeout_sec: Annotated[float, Field(alias="QUEUE_WAIT_TIMEOUT_SEC")] = 2.0
 
     # --- Files ---
-    file_signing_enabled: bool = Field(True, alias="FILE_SIGNING_ENABLED")
-    file_url_ttl_sec: int = Field(86400, alias="FILE_URL_TTL_SEC")
-    file_download_ttl_sec: int = Field(900, alias="FILE_DOWNLOAD_TTL_SEC")  # ≤ 15 min
-    file_single_use: bool = Field(False, alias="FILE_SINGLE_USE")  
-    file_allowed_exts: list[str] = Field(
-        default_factory=lambda: ["png", "jpg", "jpeg", "webp"],
-        alias="FILE_ALLOWED_EXTS"
-    )
-    file_allowed_mimes: list[str] = Field(
-        default_factory=lambda: ["image/png", "image/jpeg", "image/webp"],
-        alias="FILE_ALLOWED_MIMES"
-    )
-    
-    @field_validator("file_allowed_exts", "file_allowed_mimes", mode="before")
+    file_signing_enabled: Annotated[bool, Field(alias="FILE_SIGNING_ENABLED")] = True
+    file_url_ttl_sec: Annotated[int, Field(alias="FILE_URL_TTL_SEC")] = 86400
+    file_download_ttl_sec: Annotated[int, Field(alias="FILE_DOWNLOAD_TTL_SEC")] = 900  # ≤ 15 min
+    file_single_use: Annotated[bool, Field(alias="FILE_SINGLE_USE")] = False
+    file_allowed_exts: Annotated[list[str], Field(alias="FILE_ALLOWED_EXTS")] = ["png", "jpg", "jpeg", "webp"]
+    file_allowed_mimes: Annotated[list[str], Field(alias="FILE_ALLOWED_MIMES")] = [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+    ]
+
+    @field_validator("file_allowed_exts", "file_allowed_mimes", "providers_enabled", mode="before")
     @classmethod
-    def _parse_list_env(cls, v):
+    def _parse_list_env(cls, v: Any) -> list[str] | None:
         if v is None:
             return None
         if isinstance(v, (list, tuple)):
@@ -109,113 +164,166 @@ class Settings(BaseSettings):
             try:
                 data = json.loads(s)
                 return [str(x).strip() for x in data if str(x).strip()]
-            except Exception:
-                pass
+            except (TypeError, ValueError):
+                return [p.strip() for p in re.split(r"[;,]", s) if p.strip()]
         return [p.strip() for p in re.split(r"[;,]", s) if p.strip()]
 
+    @field_validator("feature_flags", mode="before")
+    @classmethod
+    def _parse_feature_flags(cls, v: Any) -> dict[str, bool] | None:
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return {str(key): _coerce_bool_value(flag_value) for key, flag_value in v.items()}
+        s = str(v).strip()
+        if s == "":
+            return None
+        if s.startswith("{") or s.startswith("["):
+            try:
+                data = json.loads(s)
+                if isinstance(data, dict):
+                    return {str(key): _coerce_bool_value(flag_value) for key, flag_value in data.items()}
+                if isinstance(data, list):
+                    return {str(item): True for item in data}
+            except (TypeError, ValueError):
+                flags: dict[str, bool] = {}
+                for part in re.split(r"[;,]", s):
+                    part = part.strip()
+                    if not part:
+                        continue
+                    if "=" in part:
+                        key, flag_value = part.split("=", 1)
+                        flags[key.strip()] = _coerce_bool_value(flag_value)
+                    else:
+                        flags[part] = True
+                return flags
+        flags = {}
+        for part in re.split(r"[;,]", s):
+            part = part.strip()
+            if not part:
+                continue
+            if "=" in part:
+                key, flag_value = part.split("=", 1)
+                flags[key.strip()] = _coerce_bool_value(flag_value)
+            else:
+                flags[part] = True
+        return flags
+
     # --- Auth: JWT, tokens, bcrypt ---
-    access_ttl_min: int = Field(15, alias="ACCESS_TTL_MIN")
-    revoke_prefix: str = Field("jwt:bl:", alias="REVOKE_PREFIX")
+    access_ttl_min: Annotated[int, Field(alias="ACCESS_TTL_MIN")] = 15
+    revoke_prefix: Annotated[str, Field(alias="REVOKE_PREFIX")] = "jwt:bl:"
 
     # --- NSFW ---
-    nsfw_allow: bool = Field(False, alias="NSFW_ALLOW")
-    nsfw_blocklist_path: Path = Field(
-        default=Path("app/config/nsfw_blocklist.txt"),
-        alias="NSFW_BLOCKLIST_PATH"
-    )
-    
+    nsfw_allow: Annotated[bool, Field(alias="NSFW_ALLOW")] = False
+    nsfw_blocklist_path: Annotated[Path, Field(alias="NSFW_BLOCKLIST_PATH")] = Path("app/config/nsfw_blocklist.txt")
+
     # --- Auth: cookies, bcrypt ---
-    refresh_cookie_name: str = Field("refresh_token", alias="REFRESH_COOKIE_NAME")
-    refresh_ttl_days: int = Field(14, alias="REFRESH_TTL_DAYS")
-    refresh_cookie_secure: bool = Field(True, alias="REFRESH_COOKIE_SECURE")  # prod=True
-    bcrypt_rounds: int = Field(12, alias="BCRYPT_ROUNDS") 
+    refresh_cookie_name: Annotated[str, Field(alias="REFRESH_COOKIE_NAME")] = "refresh_token"
+    refresh_ttl_days: Annotated[int, Field(alias="REFRESH_TTL_DAYS")] = 14
+    refresh_cookie_secure: Annotated[bool, Field(alias="REFRESH_COOKIE_SECURE")] = True  # prod=True
+    bcrypt_rounds: Annotated[int, Field(alias="BCRYPT_ROUNDS")] = 12
 
     # --- API limits/timeouts ---
-    max_body_bytes: int = Field(25 * 1024 * 1024, alias="MAX_BODY_BYTES")  # 25 MB
-    max_query_value_len: int = Field(512, alias="MAX_QUERY_VALUE_LEN")
-    request_timeout_seconds: int = Field(30, alias="REQUEST_TIMEOUT_SECONDS") # General request timeout
-    keepalive_timeout_seconds: int = Field(5, alias="KEEPALIVE_TIMEOUT_SECONDS")  # uvicorn keep-alive
-    
+    max_body_bytes: Annotated[int, Field(alias="MAX_BODY_BYTES")] = 25 * 1024 * 1024  # 25 MB
+    max_query_value_len: Annotated[int, Field(alias="MAX_QUERY_VALUE_LEN")] = 512
+    request_timeout_seconds: Annotated[int, Field(alias="REQUEST_TIMEOUT_SECONDS")] = 30  # General request timeout
+    keepalive_timeout_seconds: Annotated[int, Field(alias="KEEPALIVE_TIMEOUT_SECONDS")] = 5  # uvicorn keep-alive
+
     # --- Hugging Face and offline caches ---
-    hf_hub_offline: bool = Field(False, alias="HF_HUB_OFFLINE")
-    transformers_offline: bool = Field(False, alias="TRANSFORMERS_OFFLINE")
-    diffusers_offline: bool = Field(False, alias="DIFFUSERS_OFFLINE")
-    hf_home: Path | None = Field(default=None, alias="HF_HOME")
-    huggingface_hub_cache: Path | None = Field(default=None, alias="HUGGINGFACE_HUB_CACHE")
-    transformers_cache: Path | None = Field(default=None, alias="TRANSFORMERS_CACHE")
-    hf_token: str | None = Field(None, alias="HF_TOKEN")
+    hf_hub_offline: Annotated[bool, Field(alias="HF_HUB_OFFLINE")] = False
+    transformers_offline: Annotated[bool, Field(alias="TRANSFORMERS_OFFLINE")] = False
+    diffusers_offline: Annotated[bool, Field(alias="DIFFUSERS_OFFLINE")] = False
+    hf_home: Annotated[Path | None, Field(alias="HF_HOME")] = None
+    huggingface_hub_cache: Annotated[Path | None, Field(alias="HUGGINGFACE_HUB_CACHE")] = None
+    transformers_cache: Annotated[Path | None, Field(alias="TRANSFORMERS_CACHE")] = None
+    hf_token: Annotated[str | None, Field(alias="HF_TOKEN")] = None
 
     # --- Anti-DoS: generation ---
-    max_concurrent_generations: int = Field(2, alias="MAX_CONCURRENT_GENERATIONS")
+    max_concurrent_generations: Annotated[int, Field(alias="MAX_CONCURRENT_GENERATIONS")] = 2
+
     @property
     def generation_timeout_seconds(self) -> int:
         return int(self.generation_timeout_sec)
 
     # --- Inference: security ---
-    no_network: bool = Field(True, alias="NO_NETWORK")                  
-    max_gen_width: int = Field(1024, alias="MAX_GEN_WIDTH")
-    max_gen_height: int = Field(1024, alias="MAX_GEN_HEIGHT")
-    max_gen_steps: int = Field(128, alias="MAX_GEN_STEPS")
-    max_guidance: float = Field(20.0, alias="MAX_GUIDANCE")
-    max_batch: int = Field(4, alias="MAX_BATCH")
+    max_gen_width: Annotated[int, Field(alias="MAX_GEN_WIDTH")] = 1024
+    max_gen_height: Annotated[int, Field(alias="MAX_GEN_HEIGHT")] = 1024
+    max_gen_steps: Annotated[int, Field(alias="MAX_GEN_STEPS")] = 128
+    max_guidance: Annotated[float, Field(alias="MAX_GUIDANCE")] = 20.0
+    max_batch: Annotated[int, Field(alias="MAX_BATCH")] = 4
 
     # --- Torch resourses ---
-    torch_threads: int = Field(2, alias="TORCH_THREADS")                # CPU threads
-    cuda_vram_fraction: float = Field(0.95, alias="CUDA_VRAM_FRACTION") 
+    torch_threads: Annotated[int, Field(alias="TORCH_THREADS")] = 2  # CPU threads
+    cuda_vram_fraction: Annotated[float, Field(alias="CUDA_VRAM_FRACTION")] = 0.95
 
     # --- Metrics --
-    metrics_enabled: bool = Field(True, alias="METRICS_ENABLED")
-    gpu_metrics_enabled: bool = Field(True, alias="GPU_METRICS_ENABLED")
-    metrics_path: str = Field("/metrics", alias="METRICS_PATH")
-    
-    # --- Docs and debug
-    debug: bool = Field(False, alias="DEBUG")
-    docs_url: str | None = Field("/docs", alias="DOCS_URL")
+    metrics_enabled: Annotated[bool, Field(alias="METRICS_ENABLED")] = True
+    gpu_metrics_enabled: Annotated[bool, Field(alias="GPU_METRICS_ENABLED")] = True
+    metrics_path: Annotated[str, Field(alias="METRICS_PATH")] = "/metrics"
 
-    # --- Paths --
-    root_dir: Path = Field(
-        default_factory=lambda: Path(__file__).resolve().parents[2],
-        alias="ROOT_DIR"
-    )
-    outputs_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "outputs", alias="OUTPUTS_DIR")
-    ip_adapter_dir: Path | None = Field(default=None, alias="IP_ADAPTER_DIR", validation_alias="IP_ADAPTER_DIR")
-    ip_image_encoder_path: Path | None = Field(default=None, alias="IP_IMAGE_ENCODER_PATH", validation_alias="IP_IMAGE_ENCODER_PATH")
+    # --- Docs and UI ---
+    docs_url: Annotated[str | None, Field(alias="DOCS_URL")] = "/docs"
+    ui_static_dir: Annotated[Path | None, Field(alias="UI_STATIC_DIR")] = None
 
-    # --- Validators --- 
+    # --- Paths ---
+    root_dir: Annotated[Path, Field(alias="ROOT_DIR")] = Path(__file__).resolve().parents[1]
+    outputs_dir: Annotated[Path, Field(alias="OUTPUTS_DIR")] = Path(__file__).resolve().parents[1] / "outputs"
+    ip_adapter_dir: Annotated[Path | None, Field(alias="IP_ADAPTER_DIR", validation_alias="IP_ADAPTER_DIR")] = None
+    ip_image_encoder_path: Annotated[
+        Path | None, Field(alias="IP_IMAGE_ENCODER_PATH", validation_alias="IP_IMAGE_ENCODER_PATH")
+    ] = None
+
+    # --- Validators ---
     @field_validator("device", mode="before")
     @classmethod
-    def _norm_device(cls, v):
+    def _norm_device(cls, v: Any) -> str:
         s = (str(v) if v is not None else "cuda").strip().lower()
         return "cuda" if s not in ("cpu", "cuda") else s
-    
+
+    @field_validator(
+        "run_in_docker",
+        "debug",
+        "no_network",
+        "no_redis",
+        "enable_hsts",
+        "limits_enabled",
+        "file_signing_enabled",
+        "file_single_use",
+        "nsfw_allow",
+        "refresh_cookie_secure",
+        "hf_hub_offline",
+        "transformers_offline",
+        "diffusers_offline",
+        "metrics_enabled",
+        "gpu_metrics_enabled",
+        mode="before",
+    )
+    @classmethod
+    def _parse_boolish(cls, v: Any) -> Any:
+        if isinstance(v, bool) or v is None:
+            return v
+        s = str(v).strip().lower()
+        if s in {"1", "true", "yes", "on", "debug", "development", "dev"}:
+            return True
+        if s in {"0", "false", "no", "off", "release", "prod", "production"}:
+            return False
+        return v
+
     @field_validator("torch_dtype", mode="before")
     @classmethod
-    def _norm_dtype(cls, v):
+    def _norm_dtype(cls, v: Any) -> str:
         s = str(v or "fp16").lower().strip()
         if s not in ("fp16", "bf16", "fp32"):
             raise ValueError("TORCH_DTYPE must be fp16|bf16|fp32")
         return s
 
-    @field_validator("model_id", "vae_id", mode="after")
-    @classmethod
-    def _check_local_when_offline(cls, v, info):
-        try:
-            no_net = bool(info.data.get("no_network"))
-        except Exception:
-            no_net = True
-        if no_net and v:
-            p = Path(str(v))
-            if not p.exists():
-                raise ValueError(f"{info.field_name} not found locally: {p}")
-        return v
-    
     @field_validator("hf_token", "hf_home", "transformers_cache", "base_url", mode="before")
     @classmethod
-    def _empty_to_none(cls, v):
+    def _empty_to_none(cls, v: Any) -> Any:
         if isinstance(v, str) and v.strip() == "":
             return None
         return v
-    
+
     @field_validator(
         "outputs_dir",
         "hf_home",
@@ -225,17 +333,19 @@ class Settings(BaseSettings):
         "ip_image_encoder_path",
         "ui_static_dir",
         "nsfw_blocklist_path",
+        "comfyui_workflow_path",
+        "comfyui_workflow_map_path",
         mode="before",
     )
     @classmethod
-    def _as_path(cls, v):
+    def _as_path(cls, v: Any) -> Any:
         if v is None or isinstance(v, Path):
             return v
         s = os.path.expanduser(os.path.expandvars(str(v).strip()))
         return Path(s)
-    
+
     @model_validator(mode="after")
-    def _resolve_relative_paths(self):
+    def _resolve_relative_paths(self) -> "Settings":
         base = self.root_dir
 
         def norm_req(p: Path) -> Path:
@@ -255,6 +365,8 @@ class Settings(BaseSettings):
         self.ip_adapter_dir = norm_opt(self.ip_adapter_dir)
         self.ip_image_encoder_path = norm_opt(self.ip_image_encoder_path)
         self.ui_static_dir = norm_opt(self.ui_static_dir)
+        self.comfyui_workflow_path = norm_opt(self.comfyui_workflow_path)
+        self.comfyui_workflow_map_path = norm_opt(self.comfyui_workflow_map_path)
 
         if self.hf_home:
             os.environ["HF_HOME"] = str(self.hf_home)
@@ -265,29 +377,81 @@ class Settings(BaseSettings):
         return self
 
     # -- Config ---
-    model_config = SettingsConfigDict(
-        env_prefix="",
-        env_file=None,
-        case_sensitive=False
-    )
+    model_config = SettingsConfigDict(env_prefix="", env_file=None, case_sensitive=False)
 
-if not os.getenv("RUN_IN_DOCKER"):
-    load_dotenv(".env")
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.env.lower() in ("prod", "production")
 
-settings: Settings = Settings()  # type: ignore[call-arg]
-Path(settings.outputs_dir).mkdir(parents=True, exist_ok=True)
-for sub in ("access","app","generations","prompts","prompts/raw","errors","metrics"):
-    Path(settings.log_dir, sub).mkdir(parents=True, exist_ok=True)
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.env.lower() in ("dev", "development", "local")
 
-if not settings.secret_key or settings.secret_key in {"CHANGE_ME","CHANGE_ME_LONG_RANDOM"}:
-    raise RuntimeError("SECRET_KEY must be set via env")
+    def is_provider_enabled(self, provider_name: str) -> bool:
+        return provider_name in (self.providers_enabled or [])
 
-_pg = urlparse(settings.database_url)
-if _pg.scheme == "postgresql" and (_pg.username or "") == "app" and (_pg.password or "") == "app":
-    raise RuntimeError("DATABASE_URL uses default credentials (app/app). Set strong user/password via env.")
 
-_ru = urlparse(settings.redis_url)
-if _ru.scheme.startswith("redis") and (not _ru.password or _ru.password.strip() == ""):
-    # Allow no password for local development
-    if os.getenv("ENV", "dev").lower() not in ["dev", "development", "local"]:
-        raise RuntimeError("REDIS_URL must include a password (redis://:password@host:port/db).")
+# === Initialization and validation ===
+def _load_env_file() -> None:
+    """Load .env file if not running in Docker."""
+    if not os.getenv("RUN_IN_DOCKER"):
+        load_dotenv(".env")
+
+
+def _create_directories(settings: Settings) -> None:
+    try:
+        Path(settings.outputs_dir).mkdir(parents=True, exist_ok=True)
+
+        for sub in ("access", "app", "generations", "prompts", "prompts/raw", "errors", "metrics"):
+            Path(settings.log_dir, sub).mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        # In read-only environments (like some K8s pods), we can't create dirs.
+        # This is fine as long as we log to stdout/stderr.
+        pass
+    except Exception as e:
+        print(f"Warning: Failed to create directories: {e}")
+
+
+def _validate_production_settings(settings: Settings) -> None:
+    """Validate critical settings required for secure runtime."""
+    if not settings.secret_key or settings.secret_key in {"CHANGE_ME", "CHANGE_ME_LONG_RANDOM"}:
+        raise RuntimeError(
+            "SECRET_KEY must be set to a secure value. "
+            "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(48))'"
+        )
+
+    if not settings.is_production:
+        return  # Skip production-only validation in dev/staging
+
+    # Validate DATABASE_URL for production
+    db_url = urlparse(settings.database_url)
+    if db_url.scheme == "sqlite":
+        raise RuntimeError("SQLite is not supported in production. Set DATABASE_URL to PostgreSQL.")
+
+    if db_url.scheme.startswith("postgresql"):
+        if not db_url.password or len(db_url.password) < 12:
+            raise RuntimeError("DATABASE_URL must include a strong password (12+ characters) in production.")
+
+    # Validate REDIS_URL for production
+    if not settings.no_redis:
+        redis_url = urlparse(settings.redis_url)
+        if redis_url.scheme.startswith("redis"):
+            if not redis_url.password or redis_url.password.strip() == "":
+                raise RuntimeError("REDIS_URL must include a password in production (redis://:password@host:port/db).")
+
+
+def initialize_config() -> Settings:
+    _load_env_file()
+    settings = Settings()
+    _create_directories(settings)
+    _validate_production_settings(settings)
+    return settings
+
+
+# Create settings instance
+_load_env_file()
+settings: Settings = Settings()
+_create_directories(settings)
+_validate_production_settings(settings)
