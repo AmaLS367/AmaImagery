@@ -3,9 +3,9 @@ Use case for retrieving generation task status.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any
 
-from app.application.use_cases.base import Command, UseCaseResult, UseCase
+from app.application.use_cases.base import Command, UseCaseResult
 from app.domain.generation_lifecycle import build_generation_public_payload
 from app.files.artifacts import ArtifactService, get_artifact_service
 from app.infra.uow import SqlAlchemyUnitOfWork
@@ -15,10 +15,11 @@ from app.infra.uow import SqlAlchemyUnitOfWork
 class GetGenerationStatusCommand(Command):
     """
     Command for getting generation task status.
-    
+
     Attributes:
         task_id: Unique task identifier
     """
+
     task_id: str
 
 
@@ -26,47 +27,48 @@ class GetGenerationStatusCommand(Command):
 class GenerationStatusResult:
     """
     Result data for generation status use case.
-    
+
     Contains all fields needed for TaskStatusResp API response.
     """
+
     task_id: str
     status: str
-    provider_name: Optional[str] = None
-    provider_state: Optional[Dict[str, Any]] = None
-    image_path: Optional[str] = None
-    image_filename: Optional[str] = None
-    image_url: Optional[str] = None
-    exp: Optional[int] = None
-    sig: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    created_at: Optional[int] = None
-    started_at: Optional[int] = None
-    completed_at: Optional[int] = None
+    provider_name: str | None = None
+    provider_state: dict[str, Any] | None = None
+    image_path: str | None = None
+    image_filename: str | None = None
+    image_url: str | None = None
+    exp: int | None = None
+    sig: str | None = None
+    metadata: dict[str, Any] | None = None
+    error: str | None = None
+    created_at: int | None = None
+    started_at: int | None = None
+    completed_at: int | None = None
 
 
 class GetGenerationStatusUseCase:
     """
     Use case for retrieving generation task status.
-    
+
     Retrieves task status from the queue and maps it to the API response format.
     """
-    
+
     def __init__(
         self,
-        uow: Optional[SqlAlchemyUnitOfWork] = None,
-        artifacts: Optional[ArtifactService] = None,
+        uow: SqlAlchemyUnitOfWork | None = None,
+        artifacts: ArtifactService | None = None,
     ):
         self.uow = uow or SqlAlchemyUnitOfWork()
         self.artifacts = artifacts or get_artifact_service()
-    
+
     async def __call__(self, command: GetGenerationStatusCommand) -> UseCaseResult[GenerationStatusResult]:
         """
         Execute get generation status use case.
-        
+
         Args:
             command: Command containing task_id
-            
+
         Returns:
             UseCaseResult with status data on success, error message if task not found
         """
@@ -99,10 +101,9 @@ class GetGenerationStatusUseCase:
                     completed_at=payload.completed_at,
                 ),
             )
-            
+
         except Exception as e:
             return UseCaseResult(
                 success=False,
                 error=f"Failed to get task status: {str(e)}",
             )
-

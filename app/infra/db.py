@@ -64,13 +64,15 @@ AsyncSessionLocal = async_sessionmaker[AsyncSession](
     autoflush=False,
 )
 
+
 class Base(DeclarativeBase):
     pass
+
 
 async def get_db():
     """
     Dependency for FastAPI to get async database session.
-    
+
     Yields an async session and closes it after use.
     """
     async with AsyncSessionLocal() as session:
@@ -79,30 +81,31 @@ async def get_db():
         finally:
             await session.close()
 
+
 def run_pending_migrations() -> None:
     """
     Applies pending database migrations using Alembic.
-    
+
     Executed via subprocess to ensure isolation from the running asyncio loop,
     preventing 'Event loop is already running' errors common with async Alembic env.py.
     """
     backend = make_url(settings.database_url).get_backend_name()
-    
+
     # Strict production requirement: PostgreSQL only
     if not backend.startswith("postgres"):
         raise RuntimeError(f"Migrations are strictly restricted to PostgreSQL (current: {backend}).")
-        
+
     try:
         r = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"], 
-            capture_output=True, 
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            capture_output=True,
             text=True,
             cwd=str(settings.root_dir),
         )  # nosec B603
         if r.returncode != 0:
             raise RuntimeError(f"Alembic migration failed (code {r.returncode}):\n{r.stdout}\n{r.stderr}")
-            
-    except FileNotFoundError:
-        raise RuntimeError("Python executable not found for migration subprocess.")
+
+    except FileNotFoundError as exc:
+        raise RuntimeError("Python executable not found for migration subprocess.") from exc
     except Exception as e:
-        raise RuntimeError(f"Failed to launch migration subprocess: {e}")
+        raise RuntimeError(f"Failed to launch migration subprocess: {e}") from e

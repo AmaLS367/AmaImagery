@@ -5,10 +5,10 @@ Exports repository interfaces for domain entities.
 """
 
 from app.domain.repositories.base import (
-    IRepository,
     IGenerationRepository,
-    IUserRepository,
+    IRepository,
     IUnitOfWork,
+    IUserRepository,
 )
 
 __all__ = [

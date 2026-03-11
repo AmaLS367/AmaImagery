@@ -2,11 +2,10 @@
 Metrics for image generation providers.
 """
 
-from typing import Optional
-
 try:
     from prometheus_client import Counter, Histogram
 except Exception:  # pragma: no cover - minimal env fallback
+
     class _NoopMetric:
         def labels(self, **kwargs):
             return self
@@ -22,6 +21,7 @@ except Exception:  # pragma: no cover - minimal env fallback
 
     def Histogram(*args, **kwargs):
         return _NoopMetric()
+
 
 # Provider generation metrics
 provider_generation_total = Counter(
@@ -65,4 +65,3 @@ def record_generation_error(provider_name: str, error_type: str) -> None:
     """
     provider_generation_total.labels(provider_name=provider_name, status="error").inc()
     provider_generation_errors_total.labels(provider_name=provider_name, error_type=error_type).inc()
-

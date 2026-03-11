@@ -26,6 +26,7 @@ def _reload_safety(nsrm: str):
 
     return safety_module
 
+
 def test_blocklist_respects_allow_flag():
     safety = _reload_safety("false")
     assert safety.is_blocked("bestiality") is True
@@ -34,6 +35,7 @@ def test_blocklist_respects_allow_flag():
     safety = _reload_safety("true")
     assert safety.is_blocked("bestiality") is False
     assert safety.is_blocked_forced("bestiality") is True
+
 
 def test_blocklist_forced_always_checks():
     safety = _reload_safety("true")

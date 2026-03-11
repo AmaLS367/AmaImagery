@@ -1,14 +1,19 @@
-import hmac, time
+import hmac
+import time
 from hashlib import sha256
+
 from app.config import settings
 from app.infra.redis import get_redis
 
+
 def _payload(name: str, exp: int) -> bytes:
-    return f"{name}.{exp}".encode("utf-8")
+    return f"{name}.{exp}".encode()
+
 
 def make_signature(name: str, exp: int) -> str:
     key = settings.secret_key.encode("utf-8")
     return hmac.new(key, _payload(name, exp), sha256).hexdigest()
+
 
 def verify_signature(name: str, exp: int, sig: str) -> bool:
     expected = make_signature(name, exp)
@@ -16,6 +21,7 @@ def verify_signature(name: str, exp: int, sig: str) -> bool:
         return hmac.compare_digest(expected, sig)
     except Exception:
         return False
+
 
 async def consume_once(sig: str, exp: int, skew: int = 0) -> bool:
     if not getattr(settings, "file_single_use", False):

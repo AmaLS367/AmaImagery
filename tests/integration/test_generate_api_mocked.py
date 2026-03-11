@@ -11,6 +11,7 @@ def _resolve_ref(schema, ref):
         node = node.get(p, {})
     return node
 
+
 def _build_min_payload(schema):
     """На основании схемы собираем валидный минимальный payload."""
     if "$ref" in schema:
@@ -66,12 +67,23 @@ def _build_min_payload(schema):
         data[name] = val
 
     # полезные необязательные поля, если существуют
-    for opt in ("prompt", "negative_prompt", "width", "height", "steps", "num_inference_steps",
-                "guidance_scale", "cfg_scale", "seed", "output_format"):
+    for opt in (
+        "prompt",
+        "negative_prompt",
+        "width",
+        "height",
+        "steps",
+        "num_inference_steps",
+        "guidance_scale",
+        "cfg_scale",
+        "seed",
+        "output_format",
+    ):
         if opt in props and opt not in data:
             data[opt] = defaults.get(opt)
 
     return data
+
 
 def test_generate_mock(app_client, monkeypatch, tmp_path):
     # 1) мок пайплайна

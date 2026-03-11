@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import re
 import threading
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Pattern
+from re import Pattern
 
 from app.config import settings
 
@@ -28,6 +29,7 @@ _cache_mtime: float | None = None
 _cache_forced_lock = threading.Lock()
 _cache_forced_compiled: list[Pattern] | None = None
 _cache_forced_mtime: float | None = None
+
 
 def _load_rules_cache(force: bool = False) -> list[Pattern]:
     """
@@ -64,7 +66,8 @@ def _load_rules_cache(force: bool = False) -> list[Pattern]:
 
         return compiled
 
-def _normalize_entries(items: Iterable[str]) -> List[str]:
+
+def _normalize_entries(items: Iterable[str]) -> list[str]:
     out: list[str] = []
     for raw in items:
         s = (raw or "").strip()
@@ -121,7 +124,6 @@ def _get_compiled() -> list[Pattern]:
     return _load_rules_cache(force=False)
 
 
-
 def is_blocked(text: str | None) -> bool:
     if not text:
         return False
@@ -133,6 +135,7 @@ def is_blocked(text: str | None) -> bool:
 
 def _get_compiled_forced() -> list[Pattern]:
     return _load_rules_cache(force=True)
+
 
 def is_blocked_forced(text: str | None) -> bool:
     if not text:

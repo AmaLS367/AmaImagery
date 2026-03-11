@@ -133,7 +133,9 @@ async def test_worker_skips_terminal_generation():
     with (
         patch("app.workers.generation_worker.get_task_queue", return_value=queue),
         patch("app.workers.generation_worker.get_provider_registry", return_value=provider_registry),
-        patch("app.workers.generation_worker._load_generation", AsyncMock(return_value=_generation(status="completed"))),
+        patch(
+            "app.workers.generation_worker._load_generation", AsyncMock(return_value=_generation(status="completed"))
+        ),
         patch("app.workers.generation_worker._update_generation", AsyncMock()) as update_generation,
     ):
         await run_worker()
@@ -200,7 +202,10 @@ async def test_worker_fails_cleanly_when_prompt_is_missing():
     with (
         patch("app.workers.generation_worker.get_task_queue", return_value=queue),
         patch("app.workers.generation_worker.get_provider_registry", return_value=provider_registry),
-        patch("app.workers.generation_worker._load_generation", AsyncMock(side_effect=[broken_generation, broken_generation])),
+        patch(
+            "app.workers.generation_worker._load_generation",
+            AsyncMock(side_effect=[broken_generation, broken_generation]),
+        ),
         patch("app.workers.generation_worker._update_generation", update_generation),
         patch("app.workers.generation_worker.get_event_bus", Mock(return_value=event_bus)),
     ):

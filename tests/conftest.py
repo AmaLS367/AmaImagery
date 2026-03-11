@@ -52,13 +52,14 @@ def _reset_provider_registry_cache():
 @pytest.fixture
 def app_client():
     try:
-        from app.main import app
         from app.domain.models import Base
         from app.infra.db import async_engine
+        from app.main import app
     except Exception as e:
         pytest.skip(f"Failed to import app.main: {e}")
     try:
         import asyncio
+
         from starlette.testclient import TestClient
 
         async def _reset_schema() -> None:

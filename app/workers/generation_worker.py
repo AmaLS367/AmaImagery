@@ -4,7 +4,7 @@ Generation worker that processes image generation tasks from the queue.
 
 import asyncio
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.config import settings
@@ -76,7 +76,7 @@ async def run_worker() -> None:
                     generation_id,
                     status=RUNNING,
                     provider_name=provider_name,
-                    started_at=datetime.now(timezone.utc),
+                    started_at=datetime.now(UTC),
                     error=None,
                     completed_at=None,
                 )
@@ -105,7 +105,7 @@ async def run_worker() -> None:
                     result=result.metadata,
                     image_path=persisted_path,
                     error=None,
-                    completed_at=datetime.now(timezone.utc),
+                    completed_at=datetime.now(UTC),
                 )
 
                 duration = time.time() - task_start_time
@@ -133,7 +133,7 @@ async def run_worker() -> None:
                     provider_state=failure_state,
                     image_path=None,
                     error=exc.message,
-                    completed_at=datetime.now(timezone.utc),
+                    completed_at=datetime.now(UTC),
                 )
                 record_task_error(task_type=task_type, error_type=exc.error_code)
                 await get_event_bus().publish(
@@ -167,7 +167,7 @@ async def run_worker() -> None:
                     provider_state=provider_state,
                     image_path=None,
                     error=error_msg,
-                    completed_at=datetime.now(timezone.utc),
+                    completed_at=datetime.now(UTC),
                 )
                 record_task_error(task_type=task_type, error_type=error_type)
                 await get_event_bus().publish(

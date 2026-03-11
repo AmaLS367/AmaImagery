@@ -7,7 +7,7 @@ Manages the lifecycle and retrieval of registered providers strategies.
 import asyncio
 import time
 from dataclasses import asdict, dataclass
-from typing import Dict, Optional, List, Any, Tuple
+from typing import Any
 
 from app.core.logging import lg
 from app.domain.providers.interfaces import IImageProvider
@@ -33,26 +33,26 @@ class ProviderBootSnapshot:
 class ProviderRegistry:
     """
     Strategy pattern registry.
-    
-    Allows the application to route requests to different implementations 
+
+    Allows the application to route requests to different implementations
     (Diffusers, OpenAI, etc.) dynamically.
     """
-    
+
     def __init__(
         self,
-        providers: Optional[Dict[str, IImageProvider]] = None,
-        default_name: Optional[str] = None,
-        boot_errors: Optional[Dict[str, str]] = None,
-        enabled_names: Optional[List[str]] = None,
+        providers: dict[str, IImageProvider] | None = None,
+        default_name: str | None = None,
+        boot_errors: dict[str, str] | None = None,
+        enabled_names: list[str] | None = None,
     ):
-        self._providers: Dict[str, IImageProvider] = providers or {}
+        self._providers: dict[str, IImageProvider] = providers or {}
         self._default_name = default_name
-        self._boot_errors: Dict[str, str] = boot_errors or {}
+        self._boot_errors: dict[str, str] = boot_errors or {}
         self._enabled_names: tuple[str, ...] = tuple(enabled_names or [])
-    
+
     def register(self, name: str, provider: IImageProvider) -> None:
         self._providers[name] = provider
-    
+
     def get(self, name: str) -> IImageProvider:
         """
         Retrieve a provider by name.
@@ -60,24 +60,24 @@ class ProviderRegistry:
         if name not in self._providers:
             raise KeyError(f"Provider '{name}' is not registered")
         return self._providers[name]
-    
+
     def get_default(self) -> IImageProvider:
         """
         Returns the preferred provider strategy.
         """
         if not self._providers:
             raise ValueError("No providers registered")
-        
+
         if self._default_name and self._default_name in self._providers:
             return self._providers[self._default_name]
-        
+
         # Fallback to the first available if default is not set
         return next(iter(self._providers.values()))
-    
-    def list_providers(self) -> List[str]:
+
+    def list_providers(self) -> list[str]:
         return list(self._providers.keys())
 
-    def boot_errors(self) -> Dict[str, str]:
+    def boot_errors(self) -> dict[str, str]:
         return dict(self._boot_errors)
 
     def boot_snapshot(self) -> ProviderBootSnapshot:
@@ -93,17 +93,18 @@ class ProviderRegistry:
             default_provider_booted=bool(self._default_name and self._default_name in self._providers),
         )
 
-    async def health_report(self) -> Dict[str, bool]:
+    async def health_report(self) -> dict[str, bool]:
         """
         Aggregates health status from all registered providers concurrently.
         """
+
         async def check_provider(name: str, provider: IImageProvider) -> tuple[str, bool]:
             try:
                 is_healthy = await provider.health_check()
                 return (name, is_healthy)
             except Exception:
                 return (name, False)
-        
+
         if not self._providers:
             return {}
 
@@ -135,10 +136,9 @@ class ProviderRegistry:
 def get_provider_registry() -> ProviderRegistry:
     """
     Factory function that creates and configures the provider registry.
-    
+
     Registers providers based on settings.providers_enabled and sets the default provider.
     """
-    from app.config import settings
 
     signature = _settings_signature()
     global _provider_registry_cache
@@ -169,8 +169,8 @@ def reset_provider_registry() -> None:
 def _build_provider_registry() -> ProviderRegistry:
     from app.config import settings
 
-    providers: Dict[str, IImageProvider] = {}
-    boot_errors: Dict[str, str] = {}
+    providers: dict[str, IImageProvider] = {}
+    boot_errors: dict[str, str] = {}
     logger = lg("providers")
 
     if "diffusers" in settings.providers_enabled:
@@ -201,7 +201,7 @@ def _build_provider_registry() -> ProviderRegistry:
     )
 
 
-def _settings_signature() -> Tuple[Any, ...]:
+def _settings_signature() -> tuple[Any, ...]:
     from app.config import settings
 
     return (
@@ -236,6 +236,6 @@ def _should_retry_failed_boots() -> bool:
 
 
 _provider_registry_cache: ProviderRegistry | None = None
-_provider_registry_signature: Tuple[Any, ...] | None = None
+_provider_registry_signature: tuple[Any, ...] | None = None
 _provider_registry_built_at: float | None = None
 _FAILED_PROVIDER_RETRY_INTERVAL_SEC = 10.0

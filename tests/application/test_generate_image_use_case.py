@@ -25,10 +25,12 @@ def mock_uow():
     uow.users = MagicMock()
     uow.users.get_settings = AsyncMock(return_value=MagicMock(data={"nsfw_allow": True}))
     uow.generations = MagicMock()
+
     async def _add_generation(generation):
         if getattr(generation, "id", None) is None:
             generation.id = uuid4()
         return generation
+
     uow.generations.add = AsyncMock(side_effect=_add_generation)
     return uow
 
@@ -134,7 +136,11 @@ async def test_generate_image_validation_error(use_case, mock_uow):
     assert result.success is False
     assert result.error is not None
     # Pydantic validation error or service validation error
-    assert "validation" in result.error.lower() or "too large" in result.error.lower() or "less than" in result.error.lower()
+    assert (
+        "validation" in result.error.lower()
+        or "too large" in result.error.lower()
+        or "less than" in result.error.lower()
+    )
 
 
 @pytest.mark.asyncio
@@ -170,6 +176,7 @@ async def test_generate_image_feature_flag_disabled(mock_uow, mock_task_queue):
 
     with patch("app.core.feature_flags.get_feature_flag_service") as mock_flags:
         from app.core.feature_flags import FeatureFlagService
+
         mock_flag_service = MagicMock(spec=FeatureFlagService)
         mock_flag_service.is_enabled = MagicMock(return_value=False)
         mock_flags.return_value = mock_flag_service
@@ -265,10 +272,11 @@ async def test_generate_image_safety_policy_blocked(use_case, mock_uow):
     with patch("app.core.safety.is_blocked", return_value=True):
         with patch("app.core.safety.is_blocked_forced", return_value=False):
             # Also need to mock the GenerationService instance
-            use_case.generation_service._check_safety_policies = MagicMock(side_effect=ValueError("Blocked by safety policy."))
+            use_case.generation_service._check_safety_policies = MagicMock(
+                side_effect=ValueError("Blocked by safety policy.")
+            )
             result = await use_case(command)
 
     assert result.success is False
     assert result.error is not None
     assert "blocked" in result.error.lower() or "safety" in result.error.lower()
-
