@@ -1,4 +1,4 @@
-# Contributing to AmaImagery
+# 🤝 Contributing to AmaImagery
 
 > Bring changes that leave the system clearer, safer, and more durable than you found it.
 
@@ -11,15 +11,15 @@ AmaImagery is maintained like infrastructure. The bar is not just "does it work?
 <table>
   <tr>
     <td width="33%">
-      <strong>Read the shape</strong><br/>
+      <strong>🧱 Read the shape</strong><br/>
       Start with <a href="./README.md">README</a> so your change fits the actual product surface.
     </td>
     <td width="33%">
-      <strong>Check overlap</strong><br/>
+      <strong>🔎 Check overlap</strong><br/>
       Look for existing issues and PRs before starting adjacent work.
     </td>
     <td width="33%">
-      <strong>Route security privately</strong><br/>
+      <strong>🔒 Route security privately</strong><br/>
       If the topic is security-sensitive, use <a href="./SECURITY.md">SECURITY.md</a>, not a public issue.
     </td>
   </tr>
@@ -49,11 +49,11 @@ npm ci
 
 | Area | Expectation |
 | --- | --- |
-| Scope | One coherent problem per PR |
-| Code quality | Minimal incidental churn, clear responsibilities |
-| Contracts | Public behavior stays stable unless change is intentional and documented |
-| Tests | Behavior changes get verification, not just implementation churn |
-| Docs | Setup, runtime, and policy changes are updated in the same PR |
+| 🎯 Scope | One coherent problem per PR |
+| 🧼 Code quality | Minimal incidental churn, clear responsibilities |
+| 📐 Contracts | Public behavior stays stable unless change is intentional and documented |
+| 🧪 Tests | Behavior changes get verification, not just implementation churn |
+| 📝 Docs | Setup, runtime, and policy changes are updated in the same PR |
 
 ## Quality Gates
 
@@ -76,7 +76,7 @@ npm run build
 ## Special Care Areas
 
 <details open>
-  <summary><strong>Provider and worker changes</strong></summary>
+  <summary><strong>⚙️ Provider and worker changes</strong></summary>
   <br/>
 
   Be explicit about:
@@ -88,7 +88,7 @@ npm run build
 </details>
 
 <details>
-  <summary><strong>Auth and admin changes</strong></summary>
+  <summary><strong>🔐 Auth and admin changes</strong></summary>
   <br/>
 
   Protect:
@@ -100,7 +100,7 @@ npm run build
 </details>
 
 <details>
-  <summary><strong>Refactors</strong></summary>
+  <summary><strong>🪓 Refactors</strong></summary>
   <br/>
 
   Do not hide broad rewrites inside a bug fix. If a refactor is the point, make it the point.
