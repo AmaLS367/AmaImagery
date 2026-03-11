@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class Mode(str, Enum):
+class Mode(StrEnum):
     OFF = "OFF"
     SUGGEST = "SUGGEST"
     AUTO = "AUTO"
