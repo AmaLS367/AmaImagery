@@ -8,11 +8,11 @@ import logging
 from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 try:
-    from redis.asyncio import Redis as RedisRuntime
+    import redis.asyncio as redis_asyncio
 
     _REDIS_AVAILABLE = True
 except Exception:  # pragma: no cover - exercised only in minimal test envs
-    RedisRuntime = None
+    redis_asyncio = None
     _REDIS_AVAILABLE = False
 
 if TYPE_CHECKING:
@@ -43,9 +43,9 @@ async def init_redis() -> None:
     logger.info(f"Connecting to Redis at {settings.redis_url}...")
     try:
         # Create async Redis client
-        if RedisRuntime is None:
+        if redis_asyncio is None:
             raise RuntimeError("Redis runtime is unavailable")
-        client = RedisRuntime.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        client = redis_asyncio.Redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
         # Fail fast: Ping to ensure connection works immediately
         ping_result = bool(await cast(Any, client.ping()))
         if not ping_result:
