@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -6,11 +6,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.api.v1.users.router import my_generations
-from app.domain.generation_lifecycle import build_generation_public_payload
 from app.application.use_cases.get_generation_status import (
     GetGenerationStatusCommand,
     GetGenerationStatusUseCase,
 )
+from app.domain.generation_lifecycle import build_generation_public_payload
 from app.files.artifacts import ArtifactService
 
 
@@ -29,7 +29,7 @@ class _FakeUoW:
 
 
 def _generation():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return SimpleNamespace(
         id="gen-1",
         user_id="user-1",

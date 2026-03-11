@@ -15,7 +15,9 @@ class ArtifactService:
         self.outputs_dir = Path(outputs_dir or settings.outputs_dir)
         self.outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    def canonical_name(self, generation_id: str, source_path: str | Path | None = None, default_ext: str = "png") -> str:
+    def canonical_name(
+        self, generation_id: str, source_path: str | Path | None = None, default_ext: str = "png"
+    ) -> str:
         ext = default_ext
         if source_path:
             suffix = Path(source_path).suffix.lstrip(".").lower()
@@ -26,7 +28,9 @@ class ArtifactService:
     def local_path(self, filename: str) -> Path:
         return safe_join(filename)
 
-    def canonical_path(self, generation_id: str, source_path: str | Path | None = None, default_ext: str = "png") -> Path:
+    def canonical_path(
+        self, generation_id: str, source_path: str | Path | None = None, default_ext: str = "png"
+    ) -> Path:
         filename = self.canonical_name(generation_id, source_path=source_path, default_ext=default_ext)
         return self.outputs_dir / filename
 

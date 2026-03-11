@@ -1,10 +1,14 @@
 import asyncio
-from starlette.types import ASGIApp, Receive, Scope, Send, Message
+
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
 from app.config import settings
+
 
 class _BodyTooLarge(Exception):
     pass
+
 
 class RequestLimitsMiddleware:
     def __init__(self, app: ASGIApp) -> None:
@@ -17,10 +21,7 @@ class RequestLimitsMiddleware:
         if scope.get("type") != "http":
             return await self.app(scope, receive, send)
 
-        headers = {
-            key.decode("latin1").lower(): value.decode("latin1")
-            for key, value in scope.get("headers", [])
-        }
+        headers = {key.decode("latin1").lower(): value.decode("latin1") for key, value in scope.get("headers", [])}
         content_length = headers.get("content-length")
         if content_length:
             try:
@@ -85,7 +86,7 @@ class RequestLimitsMiddleware:
                 status_code=413,
             )
             await resp(scope, receive, send)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             resp = JSONResponse(
                 {"error": "request_timeout", "message": f"request exceeded time limit ({effective_timeout}s)"},
                 status_code=408,

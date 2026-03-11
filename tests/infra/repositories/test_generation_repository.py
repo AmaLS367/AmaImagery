@@ -4,16 +4,15 @@ Integration tests for SqlAlchemyGenerationRepository.
 Tests repository operations with a real database (in-memory SQLite).
 """
 
+from datetime import datetime
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
-from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models import Generation, User
 from app.infra.repositories.generation_repository import SqlAlchemyGenerationRepository
-
-
 
 
 @pytest_asyncio.fixture
@@ -51,10 +50,10 @@ async def test_generation_repository_add_and_get(
         params={},
         image_path="test/path.png",
     )
-    
+
     await generation_repo.add(generation)
     await generation_repo.session.commit()
-    
+
     retrieved = await generation_repo.get(str(gen_id))
     assert retrieved is not None
     assert str(retrieved.id) == str(gen_id)
@@ -86,21 +85,21 @@ async def test_generation_repository_list_by_user(
         image_path="path2.png",
         created_at=datetime(2024, 1, 2),
     )
-    
+
     await generation_repo.add(gen1)
     await generation_repo.add(gen2)
     await generation_repo.session.commit()
-    
+
     # List all for user
     all_gens = await generation_repo.list_by_user(test_user.id)
     assert len(all_gens) == 2
     # Should be ordered by created_at desc (newest first)
     assert all_gens[0].created_at >= all_gens[1].created_at
-    
+
     # List with limit
     limited = await generation_repo.list_by_user(str(test_user.id), limit=1)
     assert len(limited) == 1
-    
+
     # List with offset
     offset = await generation_repo.list_by_user(str(test_user.id), limit=1, offset=1)
     assert len(offset) == 1
@@ -116,7 +115,7 @@ async def test_generation_repository_count_by_user(
     # Initially should be 0
     count = await generation_repo.count_by_user(str(test_user.id))
     assert count == 0
-    
+
     # Add some generations
     gen1 = Generation(
         id=uuid4(),
@@ -132,14 +131,14 @@ async def test_generation_repository_count_by_user(
         params={},
         image_path="path2.png",
     )
-    
+
     await generation_repo.add(gen1)
     await generation_repo.add(gen2)
     await generation_repo.session.commit()
-    
+
     count = await generation_repo.count_by_user(str(test_user.id))
     assert count == 2
-    
+
     # Test with different user
     other_user_id = uuid4()
     count_other = await generation_repo.count_by_user(str(other_user_id))
@@ -160,23 +159,23 @@ async def test_generation_repository_update_status(
         params={},
         image_path="test/path.png",
     )
-    
+
     await generation_repo.add(generation)
     await generation_repo.session.commit()
-    
+
     # Update status
     await generation_repo.update_status(str(gen_id), "processing")
     await generation_repo.session.commit()
-    
+
     updated = await generation_repo.get(str(gen_id))
     assert updated is not None
     # Generation model doesn't have status field, so update_status won't modify it
     # This test verifies the method doesn't crash
-    
+
     # Update again - should not raise error
     await generation_repo.update_status(str(gen_id), "completed")
     await generation_repo.session.commit()
-    
+
     final = await generation_repo.get(str(gen_id))
     assert final is not None
 
@@ -201,15 +200,15 @@ async def test_generation_repository_list_with_filters(
         params={},
         image_path="path2.png",
     )
-    
+
     await generation_repo.add(gen1)
     await generation_repo.add(gen2)
     await generation_repo.session.commit()
-    
+
     # Filter by user_id
     filtered = await generation_repo.list(user_id=str(test_user.id))
     assert len(filtered) == 2
-    
+
     # Test filtering with non-existent user
     empty = await generation_repo.list(user_id=str(uuid4()))
     assert len(empty) == 0
@@ -229,15 +228,15 @@ async def test_generation_repository_delete(
         params={},
         image_path="delete/path.png",
     )
-    
+
     await generation_repo.add(generation)
     await generation_repo.session.commit()
-    
+
     retrieved = await generation_repo.get(str(gen_id))
     assert retrieved is not None
-    
+
     await generation_repo.delete(str(gen_id))
     await generation_repo.session.commit()
-    
+
     deleted = await generation_repo.get(str(gen_id))
     assert deleted is None

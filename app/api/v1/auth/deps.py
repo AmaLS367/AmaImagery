@@ -1,14 +1,15 @@
 from __future__ import annotations
-from typing import Optional
+
 from uuid import UUID
+
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infra.db import get_db
-from app.domain.models import User
 from app.core.logging import lg
 from app.core.security import decode_access_token
+from app.domain.models import User
+from app.infra.db import get_db
 from app.infra.repositories import SqlAlchemyUserRepository
 
 bearer = HTTPBearer(auto_error=False)
@@ -22,23 +23,22 @@ def _extract_access_token(
     if cred and cred.scheme.lower() == "bearer" and cred.credentials:
         return cred.credentials
 
-    return (
-        request.cookies.get("access_token")
-        or request.cookies.get("Authorization")
-        or request.cookies.get("token")
-    )
+    return request.cookies.get("access_token") or request.cookies.get("Authorization") or request.cookies.get("token")
 
 
 def _has_query_access_token(request: Request) -> bool:
     return bool(request.query_params.get("access_token"))
 
+
 async def current_user(
     request: Request,
-    cred: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
+    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     if _has_query_access_token(request):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Query token authentication is not supported")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Query token authentication is not supported"
+        )
 
     token = _extract_access_token(request, cred)
 
@@ -48,8 +48,8 @@ async def current_user(
     try:
         payload = decode_access_token(token)
         user_id = UUID(str(payload["sub"]))
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
 
     repo = SqlAlchemyUserRepository(db)
     user = await repo.get(user_id)
@@ -58,23 +58,24 @@ async def current_user(
 
     return user
 
+
 async def optional_user(
-  request: Request,
-  cred: HTTPAuthorizationCredentials | None = Depends(bearer),
-  db: AsyncSession = Depends(get_db),
+    request: Request,
+    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
 ) -> User | None:
-  if _has_query_access_token(request):
-    return None
-  token = _extract_access_token(request, cred)
-  if not token:
-    return None
-  try:
-    payload = decode_access_token(token)
-    user_id = UUID(str(payload["sub"]))
-  except Exception:
-    return None
-  repo = SqlAlchemyUserRepository(db)
-  return await repo.get(user_id)
+    if _has_query_access_token(request):
+        return None
+    token = _extract_access_token(request, cred)
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        user_id = UUID(str(payload["sub"]))
+    except Exception:
+        return None
+    repo = SqlAlchemyUserRepository(db)
+    return await repo.get(user_id)
 
 
 async def current_superuser(user: User = Depends(current_user)) -> User:
@@ -95,8 +96,7 @@ async def get_user_or_ip_identifier(request: Request) -> str:
                 return f"user:{sub}"
         except Exception as exc:
             auth_log.debug("auth.identifier_token_invalid", error=str(exc))
-    
+
     # Fallback to IP address
     host = getattr(request.client, "host", "unknown")
     return f"ip:{host}"
-

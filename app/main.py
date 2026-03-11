@@ -1,4 +1,4 @@
-﻿"""
+"""
 Main FastAPI application entry point.
 
 Orchestrates application startup, middleware configuration, and infrastructure initialization.
@@ -40,6 +40,7 @@ from app.middleware.request_limits import RequestLimitsMiddleware
 from app.services.rate_limiting import RateLimitLoggingMiddleware
 
 # ==================== Application Lifecycle ====================
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -96,6 +97,7 @@ async def lifespan(app: FastAPI):
 
 # ==================== Configuration Helpers ====================
 
+
 def _configure_system() -> None:
     """Configures low-level system settings (Network, PyTorch)."""
     if settings.no_network:
@@ -130,9 +132,10 @@ def _setup_security_logging() -> None:
 
 # ==================== Middleware ====================
 
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Adds security-related headers to all responses."""
-    
+
     async def dispatch(self, request: Request, call_next: Any) -> Any:
         response = await call_next(request)
 
@@ -150,7 +153,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 def _setup_middleware(application: FastAPI) -> None:
     """Registers middleware stack."""
-    
+
     # 1. Trusted Host (Security)
     application.add_middleware(
         TrustedHostMiddleware,
@@ -196,7 +199,6 @@ _setup_security_logging()
 setup_logging(level=settings.log_level)
 
 # Test logging to ensure it works
-from app.core.logging import logger
 logger.info("Logging system initialized", extra={"log_level": settings.log_level, "debug": settings.debug})
 
 app = FastAPI(
@@ -213,17 +215,19 @@ _setup_exceptions(app)
 
 # ==================== Routes & Root ====================
 
+
 @app.get("/", include_in_schema=False, response_model=None)
 async def root(user: User | None = Depends(optional_user)) -> dict[str, Any] | RedirectResponse:
     if user and user.is_superuser:
         return RedirectResponse(url="/admin/")
-    
+
     return {
         "app": "AmaImagery",
         "version": "0.1.0",
         "docs_url": settings.docs_url,
         "frontend_url": settings.frontend_origin,
     }
+
 
 app.include_router(api_v1, prefix="/api/v1")
 app.include_router(admin_router)

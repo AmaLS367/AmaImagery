@@ -1,38 +1,49 @@
 from __future__ import annotations
-from typing import Literal, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+
+from typing import Any, Literal
+
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 
-from app.domain.models import User, UserSettings
-from app.core.logging import lg, sec
 from app.api.v1.auth.deps import current_user
-from app.services.rate_limiting import create_rate_limiter
-from app.infra.uow import get_uow
-
-from app.core.security import (
-    normalize_email, hash_password, verify_password,
-    create_reset_token, decode_reset_token, create_access_token
-)
-from app.core.security import (
-    new_session_id, issue_tokens_rotating, check_family_current,
-    rotate_refresh, revoke_family, revoke_family_all, revoke_jti, is_revoked,
-    mark_user_logged_out, is_user_logged_out, clear_user_logged_out,
-)
-
-from app.infra.mailer import send_mail
 from app.config import settings
-
-import jwt
+from app.core.logging import lg, sec
+from app.core.security import (
+    check_family_current,
+    clear_user_logged_out,
+    create_access_token,
+    create_reset_token,
+    decode_reset_token,
+    hash_password,
+    is_revoked,
+    is_user_logged_out,
+    issue_tokens_rotating,
+    mark_user_logged_out,
+    new_session_id,
+    normalize_email,
+    revoke_family,
+    revoke_family_all,
+    revoke_jti,
+    rotate_refresh,
+    verify_password,
+)
+from app.domain.models import User, UserSettings
+from app.infra.mailer import send_mail
+from app.infra.uow import get_uow
+from app.services.rate_limiting import create_rate_limiter
 
 router = APIRouter()
 
 # ========= Registration =========
 
+
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=256)
     username: str = Field(min_length=2, max_length=32)
+
 
 class RegisterOut(BaseModel):
     id: str
@@ -42,13 +53,16 @@ class RegisterOut(BaseModel):
     token_type: Literal["bearer"] = "bearer"
     expires_in: int
 
+
 class MeOut(BaseModel):
-  id: str
-  email: str
-  username: str
-  settings: dict[str, Any] = {}
+    id: str
+    email: str
+    username: str
+    settings: dict[str, Any] = {}
+
 
 # ======== Helpers ========
+
 
 def _set_refresh_cookie(resp: Response, token: str) -> None:
     resp.set_cookie(
@@ -80,14 +94,16 @@ def _clear_access_cookie(resp: Response) -> None:
 
 def _clear_refresh_cookie(resp: Response) -> None:
     resp.delete_cookie(settings.refresh_cookie_name, path="/api/v1/auth")
-    
+
+
 # ========================
+
 
 @router.post(
     "/register",
     response_model=RegisterOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))]
+    dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))],
 )
 async def register(payload: RegisterIn):
     email = normalize_email(payload.email)
@@ -114,6 +130,7 @@ async def register(payload: RegisterIn):
         expires_in=ttl,
     )
 
+
 @router.get("/me", response_model=MeOut)
 async def me(user: User = Depends(current_user)):
     lg("app").bind(scope="auth", action="me").info("auth.me")
@@ -127,11 +144,14 @@ async def me(user: User = Depends(current_user)):
         settings=(us.data if us else {}),
     )
 
+
 # ========= login =========
+
 
 class LoginIn(BaseModel):
     identifier: str = Field(min_length=2)  # email or username
     password: str = Field(min_length=8, max_length=256)
+
 
 class LoginOut(BaseModel):
     id: str
@@ -141,6 +161,7 @@ class LoginOut(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     expires_in: int  # seconds
+
 
 @router.post("/login", response_model=LoginOut, dependencies=[Depends(create_rate_limiter(limit=5, window_sec=60))])
 async def login(payload: LoginIn, response: Response):
@@ -154,7 +175,7 @@ async def login(payload: LoginIn, response: Response):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
         us = await uow.users.get_settings(user.id)
-    
+
     sid = new_session_id()
     pair = await issue_tokens_rotating(str(user.id), sid)
     await clear_user_logged_out(str(user.id))
@@ -169,15 +190,16 @@ async def login(payload: LoginIn, response: Response):
     ).model_dump()
 
     resp = JSONResponse(content=body)
-    
+
     _clear_refresh_cookie(resp)
     _clear_access_cookie(resp)
-    
+
     _set_refresh_cookie(resp, pair["refresh"])
     _set_access_cookie(resp, pair["access"])
     lg("app").bind(scope="auth", action="login").info("auth.login")
     sec("login_success", user_id=str(user.id))
     return resp
+
 
 # ========= Logout =========
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -201,17 +223,18 @@ async def logout(request: Request) -> Response:
     _clear_refresh_cookie(resp)
     _clear_access_cookie(resp)
     return resp
-                  
+
 
 # ========= Forgot password =========
 class ForgotIn(BaseModel):
     identifier: str = Field(min_length=2)
 
+
 @router.post(
     "/forgot-password",
     status_code=status.HTTP_200_OK,
     response_class=Response,
-    dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))]
+    dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))],
 )
 async def forgot_password(payload: ForgotIn) -> None:
     ident = payload.identifier.strip()
@@ -234,22 +257,24 @@ async def forgot_password(payload: ForgotIn) -> None:
     await send_mail(subject, user.email, text, html)
     lg("app").bind(scope="auth", action="forgot", user=str(user.id)).info("auth.forgot.sent")
 
+
 # ========= Reset password by token =========
 class ResetIn(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=256)
 
+
 @router.post("/reset-password", status_code=status.HTTP_200_OK, response_class=Response)
 async def reset_password(payload: ResetIn) -> None:
     try:
         data = decode_reset_token(payload.token)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid or expired token") from exc
 
     user_id = data.get("sub")
     if not user_id:
         raise HTTPException(status_code=400, detail="Invalid token")
-    
+
     uow = get_uow()
     async with uow:
         user = await uow.users.get(user_id)
@@ -258,15 +283,15 @@ async def reset_password(payload: ResetIn) -> None:
 
         user.password_hash = hash_password(payload.new_password)
         await uow.users.add(user)
-    
+
     lg("app").bind(scope="auth", action="reset", user=str(user.id)).info("auth.reset.ok")
+
 
 # ========= Change password for logged-in user =========
 class ChangePwdIn(BaseModel):
     old_password: str = Field(min_length=8, max_length=256)
     new_password: str = Field(min_length=8, max_length=256)
 
-from app.api.v1.auth.deps import current_user
 
 @router.post("/change-password", status_code=status.HTTP_200_OK, response_class=Response)
 async def change_password(payload: ChangePwdIn, user: User = Depends(current_user)) -> None:
@@ -280,7 +305,7 @@ async def change_password(payload: ChangePwdIn, user: User = Depends(current_use
             raise HTTPException(status_code=404, detail="User not found")
         managed_user.password_hash = hash_password(payload.new_password)
         await uow.users.add(managed_user)
-    
+
     lg("app").bind(scope="auth", action="change_pwd", user=str(user.id)).info("auth.change_pwd.ok")
 
 
@@ -289,6 +314,7 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
 
 @router.post("/refresh", response_model=TokenOut, dependencies=[Depends(create_rate_limiter(limit=30, window_sec=60))])
 async def refresh(response: Response, request: Request):
@@ -303,8 +329,8 @@ async def refresh(response: Response, request: Request):
             algorithms=[settings.jwt_alg],
             options={"verify_aud": False},
         )
-    except jwt.PyJWTError as e:
-        raise HTTPException(status_code=401, detail="bad token")
+    except jwt.PyJWTError as exc:
+        raise HTTPException(status_code=401, detail="bad token") from exc
 
     if payload.get("typ") != "refresh":
         raise HTTPException(status_code=401, detail="bad typ")
@@ -312,7 +338,7 @@ async def refresh(response: Response, request: Request):
     uid = str(payload.get("sub") or "")
     sid = str(payload.get("session_id") or "")
     jti = str(payload.get("jti") or "")
-    
+
     if await is_user_logged_out(uid):
         await revoke_family_all(uid)
         raise HTTPException(status_code=401, detail="logged out")
@@ -327,7 +353,6 @@ async def refresh(response: Response, request: Request):
         _clear_access_cookie(resp)
         return resp
 
-
     if not await check_family_current(uid, sid, jti):
         sec("refresh_mismatch", user_id=uid, jti=jti)
         await revoke_family(uid, sid)
@@ -335,7 +360,6 @@ async def refresh(response: Response, request: Request):
         _clear_refresh_cookie(resp)
         _clear_access_cookie(resp)
         return resp
-
 
     pair = await rotate_refresh(uid, sid, old_jti=jti)
 
@@ -353,6 +377,3 @@ async def refresh(response: Response, request: Request):
         access_token=pair["access"],
         expires_in=settings.access_ttl_min * 60,
     )
-
-
-

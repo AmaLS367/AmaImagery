@@ -85,9 +85,13 @@ def build_generation_public_payload(
         image_path=getattr(generation, "image_path", None),
         artifacts=artifacts,
     )
-    image_path = getattr(generation, "image_path", None) if is_artifact_ready(status, getattr(generation, "image_path", None)) else None
+    image_path = (
+        getattr(generation, "image_path", None)
+        if is_artifact_ready(status, getattr(generation, "image_path", None))
+        else None
+    )
     return GenerationPublicPayload(
-        task_id=str(getattr(generation, "id")),
+        task_id=str(generation.id),
         status=status,
         provider_name=getattr(generation, "provider_name", None),
         provider_job_id=getattr(generation, "provider_job_id", None),

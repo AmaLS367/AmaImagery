@@ -2,11 +2,10 @@
 Metrics for task queue and worker processing.
 """
 
-from typing import Optional
-
 try:
     from prometheus_client import Counter, Gauge, Histogram
 except Exception:  # pragma: no cover - minimal env fallback
+
     class _NoopMetric:
         def labels(self, **kwargs):
             return self
@@ -28,6 +27,7 @@ except Exception:  # pragma: no cover - minimal env fallback
 
     def Gauge(*args, **kwargs):
         return _NoopMetric()
+
 
 # Queue metrics
 queue_size = Gauge(
@@ -119,4 +119,3 @@ def record_task_error(
     """
     worker_task_status_total.labels(queue_name=queue_name, task_type=task_type, status="error").inc()
     worker_task_errors_total.labels(queue_name=queue_name, task_type=task_type, error_type=error_type).inc()
-

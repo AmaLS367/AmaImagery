@@ -1,9 +1,11 @@
 import re
 import uuid
-from starlette.types import ASGIApp, Receive, Scope, Send, Message
+
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # Accept safe, bounded tokens only
 _REQ_ID_RE = re.compile(r"^[A-Za-z0-9._\-]{8,128}$")
+
 
 class RequestIDMiddleware:
     def __init__(self, app: ASGIApp) -> None:

@@ -6,10 +6,10 @@ from typing import Any
 class DomainException(Exception):
     """
     Base exception for domain errors.
-    
+
     Provides structured error information with code, message, and optional details.
     """
-    
+
     def __init__(
         self,
         code: str,
@@ -25,10 +25,10 @@ class DomainException(Exception):
 class GenerationFailedException(DomainException):
     """
     Raised when image generation fails.
-    
+
     Used when provider fails to generate an image or generation process encounters an error.
     """
-    
+
     def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code="generation_failed",
@@ -40,10 +40,10 @@ class GenerationFailedException(DomainException):
 class ProviderUnavailableException(DomainException):
     """
     Raised when a provider is unavailable or cannot be initialized.
-    
+
     Used when provider registry cannot provide a requested provider or provider initialization fails.
     """
-    
+
     def __init__(self, provider_name: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code="provider_unavailable",
@@ -55,15 +55,15 @@ class ProviderUnavailableException(DomainException):
 class RateLimitExceededException(DomainException):
     """
     Raised when rate limit is exceeded.
-    
+
     Used when user or IP exceeds allowed request rate.
     """
-    
+
     def __init__(self, retry_after: int | None = None, details: dict[str, Any] | None = None) -> None:
         message = "Rate limit exceeded"
         if retry_after:
             message += f". Retry after {retry_after} seconds"
-        
+
         super().__init__(
             code="rate_limit_exceeded",
             message=message,
@@ -74,10 +74,10 @@ class RateLimitExceededException(DomainException):
 class ValidationException(DomainException):
     """
     Raised when request validation fails.
-    
+
     Used for business rule violations and invalid input data.
     """
-    
+
     def __init__(self, message: str, field: str | None = None, details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code="validation_error",
@@ -89,10 +89,10 @@ class ValidationException(DomainException):
 class AuthenticationException(DomainException):
     """
     Raised when authentication fails.
-    
+
     Used for invalid credentials, expired tokens, or missing authentication.
     """
-    
+
     def __init__(self, message: str = "Authentication failed", details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code="authentication_failed",
@@ -104,15 +104,17 @@ class AuthenticationException(DomainException):
 class ResourceNotFoundException(DomainException):
     """
     Raised when a requested resource is not found.
-    
+
     Used for 404 errors when entity doesn't exist.
     """
-    
-    def __init__(self, resource_type: str, resource_id: str | None = None, details: dict[str, Any] | None = None) -> None:
+
+    def __init__(
+        self, resource_type: str, resource_id: str | None = None, details: dict[str, Any] | None = None
+    ) -> None:
         message = f"{resource_type} not found"
         if resource_id:
             message += f": {resource_id}"
-        
+
         super().__init__(
             code="resource_not_found",
             message=message,
@@ -123,10 +125,10 @@ class ResourceNotFoundException(DomainException):
 class ConflictException(DomainException):
     """
     Raised when a resource conflict occurs.
-    
+
     Used for 409 errors when resource already exists or state conflict.
     """
-    
+
     def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code="conflict",
@@ -138,10 +140,10 @@ class ConflictException(DomainException):
 class TaskNotFoundException(DomainException):
     """
     Raised when a task is not found in the queue.
-    
+
     Used when querying status of non-existent task.
     """
-    
+
     def __init__(self, task_id: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code="task_not_found",
@@ -153,7 +155,7 @@ class TaskNotFoundException(DomainException):
 def map_exception_to_http(e: Exception) -> tuple[int, dict[str, Any]]:
     """
     Maps domain exceptions to HTTP status codes and response format.
-    
+
     Returns tuple of (status_code, response_dict).
     Response format: {"error": {"code": "...", "message": "...", "details": {...}}}
     """
@@ -166,7 +168,7 @@ def map_exception_to_http(e: Exception) -> tuple[int, dict[str, Any]]:
                 "details": e.details,
             },
         }
-    
+
     # Unknown exception - map to 500
     return 500, {
         "error": {
@@ -180,7 +182,7 @@ def map_exception_to_http(e: Exception) -> tuple[int, dict[str, Any]]:
 def _get_status_code_for_domain_exception(e: DomainException) -> int:
     """
     Maps domain exception codes to HTTP status codes.
-    
+
     Returns appropriate HTTP status code based on exception type.
     """
     if isinstance(e, ValidationException):
@@ -195,7 +197,6 @@ def _get_status_code_for_domain_exception(e: DomainException) -> int:
         return 429
     if isinstance(e, GenerationFailedException) or isinstance(e, ProviderUnavailableException):
         return 503
-    
+
     # Default for unknown domain exceptions
     return 500
-

@@ -1,18 +1,22 @@
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from app.config import settings
 
 
 class _RegistryStub:
     def boot_snapshot(self):
-        return Mock(as_dict=Mock(return_value={
-            "enabled_providers": ["comfyui"],
-            "booted_providers": [],
-            "failed_providers": ["comfyui"],
-            "boot_error_summaries": {"comfyui": "connection refused"},
-            "default_provider": "comfyui",
-            "default_provider_booted": False,
-        }))
+        return Mock(
+            as_dict=Mock(
+                return_value={
+                    "enabled_providers": ["comfyui"],
+                    "booted_providers": [],
+                    "failed_providers": ["comfyui"],
+                    "boot_error_summaries": {"comfyui": "connection refused"},
+                    "default_provider": "comfyui",
+                    "default_provider_booted": False,
+                }
+            )
+        )
 
     async def readiness_snapshot(self):
         return {

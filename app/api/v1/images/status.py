@@ -1,17 +1,17 @@
 """
 Task status endpoint.
 """
+
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 
-from app.core.logging import lg
-from app.domain.schemas import TaskStatusResp
 from app.application.use_cases.get_generation_status import (
     GetGenerationStatusCommand,
     GetGenerationStatusUseCase,
 )
-
+from app.core.logging import lg
+from app.domain.schemas import TaskStatusResp
 
 router = APIRouter()
 
@@ -28,11 +28,11 @@ async def get_task_status(
 ) -> TaskStatusResp:
     command = GetGenerationStatusCommand(task_id=task_id)
     result = await use_case(command)
-    
+
     if not result.success or result.data is None:
         error_msg = result.error or "Unknown error"
         status_code = 404 if "not found" in error_msg.lower() else 500
-        
+
         lg("app").bind(
             scope="images",
             action="get_status",
@@ -40,14 +40,14 @@ async def get_task_status(
             status_code=status_code,
             error=error_msg,
         ).error("Failed to get task status")
-        
+
         raise HTTPException(
             status_code=status_code,
             detail=error_msg,
         )
-    
+
     data = result.data
-    
+
     # Log response for debugging
     lg("app").bind(
         scope="images",
@@ -62,7 +62,7 @@ async def get_task_status(
         started_at=data.started_at,
         completed_at=data.completed_at,
     ).info("Task status retrieved")
-    
+
     response = TaskStatusResp(
         task_id=data.task_id,
         status=data.status,
@@ -79,7 +79,7 @@ async def get_task_status(
         started_at=data.started_at,
         completed_at=data.completed_at,
     )
-    
+
     # Additional debug logging
     if data.status == "queued":
         lg("app").warning(
@@ -88,8 +88,7 @@ async def get_task_status(
                 "task_id": task_id,
                 "created_at": data.created_at,
                 "age_seconds": int(time.time()) - (data.created_at or 0) if data.created_at else None,
-            }
+            },
         )
-    
-    return response
 
+    return response

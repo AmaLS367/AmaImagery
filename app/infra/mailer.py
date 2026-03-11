@@ -24,12 +24,12 @@ class SmtpEmailSender(IEmailSender):
         msg = EmailMessage()
         msg["Subject"] = subject
         msg["From"] = settings.smtp_from
-        
+
         if isinstance(to, (list, tuple, set)):
             msg["To"] = ", ".join(to)
         else:
             msg["To"] = to
-            
+
         msg.set_content(text)
         if html:
             msg.add_alternative(html, subtype="html")
@@ -40,24 +40,17 @@ class SmtpEmailSender(IEmailSender):
         Blocking synchronous SMTP sending logic.
         """
         sec = (settings.smtp_security or "starttls").lower()
-        
+
         if sec == "ssl":
             context = ssl.create_default_context()
             with smtplib.SMTP_SSL(
-                settings.smtp_host, 
-                settings.smtp_port, 
-                timeout=settings.smtp_timeout_sec, 
-                context=context
+                settings.smtp_host, settings.smtp_port, timeout=settings.smtp_timeout_sec, context=context
             ) as s:
                 if settings.smtp_user:
                     s.login(settings.smtp_user, settings.smtp_pass or "")
                 s.send_message(msg)
         else:
-            with smtplib.SMTP(
-                settings.smtp_host, 
-                settings.smtp_port, 
-                timeout=settings.smtp_timeout_sec
-            ) as s:
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=settings.smtp_timeout_sec) as s:
                 if sec == "starttls":
                     s.starttls(context=ssl.create_default_context())
                 if settings.smtp_user:
