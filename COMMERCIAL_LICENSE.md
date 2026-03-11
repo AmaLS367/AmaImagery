@@ -1,16 +1,20 @@
 # Commercial Licensing
 
+> Open in public. Licensed in private when needed.
+
 AmaImagery application code is publicly available under `AGPL-3.0-only`.
 
-If you want to:
+If you want to use the code in a way that does not fit AGPL obligations, commercial licensing is available by direct agreement.
 
-- use the application code in a closed-source product
-- avoid AGPL reciprocal obligations
-- negotiate private deployment or redistribution terms
-- discuss commercial support
+This typically includes cases such as:
 
-contact:
+- closed-source product integration
+- private redistribution terms
+- internal deployment terms incompatible with AGPL requirements
+- commercial support or licensing negotiations
+
+Contact:
 
 `amalsdev367@gmail.com`
 
-Commercial licensing is handled separately from the open-source license and requires a written agreement.
+No commercial rights are granted unless they are explicitly provided in a written agreement.

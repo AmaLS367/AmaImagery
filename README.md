@@ -1,57 +1,74 @@
 # AmaImagery
 
-> Self-hosted image generation backend and frontend with asynchronous jobs, provider failover, and an operationally visible runtime.
+> Image generation infrastructure for teams that want a real backend, not a toy demo.
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688.svg)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-frontend-61DAFB.svg)](https://react.dev)
-[![Docker](https://img.shields.io/badge/Docker-supported-2496ED.svg)](https://www.docker.com)
-[![Ruff](https://img.shields.io/badge/ruff-enabled-FFDB4D.svg?logo=ruff)](https://github.com/astral-sh/ruff)
-[![MyPy](https://img.shields.io/badge/mypy-enabled-0E6EB8.svg)](https://mypy.readthedocs.io/)
+[![Version](https://img.shields.io/badge/version-0.1.0-black.svg)](./pyproject.toml)
+[![Python](https://img.shields.io/badge/python-3.11+-306998.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/frontend-React-61DAFB.svg)](https://react.dev/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-FFDB4D.svg?logo=ruff)](https://github.com/astral-sh/ruff)
+[![MyPy](https://img.shields.io/badge/types-mypy-0E6EB8.svg)](https://mypy.readthedocs.io/)
 
-AmaImagery is a self-hosted image generation platform built around a FastAPI backend, a React frontend, and an async worker pipeline. It exposes a single API contract for multiple generation providers and is currently oriented toward `ComfyUI` as the primary runtime, with `Diffusers` support still present in the codebase.
+AmaImagery is a self-hosted image generation platform built around a FastAPI backend, a React frontend, and an asynchronous worker pipeline. It exposes one operational contract across multiple generation providers, with `ComfyUI` as the practical primary runtime and `Diffusers` still available where local model management makes sense.
 
-## What It Is
+---
 
-- Async image generation with queue-backed status polling and history
-- Provider-aware runtime with health/readiness visibility
-- Superuser-only admin panel for users and generations
-- Artifact download flow for completed generations
-- Docker-based local verification path
-- Repo-level linting, typing, and CI quality gates with `ruff` and `mypy`
+## At A Glance
 
-## Current Status
+| Surface | What it does |
+| --- | --- |
+| Async generation API | Accepts jobs, persists state, exposes status and history |
+| Provider runtime | Boots providers, tracks readiness, reports failures clearly |
+| Worker lifecycle | Executes jobs, persists terminal states, stores artifacts |
+| Admin surface | Gives superusers a real operational view of users and generations |
+| Quality gates | Enforced through CI, `ruff`, `mypy`, and backend tests |
 
-This repository is actively maintained and suitable for development, staging, and controlled self-hosted deployments.
+> The project is designed to be operationally legible. Health, readiness, queue behavior, provider state, and artifact visibility are all part of the product surface, not hidden implementation detail.
 
-It is not presented here as a lightweight turnkey appliance:
+## What Makes It Interesting
 
-- the default Docker image is still CUDA-oriented and relatively heavy
-- `ComfyUI` is the most realistic end-to-end generation path today
-- `Diffusers` remains available, but local model management is still a significant operational concern
+- One backend contract across provider implementations
+- Queue-backed generation flow with durable status and history
+- Provider-aware health and readiness instead of empty "ok" endpoints
+- Superuser admin pages for runtime inspection
+- Signed artifact delivery for completed generations
+- A codebase already wired for linting, typing, and CI enforcement
 
-That distinction is deliberate. The codebase is moving toward a cleaner production story, but the runtime footprint is still substantial.
+## Reality Check
 
-## Architecture
+AmaImagery is credible, usable, and actively maintained. It is also honest about its current shape.
 
-AmaImagery is split into a few major parts:
+- `ComfyUI` is the strongest end-to-end path today
+- the Docker runtime is still CUDA-oriented and heavy
+- `Diffusers` support exists, but large local model handling remains a real operational cost
+- the repository is closer to a serious self-hosted platform than to a shrink-wrapped appliance
 
-- `app/`: FastAPI application, domain logic, providers, repositories, worker code
-- `frontend/`: React client
-- `tests/`: unit, integration, worker, security, and performance coverage
-- `migrations/`: Alembic migrations
-- `docker/`: local compose setup and provider verification environments
-- `docs/`: English and Russian documentation trees
+That is intentional. The project optimizes for correctness, visibility, and control before pretending to be lightweight magic.
 
-The backend lifecycle is centered on:
+---
 
-- API request acceptance
-- generation persistence in PostgreSQL
-- async job execution through the worker
-- provider submission and polling
-- artifact persistence and download exposure
+## The Shape
 
-## Quick Start
+The repository is organized around a few clear surfaces:
+
+- `app/` for the backend, domain logic, providers, repositories, and worker code
+- `frontend/` for the React client
+- `tests/` for unit, integration, worker, security, and performance coverage
+- `migrations/` for Alembic
+- `docker/` for local compose flows and provider verification environments
+- `docs/` for English and Russian documentation
+
+The runtime path is straightforward:
+
+1. The API accepts a generation request.
+2. PostgreSQL becomes the source of truth for lifecycle state.
+3. The worker submits to a provider and observes execution.
+4. The provider result becomes an artifact or an explicit failure.
+5. Status, history, admin, and download endpoints reflect the same final state.
+
+---
+
+## Run The Stack
 
 ### Docker
 
@@ -61,7 +78,7 @@ cd AmaImagery
 docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d --build
 ```
 
-For provider-specific verification, start from:
+Useful provider verification presets:
 
 - `docker/.env.verify.comfyui.example`
 - `docker/.env.verify.diffusers.example`
@@ -77,9 +94,7 @@ python run.py
 python -m app.entrypoints.generation_worker
 ```
 
-## Verification
-
-Useful checks during local setup:
+### Fast Confidence Checks
 
 ```bash
 python -m ruff check app tests
@@ -87,20 +102,37 @@ python -m mypy app
 python -m pytest tests -q
 ```
 
-Operational endpoints:
+Core operational endpoints:
 
-- `GET /api/v1/health` for liveness plus provider boot summary
-- `GET /api/v1/healthz` for generation readiness
-- `GET /admin/` for the superuser admin surface
+- `GET /api/v1/health`
+- `GET /api/v1/healthz`
+- `GET /admin/`
 
-## Documentation
+---
+
+## The Trust Surface
+
+AmaImagery is built to be inspectable in motion.
+
+- provider boot state is visible
+- readiness distinguishes "alive" from "able to generate"
+- terminal generation states are coherent across status, history, admin, and artifact delivery
+- authentication and superuser-only admin access are first-class, not afterthoughts
+
+If a provider fails, the system should say so clearly. If a generation completes, the artifact contract should be consistent everywhere. That philosophy runs through the repository.
+
+---
+
+## Read Further
+
+Primary docs:
 
 - [Documentation Index](./docs/README.md)
-- [English Docs](./docs/en/README.md)
+- [English Documentation](./docs/en/README.md)
 - [Backend Admin and Readiness](./docs/en/backend/admin-and-readiness.md)
 - [Provider Rollout Notes](./docs/en/deployment/provider-rollout.md)
 
-Repository-level project docs:
+Project policies:
 
 - [Contributing](./CONTRIBUTING.md)
 - [Security](./SECURITY.md)
@@ -108,23 +140,31 @@ Repository-level project docs:
 - [Code of Conduct](./CODE_OF_CONDUCT.md)
 - [Commercial Licensing](./COMMERCIAL_LICENSE.md)
 
-## Licensing
+---
 
-AmaImagery uses dual licensing for the application code:
+## Open Source And Commercial
 
-- Open-source use: `AGPL-3.0-only`
-- Commercial use: contact `amalsdev367@gmail.com`
+AmaImagery application code is dual-licensed:
 
-Model weights, datasets, and third-party assets may carry additional obligations. See:
+- open-source use under `AGPL-3.0-only`
+- commercial licensing by direct agreement via `amalsdev367@gmail.com`
+
+Third-party models, datasets, and assets may carry separate obligations. Review:
 
 - [LICENSE](./LICENSE)
 - [NOTICE.txt](./NOTICE.txt)
 - [ATTRIBUTIONS.md](./ATTRIBUTIONS.md)
 - [Legal Docs](./docs/en/legal/README.md)
 
-## Support
+---
 
-- Bugs and feature requests: GitHub Issues
-- Questions and usage discussion: GitHub Discussions
-- Security disclosures: `amalsdev367@gmail.com`
-- Commercial licensing: `amalsdev367@gmail.com`
+## Contact Paths
+
+| Need | Path |
+| --- | --- |
+| Bugs and defects | GitHub Issues |
+| Product or usage discussion | GitHub Discussions |
+| Security disclosure | `amalsdev367@gmail.com` |
+| Commercial licensing | `amalsdev367@gmail.com` |
+
+AmaImagery is meant to feel sharp, controlled, and inspectable. The docs should set that tone before the code ever runs.
