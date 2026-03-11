@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { generateJSON, type GeneratePayload, type GenerateResponse } from '../lib/api'
+import { generateJSON, getTaskStatus, type GeneratePayload, type TaskResp, type TaskStatusResp } from '../lib/api'
 import { RequestQueue } from '../lib/queue'
 import { addHistory, type HistoryItem } from '../lib/storage'
 import { guessNSFW } from '../lib/nsfw'
@@ -8,9 +8,10 @@ import { useSettings } from './SettingsProvider'
 export type JobStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
 export type Job = {
   id: string
+  task_id?: string
   status: JobStatus
   payload: GeneratePayload
-  result?: GenerateResponse
+  result?: TaskStatusResp
   error?: string
   startedAt: number
   finishedAt?: number
@@ -68,40 +69,122 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
     setJobs(prev => [job, ...prev])
 
     const { promise, abort } = queueRef.current.run(async (signal) => {
-      // пометить running
-      setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'running' } : j))
+      // Отправляем запрос на генерацию
+      const taskResp: TaskResp = await generateJSON(payload, signal)
+      const task_id = taskResp.task_id
 
-      const res = await generateJSON(payload, signal)
+      // Обновляем job с task_id
+      setJobs(prev => prev.map(j => j.id === id ? { ...j, task_id, status: 'running' } : j))
 
-      // сохранить результат
-      setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'done', result: res, finishedAt: Date.now() } : j))
+      // Polling статуса задачи
+      const pollInterval = 2000 // 2 секунды
+      const maxAttempts = 300 // максимум 10 минут (300 * 2 сек)
+      const queuedTimeout = 120000 // 2 минуты для статуса "queued" (если worker не запущен)
+      let attempts = 0
+      let queuedStartTime: number | null = null
 
-      // в историю
-      const hist: HistoryItem = {
-        prompt: payload.prompt,
-        neg: payload.negative_prompt || '',
-        steps: payload.steps,
-        guidance: payload.guidance_scale,
-        width: payload.width,
-        height: payload.height,
-        seed: payload.seed,
-        ipScale: payload.ip_scale ?? 0.6,
-        path: res.path,
-        ts: Date.now(),
-        tags: [],
-        pinned: false,
-        nsfw: guessNSFW(payload.prompt, payload.negative_prompt || '')
-      }
-      addHistory(hist)
+      while (attempts < maxAttempts && !signal.aborted) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval))
+        
+        if (signal.aborted) {
+          setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', finishedAt: Date.now() } : j))
+          return
+        }
 
-      // уведомления/звук
-      if (settings.notifyOnDone && 'Notification' in window) {
         try {
-          if (Notification.permission !== 'granted') await Notification.requestPermission()
-          if (Notification.permission === 'granted') new Notification('Готово', { body: 'Изображение сгенерировано' })
-        } catch {}
+          const statusResp = await getTaskStatus(task_id, signal)
+          
+          // Check if task is completed - can use image_path, image_filename, or image_url
+          const hasImage = statusResp.image_path || statusResp.image_filename || statusResp.image_url
+          
+          if (statusResp.status === 'completed' && hasImage) {
+            // Задача завершена успешно
+            setJobs(prev => prev.map(j => j.id === id ? { 
+              ...j, 
+              status: 'done', 
+              result: statusResp, 
+              finishedAt: Date.now() 
+            } : j))
+
+            // В историю
+            const hist: HistoryItem = {
+              prompt: payload.prompt,
+              neg: payload.negative_prompt || '',
+              steps: payload.steps,
+              guidance: payload.guidance_scale,
+              width: payload.width,
+              height: payload.height,
+              seed: payload.seed,
+              ipScale: payload.ip_scale ?? 0.6,
+              path: statusResp.image_path || '',
+              ts: Date.now(),
+              tags: [],
+              pinned: false,
+              nsfw: guessNSFW(payload.prompt, payload.negative_prompt || ''),
+              exp: statusResp.exp || undefined,
+              sig: statusResp.sig || undefined,
+            }
+            addHistory(hist)
+
+            // Уведомления/звук
+            if (settings.notifyOnDone && 'Notification' in window) {
+              try {
+                if (Notification.permission !== 'granted') await Notification.requestPermission()
+                if (Notification.permission === 'granted') new Notification('Готово', { body: 'Изображение сгенерировано' })
+              } catch {}
+            }
+            if (settings.soundOnDone) beep()
+            return
+          } else if (statusResp.status === 'failed') {
+            // Задача провалилась
+            const errorMsg = statusResp.error || 'Generation failed'
+            setJobs(prev => prev.map(j => j.id === id ? { 
+              ...j, 
+              status: 'error', 
+              error: errorMsg, 
+              finishedAt: Date.now() 
+            } : j))
+            return
+          } else if (statusResp.status === 'queued') {
+            // Отслеживаем время в статусе "queued"
+            if (queuedStartTime === null) {
+              queuedStartTime = Date.now()
+            } else if (Date.now() - queuedStartTime > queuedTimeout) {
+              // Задача слишком долго в очереди - вероятно worker не запущен
+              setJobs(prev => prev.map(j => j.id === id ? { 
+                ...j, 
+                status: 'error', 
+                error: 'Task stuck in queue. Worker may not be running.', 
+                finishedAt: Date.now() 
+              } : j))
+              return
+            }
+          } else if (statusResp.status === 'running') {
+            // Сбрасываем таймер, если задача начала выполняться
+            queuedStartTime = null
+          }
+          // Продолжаем polling для статусов 'queued' и 'running'
+        } catch (e: any) {
+          if (e?.name === 'AbortError') {
+            setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', finishedAt: Date.now() } : j))
+            return
+          }
+          // Ошибка при получении статуса - продолжаем попытки
+          console.warn('Failed to get task status:', e)
+        }
+
+        attempts++
       }
-      if (settings.soundOnDone) beep()
+
+      // Timeout
+      if (attempts >= maxAttempts) {
+        setJobs(prev => prev.map(j => j.id === id ? { 
+          ...j, 
+          status: 'error', 
+          error: 'Generation timeout', 
+          finishedAt: Date.now() 
+        } : j))
+      }
     })
 
     abortMap.current.set(id, abort)

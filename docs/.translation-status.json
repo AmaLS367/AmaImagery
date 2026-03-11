@@ -1,0 +1,79 @@
+{
+  "languages": {
+    "en": {
+      "name": "English",
+      "code": "en",
+      "status": "active",
+      "completeness": 100
+    },
+    "ru": {
+      "name": "Русский",
+      "code": "ru",
+      "status": "active",
+      "completeness": 100
+    },
+    "zh": {
+      "name": "中文",
+      "code": "zh",
+      "status": "planned",
+      "completeness": 0
+    },
+    "es": {
+      "name": "Español",
+      "code": "es",
+      "status": "planned",
+      "completeness": 0
+    },
+    "fr": {
+      "name": "Français",
+      "code": "fr",
+      "status": "planned",
+      "completeness": 0
+    }
+  },
+  "sections": [
+    "backend",
+    "frontend",
+    "docker",
+    "tests",
+    "models",
+    "deployment",
+    "scripts",
+    "development",
+    "migrations",
+    "security",
+    "features",
+    "troubleshooting",
+    "legal",
+    "reference",
+    "tutorials"
+  ],
+  "files": {
+    "README.md": {
+      "en": {
+        "status": "complete",
+        "lastUpdated": "2025-12-05"
+      },
+      "ru": {
+        "status": "complete",
+        "lastUpdated": "2025-12-05"
+      }
+    },
+    "backend/README.md": {
+      "en": {
+        "status": "complete",
+        "lastUpdated": "2025-12-05"
+      },
+      "ru": {
+        "status": "complete",
+        "lastUpdated": "2025-12-05"
+      }
+    }
+  },
+  "metadata": {
+    "version": "0.2.0",
+    "lastUpdated": "2025-12-05",
+    "maintainers": []
+  }
+}
+

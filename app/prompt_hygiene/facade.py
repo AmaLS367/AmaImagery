@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 from .contracts import Correction, HygieneResult, Mode, Report
 from .neglist import NegList
 from .settings import (
@@ -20,9 +18,9 @@ class HygieneFacade:
     Stateless facade with explicit dependencies passed in at init.
     """
 
-    def __init__(self, neglist: Optional[NegList] = None, spell_checker: Optional[SpellChecker] = None) -> None:
+    def __init__(self, neglist: NegList | None = None, spell_checker: SpellChecker | None = None) -> None:
         self.neglist = neglist or NegList()
-        self.spell_checker = spell_checker or build_spell(extra_words=AUTOCORRECT_EXTRA_WORDS)
+        self.spell_checker = spell_checker or build_spell(extra_words=list(AUTOCORRECT_EXTRA_WORDS))
         self._whitelist = set(AUTOCORRECT_WHITELIST)
 
     def run(
@@ -30,7 +28,7 @@ class HygieneFacade:
         user_id: str,
         prompt: str,
         negative: str,
-        mode: Optional[Mode] = None,
+        mode: Mode | None = None,
     ) -> HygieneResult:
         """
         Run hygiene according to user mode. If mode is provided, it overrides stored mode.
@@ -47,12 +45,14 @@ class HygieneFacade:
             sugg_n = build_suggestions(negative, self.neglist) if negative else []
             # Merge lists while keeping prompt suggestions first
             suggestions = sugg_p + sugg_n
-            return HygieneResult(applied=False, prompt=prompt, negative=negative, report=Report(suggestions=suggestions, corrections=[]))
+            return HygieneResult(
+                applied=False, prompt=prompt, negative=negative, report=Report(suggestions=suggestions, corrections=[])
+            )
 
         # AUTO
         fixed_p, corr_p = correct_prompt(prompt, self.spell_checker, whitelist=self._whitelist)
         fixed_n, corr_n = correct_negative(negative, self.spell_checker) if negative else (negative, [])
-        corrections: List[Correction] = []
+        corrections: list[Correction] = []
         pos_p = 0
         for before, after in corr_p:
             corrections.append(Correction(before=before, after=after, position=None))
@@ -62,7 +62,12 @@ class HygieneFacade:
         suggestions = build_suggestions(fixed_p, self.neglist)
         if negative:
             suggestions += build_suggestions(fixed_n, self.neglist)
-        return HygieneResult(applied=True, prompt=fixed_p, negative=fixed_n, report=Report(suggestions=suggestions, corrections=corrections))
+        return HygieneResult(
+            applied=True,
+            prompt=fixed_p,
+            negative=fixed_n,
+            report=Report(suggestions=suggestions, corrections=corrections),
+        )
 
 
 # Functional entry point for convenient import
@@ -73,6 +78,6 @@ def run_hygiene(
     user_id: str,
     prompt: str,
     negative: str = "",
-    mode: Optional[Mode] = None,
+    mode: Mode | None = None,
 ) -> HygieneResult:
     return _default_facade.run(user_id=user_id, prompt=prompt, negative=negative, mode=mode)

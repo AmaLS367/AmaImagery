@@ -1,10 +1,14 @@
 import asyncio
-from starlette.types import ASGIApp, Receive, Scope, Send, Message
+
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
 from app.config import settings
+
 
 class _BodyTooLarge(Exception):
     pass
+
 
 class RequestLimitsMiddleware:
     def __init__(self, app: ASGIApp) -> None:
@@ -16,6 +20,21 @@ class RequestLimitsMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         if scope.get("type") != "http":
             return await self.app(scope, receive, send)
+
+        headers = {key.decode("latin1").lower(): value.decode("latin1") for key, value in scope.get("headers", [])}
+        content_length = headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > self.max_body:
+                    return await JSONResponse(
+                        {"error": "request_too_large", "message": "request body exceeds limit"},
+                        status_code=413,
+                    )(scope, receive, send)
+            except ValueError:
+                return await JSONResponse(
+                    {"error": "bad_request", "message": "invalid content-length header"},
+                    status_code=400,
+                )(scope, receive, send)
 
         # Query-string limits
         qs = scope.get("query_string", b"")
@@ -52,7 +71,7 @@ class RequestLimitsMiddleware:
 
         path = scope.get("path", "") or ""
         effective_timeout = self.timeout
-        if path == "/generate":
+        if path == "/api/v1/images/generate":
             # Keep public behavior: extend a bit for generation endpoint
             effective_timeout = max(self.timeout, int(settings.generation_timeout_seconds) + 10)
 
@@ -67,7 +86,7 @@ class RequestLimitsMiddleware:
                 status_code=413,
             )
             await resp(scope, receive, send)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             resp = JSONResponse(
                 {"error": "request_timeout", "message": f"request exceeded time limit ({effective_timeout}s)"},
                 status_code=408,

@@ -1,4 +1,8 @@
-import os, subprocess, sys, pytest
+import os
+
+import pytest
+
+
 @pytest.mark.e2e
 def test_smoke_script_exists():
     # Просто проверим наличие твоего smoke-скрипта

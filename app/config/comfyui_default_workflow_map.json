@@ -1,0 +1,36 @@
+{
+  "fields": {
+    "prompt": {
+      "node": "6",
+      "path": "inputs.text"
+    },
+    "negative_prompt": {
+      "node": "7",
+      "path": "inputs.text"
+    },
+    "seed": {
+      "node": "3",
+      "path": "inputs.seed"
+    },
+    "steps": {
+      "node": "3",
+      "path": "inputs.steps"
+    },
+    "cfg": {
+      "node": "3",
+      "path": "inputs.cfg"
+    },
+    "width": {
+      "node": "5",
+      "path": "inputs.width"
+    },
+    "height": {
+      "node": "5",
+      "path": "inputs.height"
+    }
+  },
+  "output": {
+    "node": "9",
+    "type": "images"
+  }
+}

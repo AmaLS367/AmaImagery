@@ -73,7 +73,7 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
     setLoggingOut(true)
     try {
       const token = getToken()
-      await fetch('/auth/logout', {
+      await fetch('/api/v1/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

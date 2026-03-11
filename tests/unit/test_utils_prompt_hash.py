@@ -1,4 +1,6 @@
-import hashlib, pytest
+import pytest
+
+
 def test_prompt_hash_stable():
     try:
         from app.utils import prompt_hash

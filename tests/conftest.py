@@ -1,54 +1,161 @@
-import os, sys, importlib, tempfile, shutil, contextlib
+import os
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
 import pytest
+import pytest_asyncio
 from dotenv import load_dotenv
 
-load_dotenv("docker/.env.local", override=False)  # подтянет ALLOWED_HOSTS и прочие
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-# Базовые ENV для быстрого запуска
-os.environ.setdefault("SECRET_KEY", "test_secret_key")
-os.environ.setdefault("MODEL_ID", "mock")
-os.environ.setdefault("DEVICE", "cpu")
-os.environ.setdefault("UI_MOUNT_ENABLED", "false")
-os.environ.setdefault("NSFW_ALLOW", "false")
-os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+load_dotenv("docker/.env.local", override=False)
 
-# Временная директория для outputs
+os.environ["SECRET_KEY"] = "test_secret_key"
+os.environ["MODEL_ID"] = "mock"
+os.environ["DEVICE"] = "cpu"
+os.environ["UI_MOUNT_ENABLED"] = "false"
+os.environ["NSFW_ALLOW"] = "false"
+os.environ["ALLOWED_HOSTS"] = '["localhost","127.0.0.1","testserver"]'
+os.environ["LIMITS_ENABLED"] = "true"
+os.environ["NO_REDIS"] = "true"
+os.environ["DEBUG"] = "true"
+os.environ["REFRESH_COOKIE_SECURE"] = "false"
+if "DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = f"sqlite:///{(ROOT / '.pytest-app.db').as_posix()}"
+
+
 @pytest.fixture(autouse=True)
 def _tmp_outputs(monkeypatch):
     tmp = tempfile.mkdtemp(prefix="outputs_")
-    monkeypatch.setenv("OUT_DIR", tmp)
+    monkeypatch.setenv("OUTPUTS_DIR", tmp)
     yield
     shutil.rmtree(tmp, ignore_errors=True)
 
-# Клиент FastAPI
+
+@pytest.fixture(autouse=True)
+def _reset_provider_registry_cache():
+    try:
+        from app.domain.providers.registry import reset_provider_registry
+    except Exception:
+        yield
+        return
+
+    reset_provider_registry()
+    yield
+    reset_provider_registry()
+
+
 @pytest.fixture
 def app_client():
     try:
+        from app.domain.models import Base
+        from app.infra.db import async_engine
         from app.main import app
     except Exception as e:
-        pytest.skip(f"Не удалось импортировать app.main: {e}")
+        pytest.skip(f"Failed to import app.main: {e}")
     try:
-        # httpx>=0.24 async client есть, но для простоты используем starlette TestClient
-        from starlette.testclient import TestClient
-        return TestClient(app)
-    except Exception as e:
-        pytest.skip(f"Нет TestClient: {e}")
+        import asyncio
 
-# Хелпер: регистрация и логин тестового пользователя
+        from starlette.testclient import TestClient
+
+        async def _reset_schema() -> None:
+            await async_engine.dispose()
+            async with async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+                await conn.run_sync(Base.metadata.create_all)
+            await async_engine.dispose()
+
+        asyncio.run(_reset_schema())
+
+        with TestClient(app) as client:
+            yield client
+    except Exception as e:
+        pytest.skip(f"TestClient unavailable: {e}")
+
+
+@pytest_asyncio.fixture
+async def async_session():
+    try:
+        from app.infra.db import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as session:
+            yield session
+    except Exception as e:
+        pytest.skip(f"Async session unavailable: {e}")
+
+
+@pytest_asyncio.fixture
+async def async_db_engine():
+    try:
+        from app.infra.db import async_engine
+
+        yield async_engine
+        await async_engine.dispose()
+    except Exception as e:
+        pytest.skip(f"Async engine unavailable: {e}")
+
+
+@pytest_asyncio.fixture
+async def uow():
+    try:
+        from app.infra.uow import get_uow
+
+        unit = get_uow()
+        async with unit:
+            yield unit
+            if unit._session is not None:
+                await unit._session.rollback()
+    except Exception as e:
+        pytest.skip(f"UnitOfWork unavailable: {e}")
+
+
 @pytest.fixture
 def auth_headers(app_client):
-    # маршруты могут отличаться — пропускаем, если не найдены
     try:
-        email = "user@example.com"; password = "pass12345"
-        r = app_client.post("/auth/register", json={"email": email, "password": password})
-        # допускаем 400 если юзер уже есть
-        assert r.status_code in (200, 201, 400)
-        r = app_client.post("/auth/login", data={"username": email, "password": password})
-        if r.status_code not in (200, 201):
-            pytest.skip(f"/auth/login вернул {r.status_code}")
-        token = r.json().get("access_token") or r.json().get("token") or r.json().get("access")
+        email = "user@example.com"
+        password = "pass12345"
+        register = app_client.post(
+            "/api/v1/auth/register",
+            json={"email": email, "password": password, "username": "user"},
+        )
+        assert register.status_code in (200, 201, 400)
+        login = app_client.post(
+            "/api/v1/auth/login",
+            json={"identifier": email, "password": password},
+        )
+        if login.status_code not in (200, 201):
+            pytest.skip(f"/api/v1/auth/login returned {login.status_code}")
+        token = login.json().get("access_token") or login.json().get("token") or login.json().get("access")
         if not token:
-            pytest.skip("Ответ логина без токена")
+            pytest.skip("Login response missing token")
         return {"Authorization": f"Bearer {token}"}
     except Exception as e:
-        pytest.skip(f"auth flow недоступен: {e}")
+        pytest.skip(f"Auth flow unavailable: {e}")
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_db_session():
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import StaticPool
+
+    from app.domain.models import Base
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async_session_maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with async_session_maker() as session:
+        yield session
+        await session.rollback()
+
+    await engine.dispose()

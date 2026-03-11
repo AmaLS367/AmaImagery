@@ -1,11 +1,12 @@
-# VCS/IDE
+# VCS and IDE
 .git
 .gitmodules
-*.swp
 .vscode/
 .idea/
+.cursor/
+*.swp
 
-# Python
+# Python caches and virtualenvs
 __pycache__/
 *.pyc
 *.pyo
@@ -14,18 +15,37 @@ __pycache__/
 .venv*/
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.coverage
+htmlcov/
 
-# Node / Frontend
+# Local environment and test artifacts
+.env
+*.db
+*.sqlite
+*.log
+
+# Frontend sources are not needed in the backend image.
+frontend/
 node_modules/
-frontend/node_modules/
-frontend/.next/
-frontend/dist/        # dist монтируем томом, в образ не копируем
 
-# Данные/артефакты
+# Local artifacts and generated data
 outputs/
 logs/
 datasets/
 cache/
+build/
+dist/
+db/
+docs/
+tests/
+
+# Large model and media artifacts
+models/
+**/models/**
+.cache/huggingface/
 *.pt
 *.safetensors
 *.ckpt
@@ -38,16 +58,7 @@ cache/
 *.mp4
 *.zip
 
-# Docker мусор
+# Docker-only local files
 docker-compose*.yml
 docker/*.yml
-
-# модели/веса
-models/
-**/models/**
-*.safetensors
-*.ckpt
-*.bin
-*.pt
-.cache/huggingface/
-
+docker/.env*

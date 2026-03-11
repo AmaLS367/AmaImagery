@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, List
 
 from .contracts import Suggestion
 
 
-def _add(s: List[Suggestion], code: str, msg: str, token: str | None = None, pos: int | None = None) -> None:
+def _add(s: list[Suggestion], code: str, msg: str, token: str | None = None, pos: int | None = None) -> None:
     s.append(Suggestion(code=code, message=msg, token=token, position=pos))
 
 
@@ -15,15 +14,15 @@ REPEAT_PUNCT_RE = re.compile(r"([,.;:!?])\1{1,}")
 WHITESPACE_RE = re.compile(r"\s{2,}")
 
 
-def validate_length(text: str, max_len: int = 2000) -> List[Suggestion]:
-    out: List[Suggestion] = []
+def validate_length(text: str, max_len: int = 2000) -> list[Suggestion]:
+    out: list[Suggestion] = []
     if len(text) > max_len:
         _add(out, "LENGTH", f"Text length {len(text)} exceeds {max_len}.")
     return out
 
 
-def validate_repeat_words(text: str, threshold: int = 5) -> List[Suggestion]:
-    out: List[Suggestion] = []
+def validate_repeat_words(text: str, threshold: int = 5) -> list[Suggestion]:
+    out: list[Suggestion] = []
     if not text:
         return out
     counts: dict[str, int] = {}
@@ -36,8 +35,8 @@ def validate_repeat_words(text: str, threshold: int = 5) -> List[Suggestion]:
     return out
 
 
-def validate_punctuation(text: str) -> List[Suggestion]:
-    out: List[Suggestion] = []
+def validate_punctuation(text: str) -> list[Suggestion]:
+    out: list[Suggestion] = []
     for m in REPEAT_PUNCT_RE.finditer(text):
         _add(out, "PUNCT", "Repeated punctuation.", token=m.group(1), pos=m.start())
     if WHITESPACE_RE.search(text):
@@ -45,8 +44,8 @@ def validate_punctuation(text: str) -> List[Suggestion]:
     return out
 
 
-def validate_basic(text: str) -> List[Suggestion]:
-    out: List[Suggestion] = []
+def validate_basic(text: str) -> list[Suggestion]:
+    out: list[Suggestion] = []
     out += validate_length(text)
     out += validate_repeat_words(text)
     out += validate_punctuation(text)

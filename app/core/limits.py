@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from app.config import settings
 
-_gen_semaphore: Optional[asyncio.Semaphore] = None
-_gen_limit_cached: Optional[int] = None
+_gen_semaphore: asyncio.Semaphore | None = None
+_gen_limit_cached: int | None = None
 
 
 def get_gen_semaphore() -> asyncio.Semaphore:
@@ -28,7 +27,7 @@ async def try_acquire(timeout_sec: float = 0.0) -> bool:
     try:
         await asyncio.wait_for(sem.acquire(), timeout=timeout_sec)
         return True
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return False
 
 

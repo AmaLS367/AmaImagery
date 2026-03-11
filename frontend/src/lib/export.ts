@@ -9,13 +9,25 @@ export async function exportHistoryZip(items: HistoryItem[]) {
   let idx = 0
   for (const it of items.slice(0, 100)) {
     try {
-      const resp = await fetch(`/file?path=${encodeURIComponent(it.path)}`)
+      const name = String(it.path || '').split(/[\\/]/).pop() || ''
+      if (!name) continue
+      
+      let url = `/api/v1/file?path=${encodeURIComponent(name)}`
+      if (it.exp && it.sig) {
+        url += `&exp=${String(it.exp)}&sig=${encodeURIComponent(it.sig)}`
+      } else {
+        // Skip if no signature available
+        continue
+      }
+      
+      const resp = await fetch(url)
+      if (!resp.ok) continue
       const blob = await resp.blob()
       thumbs?.file(`${idx++}.png`, blob)
     } catch {}
   }
   const blobZip = await zip.generateAsync({ type: 'blob' })
-  saveAs(blobZip, 'genai-history.zip')
+  saveAs(blobZip, 'amaimagery-history.zip')
 }
 
 export async function importHistoryZip(file: File): Promise<{ items: HistoryItem[] }> {

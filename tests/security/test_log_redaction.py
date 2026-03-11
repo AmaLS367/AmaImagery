@@ -1,11 +1,11 @@
-from app.core.logging import logger
-from io import StringIO
-import sys, re
+import re
 
-def test_log_redacts_tokens(monkeypatch):
-    buf = StringIO()
-    monkeypatch.setattr(sys, "stdout", buf)
+from app.core.logging import logger, setup_logging
+
+
+def test_log_redacts_tokens(capsys):
+    setup_logging()
     logger.info("Authorization: Bearer abc.def.ghi; Set-Cookie: session=abcdef")
-    out = buf.getvalue()
+    out = capsys.readouterr().err
     assert "Authorization: Bearer ****" in out
-    assert re.search(r"Set-Cookie:\s*session=\*{2,}", out)
+    assert re.search(r"Set-Cookie:\s*session=\*{3,}", out)

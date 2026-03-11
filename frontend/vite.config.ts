@@ -19,26 +19,11 @@ export default defineConfig(({ mode }) => {
       cors: { origin: '*' },
       hmr: { protocol: 'ws' },
       proxy: {
-        '/generate': { 
-          target, 
-          changeOrigin: true, 
+        '/api': {
+          target,
+          changeOrigin: true,
           secure: false,
-          configure: (proxy, options) => {
-            proxy.on('error', (err, req, res) => {
-              console.log('proxy error', err);
-            });
-            proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log('Sending Request:', req.method, req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req, res) => {
-              console.log('Received Response:', proxyRes.statusCode);
-            });
-          }
         },
-        '/health':   { target, changeOrigin: true, secure: false },
-        '/file':     { target, changeOrigin: true, secure: false },
-        '/auth':     { target, changeOrigin: true },
-        '/users':    { target, changeOrigin: true },
       },
     },
   }

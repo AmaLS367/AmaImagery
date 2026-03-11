@@ -1,5 +1,5 @@
-const FORM_KEY = 'genai.form.v1'
-const HIST_KEY = 'genai.history.v2'
+const FORM_KEY = 'amaimagery.form.v1'
+const HIST_KEY = 'amaimagery.history.v2'
 
 export type FormState = {
   prompt: string
@@ -27,6 +27,8 @@ export type HistoryItem = {
   tags: string[]
   pinned: boolean
   nsfw: boolean
+  exp?: number
+  sig?: string
 }
 
 export function saveForm(s: FormState) {
