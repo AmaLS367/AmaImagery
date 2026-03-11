@@ -3,24 +3,19 @@ Redis implementation of the TaskQueue interface.
 """
 
 import asyncio
+import importlib.util
 import logging
 from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
-try:
-    from redis.asyncio import Redis as RedisRuntime
+from app.domain.providers.interfaces import ITaskQueue
+from app.metrics.queue import update_queue_size
 
-    _REDIS_AVAILABLE = True
-except Exception:  # pragma: no cover - minimal env fallback
-    RedisRuntime = None
-    _REDIS_AVAILABLE = False
+_REDIS_AVAILABLE = importlib.util.find_spec("redis.asyncio") is not None
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis as RedisClient
 else:
     RedisClient: TypeAlias = Any
-
-from app.domain.providers.interfaces import ITaskQueue
-from app.metrics.queue import update_queue_size
 
 logger = logging.getLogger(__name__)
 
