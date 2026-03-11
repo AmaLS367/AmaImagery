@@ -187,8 +187,8 @@ async def issue_tokens_rotating(user_id: str, session_id: str) -> dict[str, str]
     if r is None:
         _in_memory_families[family_key] = _family_record(rjti, exp_ts)
     else:
-        await r.hset(family_key, mapping=_family_record(rjti, exp_ts))
-        await r.expire(family_key, REFRESH_TTL_SEC)
+        await cast(Any, r.hset(family_key, mapping=_family_record(rjti, exp_ts)))
+        await cast(Any, r.expire(family_key, REFRESH_TTL_SEC))
 
     return {"access": access, "refresh": refresh}
 
@@ -227,8 +227,8 @@ async def rotate_refresh(user_id: str, session_id: str, old_jti: str) -> dict[st
     if r is None:
         _in_memory_families[family_key] = _family_record(new_jti, exp_ts)
     else:
-        await r.hset(family_key, mapping=_family_record(new_jti, exp_ts))
-        await r.expire(family_key, REFRESH_TTL_SEC)
+        await cast(Any, r.hset(family_key, mapping=_family_record(new_jti, exp_ts)))
+        await cast(Any, r.expire(family_key, REFRESH_TTL_SEC))
 
     return {"access": access, "refresh": refresh}
 

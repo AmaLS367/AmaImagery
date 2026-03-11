@@ -4,7 +4,7 @@ Redis implementation of the TaskQueue interface.
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 try:
     from redis.asyncio import Redis as RedisRuntime
@@ -15,9 +15,9 @@ except Exception:  # pragma: no cover - minimal env fallback
     _REDIS_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from redis.asyncio import Redis
+    from redis.asyncio import Redis as RedisClient
 else:
-    Redis = Any
+    RedisClient: TypeAlias = Any
 
 from app.domain.providers.interfaces import ITaskQueue
 from app.metrics.queue import update_queue_size
@@ -33,7 +33,7 @@ class RedisTaskQueue(ITaskQueue):
     Redis implementation using a list as a pure transport queue.
     """
 
-    def __init__(self, redis_client: Redis, queue_key: str = "tasks:queue") -> None:
+    def __init__(self, redis_client: RedisClient, queue_key: str = "tasks:queue") -> None:
         self.redis = redis_client
         self.queue_key = queue_key
 

@@ -6,6 +6,7 @@ import asyncio
 import os
 import signal
 import sys
+from typing import Any, cast
 
 from app.config import settings
 from app.core.logging import lg
@@ -36,7 +37,7 @@ async def init_worker_infrastructure():
             raise RuntimeError("Redis client is None after initialization")
 
         # Verify Redis connection
-        ping_result = bool(await redis_client.ping())
+        ping_result = bool(await cast(Any, redis_client.ping()))
         if not ping_result:
             raise RuntimeError("Redis ping failed")
 

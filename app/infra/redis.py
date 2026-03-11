@@ -5,7 +5,7 @@ Handles connection lifecycle (init/close) and provides a global accessor.
 """
 
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 try:
     from redis.asyncio import Redis as RedisRuntime
@@ -16,15 +16,15 @@ except Exception:  # pragma: no cover - exercised only in minimal test envs
     _REDIS_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from redis.asyncio import Redis
+    from redis.asyncio import Redis as RedisClient
 else:
-    Redis = Any
+    RedisClient: TypeAlias = Any
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_redis_client: Redis | None = None
+_redis_client: RedisClient | None = None
 
 
 async def init_redis() -> None:
@@ -65,5 +65,5 @@ async def close_redis() -> None:
         _redis_client = None
 
 
-def get_redis() -> Redis | None:
+def get_redis() -> RedisClient | None:
     return _redis_client
