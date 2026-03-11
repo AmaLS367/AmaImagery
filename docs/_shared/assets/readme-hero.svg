@@ -1,0 +1,36 @@
+<svg width="1200" height="500" viewBox="0 0 1200 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="500" rx="28" fill="#0E1726"/>
+  <rect x="36" y="36" width="1128" height="428" rx="24" fill="#142338" stroke="#31445E"/>
+
+  <rect x="72" y="70" width="140" height="34" rx="17" fill="#17314D"/>
+  <text x="142" y="92" fill="#EAF4FF" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" text-anchor="middle">AmaImagery</text>
+
+  <rect x="226" y="70" width="132" height="34" rx="17" fill="#4A2D18"/>
+  <text x="292" y="92" fill="#FFE9D2" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" text-anchor="middle">ComfyUI First</text>
+
+  <text x="74" y="146" fill="#F8FAFC" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700">Operational image generation</text>
+  <text x="74" y="194" fill="#F8FAFC" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700">for teams that want control.</text>
+
+  <text x="76" y="254" fill="#C8D5E6" font-family="Arial, Helvetica, sans-serif" font-size="20">FastAPI backend, async workers, provider-aware readiness,</text>
+  <text x="76" y="282" fill="#C8D5E6" font-family="Arial, Helvetica, sans-serif" font-size="20">artifact delivery, and a real admin surface.</text>
+
+  <rect x="76" y="336" width="234" height="56" rx="18" fill="#E79B57"/>
+  <text x="193" y="371" fill="#0E1726" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" text-anchor="middle">Async API + Worker</text>
+
+  <rect x="326" y="336" width="232" height="56" rx="18" fill="#17314D" fill-opacity="0.55" stroke="#35506F"/>
+  <text x="442" y="371" fill="#EAF4FF" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" text-anchor="middle">Health + Readiness</text>
+
+  <rect x="770" y="106" width="286" height="74" rx="18" fill="#182A41"/>
+  <text x="798" y="137" fill="#F4F8FD" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700">Provider Runtime</text>
+  <text x="798" y="161" fill="#C8D5E6" font-family="Arial, Helvetica, sans-serif" font-size="15">Boot state, polling, artifacts.</text>
+
+  <rect x="770" y="198" width="286" height="88" rx="18" fill="#22283A"/>
+  <text x="798" y="230" fill="#FFF3E4" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700">Unified Contract</text>
+  <text x="798" y="254" fill="#E7D8C6" font-family="Arial, Helvetica, sans-serif" font-size="15">Queued to completed, with</text>
+  <text x="798" y="274" fill="#E7D8C6" font-family="Arial, Helvetica, sans-serif" font-size="15">explicit failure state.</text>
+
+  <rect x="770" y="304" width="286" height="88" rx="18" fill="#163227"/>
+  <text x="798" y="336" fill="#F0FFF5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700">Inspectable By Design</text>
+  <text x="798" y="360" fill="#D0E8D7" font-family="Arial, Helvetica, sans-serif" font-size="15">Status, history, admin, and</text>
+  <text x="798" y="380" fill="#D0E8D7" font-family="Arial, Helvetica, sans-serif" font-size="15">downloads stay aligned.</text>
+</svg>

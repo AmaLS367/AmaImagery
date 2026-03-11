@@ -1,18 +1,33 @@
 # Contributing to AmaImagery
 
-> Bring changes that make the system clearer, safer, or more durable.
+> Bring changes that leave the system clearer, safer, and more durable than you found it.
 
-AmaImagery is maintained like infrastructure, not like a throwaway experiment. Good contributions improve the operating shape of the project as much as the feature set.
+AmaImagery is maintained like infrastructure. The bar is not just "does it work?" but "does it make the runtime, contracts, and maintenance story better?"
 
 ---
 
-## Before You Open A PR
+## Before You Touch The Code
 
-- Read the top-level [README](./README.md)
-- Check whether the problem already has an issue or active PR
-- If the topic is security-sensitive, stop and use [SECURITY.md](./SECURITY.md) instead of a public issue
+<table>
+  <tr>
+    <td width="33%">
+      <strong>Read the shape</strong><br/>
+      Start with <a href="./README.md">README</a> so your change fits the actual product surface.
+    </td>
+    <td width="33%">
+      <strong>Check overlap</strong><br/>
+      Look for existing issues and PRs before starting adjacent work.
+    </td>
+    <td width="33%">
+      <strong>Route security privately</strong><br/>
+      If the topic is security-sensitive, use <a href="./SECURITY.md">SECURITY.md</a>, not a public issue.
+    </td>
+  </tr>
+</table>
 
-## Get To A Working Environment
+---
+
+## Get To Green
 
 ```bash
 python -m venv .venv
@@ -28,29 +43,19 @@ cd frontend
 npm ci
 ```
 
+---
+
 ## The Standard
-
-Contributions should be:
-
-- focused rather than sprawling
-- production-minded rather than demo-minded
-- explicit about behavior changes
-- backed by tests when behavior changes
-- accompanied by doc updates when setup, runtime, or policy changes
-
-## What Good Looks Like
 
 | Area | Expectation |
 | --- | --- |
 | Scope | One coherent problem per PR |
-| Code quality | Clear responsibilities, minimal incidental churn |
+| Code quality | Minimal incidental churn, clear responsibilities |
 | Contracts | Public behavior stays stable unless change is intentional and documented |
-| Tests | New behavior gets verification, not just implementation churn |
-| Docs | Setup, runtime, licensing, and policy changes are updated in the same PR |
+| Tests | Behavior changes get verification, not just implementation churn |
+| Docs | Setup, runtime, and policy changes are updated in the same PR |
 
 ## Quality Gates
-
-Run the same checks the repository expects:
 
 ```bash
 python -m ruff check app tests
@@ -58,7 +63,7 @@ python -m mypy app
 python -m pytest tests -q
 ```
 
-For frontend changes:
+Frontend:
 
 ```bash
 cd frontend
@@ -66,28 +71,55 @@ npm run typecheck
 npm run build
 ```
 
-## Contribution Style
-
-- Prefer small, reviewable commits
-- Avoid mixing unrelated refactors into a bug fix
-- Keep comments and public-facing docs in English
-- Do not hide important tradeoffs in implementation details
+---
 
 ## Special Care Areas
 
-Changes touching these surfaces deserve extra care:
+<details open>
+  <summary><strong>Provider and worker changes</strong></summary>
+  <br/>
 
-- provider lifecycle and failure handling
-- worker terminal-state updates
-- readiness and health contracts
-- auth, cookies, tokens, and admin access control
-- artifact exposure and download behavior
+  Be explicit about:
+
+  - provider lifecycle and failure semantics
+  - worker terminal-state updates
+  - artifact persistence and download behavior
+  - readiness and health contracts
+</details>
+
+<details>
+  <summary><strong>Auth and admin changes</strong></summary>
+  <br/>
+
+  Protect:
+
+  - auth and session boundaries
+  - cookies and token handling
+  - superuser-only access rules
+  - user-visible contract consistency
+</details>
+
+<details>
+  <summary><strong>Refactors</strong></summary>
+  <br/>
+
+  Do not hide broad rewrites inside a bug fix. If a refactor is the point, make it the point.
+</details>
+
+---
+
+## Contribution Style
+
+- Prefer small, reviewable commits
+- Avoid mixing unrelated refactors into a fix
+- Keep comments and public docs in English
+- Do not bury important tradeoffs in code alone
 
 ## License
 
-By contributing, you agree that your contribution may be distributed under the repository's dual-license model:
+By contributing, you agree that contributions may be distributed under the repository's dual-license model:
 
 - `AGPL-3.0-only` for open-source use
 - a separate commercial license by written agreement with the maintainer
 
-The goal is not just to merge code. The goal is to leave the system in better shape than you found it.
+The fastest way to contribute is to be precise. The best way is to improve the project's operating shape while you are there.
