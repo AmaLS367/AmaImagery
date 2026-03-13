@@ -237,6 +237,7 @@ def _settings_signature() -> tuple[Any, ...]:
         settings.vae_id,
         settings.comfyui_base_url,
         settings.comfyui_websocket_url,
+        settings.comfyui_checkpoint_name,
         str(settings.comfyui_workflow_path or ""),
         str(settings.comfyui_workflow_map_path or ""),
         settings.comfyui_poll_interval_sec,

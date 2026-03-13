@@ -20,6 +20,14 @@
       "node": "3",
       "path": "inputs.cfg"
     },
+    "checkpoint_name": {
+      "node": "4",
+      "path": "inputs.ckpt_name"
+    },
+    "filename_prefix": {
+      "node": "9",
+      "path": "inputs.filename_prefix"
+    },
     "width": {
       "node": "5",
       "path": "inputs.width"

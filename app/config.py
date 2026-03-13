@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     providers_enabled: Annotated[list[str], NoDecode, Field(alias="PROVIDERS_ENABLED")] = ["diffusers"]
     comfyui_base_url: Annotated[str | None, Field(alias="COMFYUI_BASE_URL")] = None
     comfyui_websocket_url: Annotated[str | None, Field(alias="COMFYUI_WEBSOCKET_URL")] = None
+    comfyui_checkpoint_name: Annotated[str | None, Field(alias="COMFYUI_CHECKPOINT_NAME")] = None
     comfyui_workflow_path: Annotated[Path | None, Field(alias="COMFYUI_WORKFLOW_PATH")] = None
     comfyui_workflow_map_path: Annotated[Path | None, Field(alias="COMFYUI_WORKFLOW_MAP_PATH")] = None
     comfyui_poll_interval_sec: Annotated[float, Field(alias="COMFYUI_POLL_INTERVAL_SEC")] = 1.5
@@ -317,7 +318,14 @@ class Settings(BaseSettings):
             raise ValueError("TORCH_DTYPE must be fp16|bf16|fp32")
         return s
 
-    @field_validator("hf_token", "hf_home", "transformers_cache", "base_url", mode="before")
+    @field_validator(
+        "hf_token",
+        "hf_home",
+        "transformers_cache",
+        "base_url",
+        "comfyui_checkpoint_name",
+        mode="before",
+    )
     @classmethod
     def _empty_to_none(cls, v: Any) -> Any:
         if isinstance(v, str) and v.strip() == "":

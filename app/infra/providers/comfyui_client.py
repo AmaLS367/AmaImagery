@@ -79,13 +79,58 @@ class ComfyUIClient:
         except httpx.TimeoutException as exc:
             raise ComfyUISubmitError("ComfyUI prompt submit timed out") from exc
         except httpx.HTTPStatusError as exc:
-            raise ComfyUISubmitError(f"ComfyUI prompt submit returned HTTP {exc.response.status_code}") from exc
+            detail = self._extract_error_detail(exc.response)
+            message = f"ComfyUI prompt submit returned HTTP {exc.response.status_code}"
+            if detail:
+                message = f"{message}: {detail}"
+            raise ComfyUISubmitError(message) from exc
         except httpx.RequestError as exc:
             raise ComfyUISubmitError(f"ComfyUI prompt submit failed: {exc}") from exc
         payload = self._decode_json(response, "prompt submit", ComfyUISubmitError)
         if not isinstance(payload, dict):
             raise ComfyUISubmitError("ComfyUI prompt submit returned malformed payload")
         return payload
+
+    async def list_checkpoint_names(self) -> list[str]:
+        try:
+            response = await self._client.get(urljoin(self.base_url, "object_info"))
+            response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise ComfyUIConfigurationError("ComfyUI object_info request timed out") from exc
+        except httpx.HTTPStatusError as exc:
+            detail = self._extract_error_detail(exc.response)
+            message = f"ComfyUI object_info returned HTTP {exc.response.status_code}"
+            if detail:
+                message = f"{message}: {detail}"
+            raise ComfyUIConfigurationError(message) from exc
+        except httpx.RequestError as exc:
+            raise ComfyUIConfigurationError(f"ComfyUI object_info request failed: {exc}") from exc
+
+        payload = self._decode_json(response, "object_info", ComfyUIConfigurationError)
+        if not isinstance(payload, dict):
+            raise ComfyUIConfigurationError("ComfyUI object_info returned malformed payload")
+
+        node = payload.get("CheckpointLoaderSimple")
+        if not isinstance(node, dict):
+            return []
+
+        node_input = node.get("input")
+        if not isinstance(node_input, dict):
+            return []
+
+        required = node_input.get("required")
+        if not isinstance(required, dict):
+            return []
+
+        ckpt_name = required.get("ckpt_name")
+        if not isinstance(ckpt_name, list) or not ckpt_name:
+            return []
+
+        options = ckpt_name[0]
+        if not isinstance(options, list):
+            return []
+
+        return [str(option) for option in options if str(option).strip()]
 
     async def fetch_history(self, prompt_id: str) -> dict[str, Any]:
         try:
@@ -242,3 +287,48 @@ class ComfyUIClient:
             return True
 
         return False
+
+    def _extract_error_detail(self, response: httpx.Response) -> str | None:
+        text = (response.text or "").strip()
+        if not text:
+            return None
+
+        try:
+            payload = response.json()
+        except Exception:
+            compact = " ".join(text.split())
+            return compact[:300]
+
+        if isinstance(payload, dict):
+            error = payload.get("error")
+            if isinstance(error, dict):
+                parts: list[str] = []
+                message = error.get("message")
+                if message:
+                    parts.append(str(message))
+
+                node_errors = payload.get("node_errors")
+                if isinstance(node_errors, dict):
+                    for node_id, node_error in node_errors.items():
+                        if not isinstance(node_error, dict):
+                            continue
+                        errors = node_error.get("errors")
+                        class_type = node_error.get("class_type")
+                        if not isinstance(errors, list) or not errors:
+                            continue
+                        first = errors[0]
+                        if isinstance(first, dict):
+                            details = first.get("details") or first.get("message")
+                            if details:
+                                if class_type:
+                                    parts.append(f"{class_type}({node_id}): {details}")
+                                else:
+                                    parts.append(str(details))
+                                break
+
+                compact = " | ".join(part for part in parts if part)
+                if compact:
+                    return compact[:300]
+
+        compact = " ".join(text.split())
+        return compact[:300]
