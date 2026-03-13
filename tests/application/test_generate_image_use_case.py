@@ -280,3 +280,33 @@ async def test_generate_image_safety_policy_blocked(use_case, mock_uow):
     assert result.success is False
     assert result.error is not None
     assert "blocked" in result.error.lower() or "safety" in result.error.lower()
+
+
+@pytest.mark.asyncio
+async def test_generate_image_global_nsfw_allow_bypasses_blocking(use_case, mock_uow, mock_task_queue):
+    """Test that NSFW_ALLOW=true disables generation-time NSFW blocking globally."""
+    command = GenerateImageCommand(
+        user_id="user-123",
+        prompt="nsfw content",
+        negative_prompt="explicit",
+        width=512,
+        height=512,
+        steps=28,
+    )
+
+    user = MagicMock(id="user-123")
+    user.settings = MagicMock()
+    user.settings.nsfw_allow = False
+    mock_uow.users.get = AsyncMock(return_value=user)
+
+    with patch("app.services.generation_service.cfg.nsfw_allow", True):
+        with patch("app.services.generation_service.is_blocked", return_value=True) as mock_is_blocked:
+            with patch("app.services.generation_service.is_blocked_forced", return_value=True) as mock_forced:
+                result = await use_case(command)
+
+    assert result.success is True
+    assert result.data is not None
+    assert result.data.status == "queued"
+    mock_task_queue.enqueue.assert_called_once()
+    mock_forced.assert_not_called()
+    mock_is_blocked.assert_not_called()

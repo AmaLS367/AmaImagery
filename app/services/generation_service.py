@@ -46,6 +46,11 @@ class GenerationService:
 
     def _check_safety_policies(self, request: GenReq, user: Any | None) -> None:
         allow_global = cfg.nsfw_allow
+        # Global allow is an explicit operator override: generation requests should
+        # bypass NSFW blocking entirely, while preserving user-level settings/API.
+        if allow_global:
+            return
+
         allow_user = False
 
         if user is not None:
@@ -53,12 +58,8 @@ class GenerationService:
             if isinstance(settings_blob, dict):
                 allow_user = bool(settings_blob.get("nsfw_allow", False))
 
-        if not allow_global:
-            if is_blocked_forced(request.prompt):
-                raise ValueError("Blocked by safety policy.")
-        else:
-            if not allow_user and is_blocked_forced(request.prompt):
-                raise ValueError("Blocked by safety policy.")
+        if not allow_user and is_blocked_forced(request.prompt):
+            raise ValueError("Blocked by safety policy.")
 
         if is_blocked(request.prompt) or is_blocked(request.negative_prompt):
             lg("safety").bind(
