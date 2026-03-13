@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
+from app.config import settings
 from app.domain.providers.errors import ProviderOperationError
 from app.domain.providers.interfaces import GenerationRequest, IImageProvider, ProviderResult, ProviderSubmission
 from app.files.artifacts import get_artifact_service
@@ -30,6 +31,7 @@ class ComfyUIProvider(IImageProvider):
     async def submit(self, request: GenerationRequest) -> ProviderSubmission:
         try:
             workflow, workflow_map = load_workflow_bundle()
+            checkpoint_name = await self._resolve_checkpoint_name(workflow, workflow_map)
             rendered = inject_request(
                 workflow,
                 workflow_map,
@@ -41,6 +43,8 @@ class ComfyUIProvider(IImageProvider):
                     "height": request.height,
                     "steps": request.steps or 28,
                     "cfg": float(request.guidance_scale or 7.5),
+                    "checkpoint_name": checkpoint_name,
+                    "filename_prefix": _build_filename_prefix(request.generation_id),
                 },
             )
             payload = await self.client.submit_prompt(rendered)
@@ -185,6 +189,42 @@ class ComfyUIProvider(IImageProvider):
     def supports_features(self, features: set[str]) -> bool:
         return features.issubset({"text2image"})
 
+    async def _resolve_checkpoint_name(self, workflow: dict[str, Any], workflow_map: dict[str, Any]) -> str | None:
+        available = await self.client.list_checkpoint_names()
+        if not available:
+            return _extract_workflow_checkpoint_name(workflow, workflow_map)
+
+        configured = settings.comfyui_checkpoint_name
+        if configured:
+            resolved = _match_checkpoint_name(configured, available)
+            if resolved is None:
+                raise ComfyUISubmitError(
+                    "Configured COMFYUI_CHECKPOINT_NAME was not found. "
+                    f"Requested: {configured}. Available: {available}"
+                )
+            return resolved
+
+        workflow_checkpoint = _extract_workflow_checkpoint_name(workflow, workflow_map)
+        if workflow_checkpoint:
+            resolved = _match_checkpoint_name(workflow_checkpoint, available)
+            if resolved is not None:
+                return resolved
+
+        model_id = settings.model_id
+        if model_id:
+            resolved = _match_checkpoint_name(model_id, available)
+            if resolved is not None:
+                return resolved
+
+        if len(available) == 1:
+            return available[0]
+
+        raise ComfyUISubmitError(
+            "Unable to resolve a ComfyUI checkpoint name automatically. "
+            f"Available checkpoints: {available}. "
+            "Set COMFYUI_CHECKPOINT_NAME to the desired checkpoint."
+        )
+
 
 def _extract_image_info(history: dict[str, Any], workflow_map: dict[str, Any]) -> dict[str, Any]:
     outputs = history.get("outputs", {})
@@ -232,3 +272,54 @@ def _extract_terminal_error(history: dict[str, Any]) -> str | None:
             return str(last_message)
         return f"ComfyUI execution failed ({status_str or 'unknown'})"
     return None
+
+
+def _extract_workflow_checkpoint_name(workflow: dict[str, Any], workflow_map: dict[str, Any]) -> str | None:
+    mapping = workflow_map.get("fields", {}).get("checkpoint_name")
+    if not isinstance(mapping, dict):
+        return None
+
+    node_id = str(mapping.get("node") or "")
+    path = str(mapping.get("path") or "")
+    if not node_id or not path:
+        return None
+
+    node = workflow.get(node_id)
+    if not isinstance(node, dict):
+        return None
+
+    current: Any = node
+    for part in path.split("."):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+
+    if isinstance(current, str) and current.strip():
+        return current
+    return None
+
+
+def _match_checkpoint_name(candidate: str | None, available: list[str]) -> str | None:
+    if not candidate:
+        return None
+
+    normalized = str(candidate).strip()
+    if not normalized:
+        return None
+
+    if normalized in available:
+        return normalized
+
+    target_basename = Path(normalized).name
+    for option in available:
+        if Path(option).name == target_basename:
+            return option
+
+    return None
+
+
+def _build_filename_prefix(generation_id: str | None) -> str:
+    base = "AmaImagery"
+    if not generation_id:
+        return base
+    return f"{base}_{generation_id}"

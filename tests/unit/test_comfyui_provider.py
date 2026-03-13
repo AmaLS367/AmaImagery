@@ -14,6 +14,7 @@ class _FakeClient:
         self.wait_for_completion = AsyncMock()
         self.fetch_image_bytes = AsyncMock()
         self.ping = AsyncMock(return_value=True)
+        self.list_checkpoint_names = AsyncMock(return_value=["checkpoints/mock-model.safetensors"])
 
 
 @pytest.mark.asyncio
@@ -99,3 +100,32 @@ async def test_comfyui_wait_artifact_failure_is_explicit():
 
     assert exc_info.value.error_code == "artifact_retrieval_failed"
     assert exc_info.value.provider_job_id == "prompt-3"
+
+
+@pytest.mark.asyncio
+async def test_comfyui_submit_uses_resolved_checkpoint_name(monkeypatch):
+    client = _FakeClient()
+    client.list_checkpoint_names = AsyncMock(
+        return_value=[
+            "checkpoints/illustriousXL.safetensors",
+            "checkpoints/illustriousXL_v2.0.safetensors",
+        ]
+    )
+    client.submit_prompt.return_value = {"prompt_id": "prompt-4"}
+    provider = ComfyUIProvider(client=client)
+
+    captured: dict[str, object] = {}
+
+    def _inject_request(workflow, workflow_map, values):
+        captured["values"] = values
+        return {"1": {}}
+
+    monkeypatch.setattr("app.config.settings.comfyui_checkpoint_name", "checkpoints/illustriousXL_v2.0.safetensors")
+
+    with patch("app.infra.providers.comfyui_provider.load_workflow_bundle", return_value=({"1": {}}, {})):
+        with patch("app.infra.providers.comfyui_provider.inject_request", side_effect=_inject_request):
+            submission = await provider.submit(GenerationRequest(prompt="hello", generation_id="gen-4"))
+
+    assert submission.provider_job_id == "prompt-4"
+    assert captured["values"]["checkpoint_name"] == "checkpoints/illustriousXL_v2.0.safetensors"
+    assert captured["values"]["filename_prefix"] == "AmaImagery_gen-4"

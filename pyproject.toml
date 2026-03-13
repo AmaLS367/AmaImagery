@@ -263,6 +263,7 @@ module = [
     "wordfreq.*",
     "prometheus_client.*",
     "redis.*",
+    "websockets",
     "websockets.*",
     "bcrypt",
 ]
