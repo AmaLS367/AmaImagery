@@ -33,6 +33,8 @@ AmaImagery is maintained like infrastructure. The bar is not only whether the co
 python -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[dev]"
+# install the ML extra only for local diffusers/provider work
+pip install -e ".[ml]"
 alembic upgrade head
 ```
 

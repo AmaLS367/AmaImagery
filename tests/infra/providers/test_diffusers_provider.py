@@ -8,6 +8,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+
+pytest.importorskip("torch")
+pytest.importorskip("diffusers")
+
 import torch
 from PIL import Image
 

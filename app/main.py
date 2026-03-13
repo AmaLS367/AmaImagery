@@ -13,7 +13,6 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from typing import Any
 
-import torch
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -107,6 +106,8 @@ def _configure_system() -> None:
 
     # PyTorch Optimization
     try:
+        import torch
+
         torch.set_num_threads(max(1, int(settings.torch_threads)))
         if torch.cuda.is_available():
             torch.cuda.set_per_process_memory_fraction(float(settings.cuda_vram_fraction))

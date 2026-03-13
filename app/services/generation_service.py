@@ -6,8 +6,6 @@ Provides pure domain logic for validation, safety checks, and prompt processing.
 
 from typing import Any, cast
 
-import torch
-
 from app.config import settings
 from app.core.logging import lg
 from app.core.safety import is_blocked, is_blocked_forced
@@ -69,11 +67,16 @@ class GenerationService:
             raise ValueError("Blocked by safety policy.")
 
     def _device_vram_mb(self) -> int:
-        if torch.cuda.is_available():
-            try:
-                return int(torch.cuda.get_device_properties(0).total_memory // (1024 * 1024))
-            except Exception:
-                return 0
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                try:
+                    return int(torch.cuda.get_device_properties(0).total_memory // (1024 * 1024))
+                except Exception:
+                    return 0
+        except Exception:
+            return 0
         return 0
 
     def _effective_max_size(self) -> int:

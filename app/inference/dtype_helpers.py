@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-import torch
 
+def get_unet_dtype(pipe: Any) -> Any:
+    import torch
 
-def get_unet_dtype(pipe: Any) -> torch.dtype:
     try:
         dtype = cast(torch.dtype, next(pipe.unet.parameters()).dtype)
 
@@ -25,7 +25,7 @@ def get_unet_dtype(pipe: Any) -> torch.dtype:
             return torch.float32
 
 
-def align_to_unet_dtype(tensor: torch.Tensor, pipe: Any) -> torch.Tensor:
+def align_to_unet_dtype(tensor: Any, pipe: Any) -> Any:
     try:
         return tensor.to(dtype=get_unet_dtype(pipe), device=pipe.device)
     except Exception:

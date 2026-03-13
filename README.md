@@ -117,6 +117,8 @@ The runtime path is intentionally coherent:
   python -m venv .venv
   .venv\Scripts\activate
   pip install -e ".[dev]"
+  # add ML runtime only when you need local diffusers execution
+  pip install -e ".[ml]"
   alembic upgrade head
   python run.py
   python -m app.entrypoints.generation_worker
