@@ -1,24 +1,44 @@
-name: ci
+name: release
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
-      - develop
+    tags:
+      - "v*"
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  version-check:
+    name: version-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches project version
+        shell: python
+        run: |
+          import tomllib
+          from pathlib import Path
+
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          project_version = pyproject["project"]["version"]
+          tag = "${{ github.ref_name }}"
+          expected = f"v{project_version}"
+          if tag != expected:
+              raise SystemExit(f"Tag {tag!r} does not match project version {expected!r}")
+
   frontend:
     name: frontend
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: version-check
     defaults:
       run:
         working-directory: frontend
@@ -45,10 +65,18 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          if-no-files-found: error
+
   backend-fast:
     name: backend-fast
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: version-check
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,7 +101,7 @@ jobs:
 
       - name: Backend fast tests
         env:
-          SECRET_KEY: test-secret-key-for-ci
+          SECRET_KEY: test-secret-key-for-release
           LIMITS_ENABLED: "true"
           NO_REDIS: "true"
           DEBUG: "true"
@@ -85,6 +113,7 @@ jobs:
     name: backend-integration
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    needs: version-check
     services:
       postgres:
         image: postgres:15
@@ -127,7 +156,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/testdb
           REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test-secret-key-for-ci
+          SECRET_KEY: test-secret-key-for-release
           LIMITS_ENABLED: "true"
           NO_REDIS: "false"
           DEBUG: "true"
@@ -135,12 +164,38 @@ jobs:
         run: |
           pytest tests --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=60 --junitxml=pytest.xml
 
-      - name: Upload backend artifacts
+      - name: Upload release backend artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-integration-artifacts
+          name: release-backend-artifacts
           path: |
             coverage.xml
             pytest.xml
           if-no-files-found: warn
+
+  create-release:
+    name: create-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - version-check
+      - frontend
+      - backend-fast
+      - backend-integration
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: release-assets/frontend-dist
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

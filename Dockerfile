@@ -33,7 +33,7 @@ COPY pyproject.toml README.md ./
 RUN mkdir -p /app/app \
     && printf "__all__ = []\n" > /app/app/__init__.py \
     && pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir .
+    && pip install --no-cache-dir ".[ml]"
 
 # Validate and complete the runtime dependency set explicitly.
 RUN pip install --no-cache-dir \

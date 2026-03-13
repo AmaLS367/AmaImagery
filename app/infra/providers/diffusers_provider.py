@@ -265,7 +265,7 @@ class DiffusersProvider(IImageProvider):
         except Exception:
             return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def _prepare_pipeline_resources(self, pipeline: Any, device: torch.device, seed: int | None) -> torch.dtype:
+    def _prepare_pipeline_resources(self, pipeline: Any, device: torch.device, seed: int | None) -> Any:
         logger.info("generation._prepare_pipeline_resources.getting_dtype", extra={"event_type": "app"})
         unet_dtype = get_unet_dtype(pipeline)
         logger.info(

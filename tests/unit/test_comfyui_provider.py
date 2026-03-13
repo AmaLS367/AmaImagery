@@ -120,7 +120,10 @@ async def test_comfyui_submit_uses_resolved_checkpoint_name(monkeypatch):
         captured["values"] = values
         return {"1": {}}
 
-    monkeypatch.setattr("app.config.settings.comfyui_checkpoint_name", "checkpoints/illustriousXL_v2.0.safetensors")
+    monkeypatch.setattr(
+        "app.infra.providers.comfyui_provider.settings.comfyui_checkpoint_name",
+        "checkpoints/illustriousXL_v2.0.safetensors",
+    )
 
     with patch("app.infra.providers.comfyui_provider.load_workflow_bundle", return_value=({"1": {}}, {})):
         with patch("app.infra.providers.comfyui_provider.inject_request", side_effect=_inject_request):

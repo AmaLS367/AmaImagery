@@ -9,7 +9,6 @@ import io
 from typing import Any, cast
 
 import numpy as np
-import torch
 from PIL import Image, ImageOps
 
 from app.core.logging import logger
@@ -55,9 +54,9 @@ class ImageProcessingService:
 
         return cast(Image.Image, image)
 
-    def _convert_to_pil_image(self, image_data: torch.Tensor | np.ndarray | Any) -> Image.Image:
+    def _convert_to_pil_image(self, image_data: Any) -> Image.Image:
         try:
-            if isinstance(image_data, torch.Tensor):
+            if self._is_torch_tensor(image_data):
                 # Convert PyTorch tensor to numpy array
                 array = image_data.detach().cpu().numpy()
 
@@ -91,3 +90,11 @@ class ImageProcessingService:
         except Exception as e:
             logger.warning(f"Failed to convert image to PIL: {e}")
             return Image.new("RGB", (512, 512), color="black")
+
+    def _is_torch_tensor(self, value: Any) -> bool:
+        try:
+            import torch
+
+            return isinstance(value, torch.Tensor)
+        except Exception:
+            return False

@@ -1,9 +1,3 @@
-"""
-Infrastructure providers package.
-"""
+"""Infrastructure providers package."""
 
-from app.infra.providers.diffusers_provider import DiffusersProvider
-
-__all__ = [
-    "DiffusersProvider",
-]
+__all__: list[str] = []
