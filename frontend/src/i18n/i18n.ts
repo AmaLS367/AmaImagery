@@ -56,7 +56,7 @@ void i18n
        },
       ru: { common: ru_common, errors: ru_errors, generate: ru_generate, settings: ru_settings, history: ru_history, about: ru_about,
             privacy: ru_privacy, promptGuide: ru_promptGuide, login: ru_login, register: ru_register, reset: ru_reset, error404: ru_error404,
-            navtop: ru_navtop, landing: ru_landing, faq: ru_faq
+            navtop: ru_navtop, landing: ru_landing, faq: ru_faq,
        },
     },
     lng: detectLang(),

@@ -1,5 +1,21 @@
+import { motion } from 'framer-motion'
 import { EditorialFrame } from '../components/editorial/EditorialFrame'
-import { SurfacePanel } from '../components/ui/foundation'
+import { SurfacePanel, SectionHeading } from '../components/ui/foundation'
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 }
+}
 
 const sections = [
   {
@@ -31,19 +47,30 @@ const sections = [
 export default function Privacy() {
   return (
     <EditorialFrame
-      eyebrow="Privacy"
-      title="Privacy is framed around how the product actually works."
-      summary="This page covers the operational data used by AmaImagery: account access, generation records, shell settings, and the controls available to the user."
+      eyebrow="Privacy Policy"
+      title="How we handle your data with professional care."
+      summary="Learn about the data AmaImagery collects, why it's needed, and the controls available to you."
       pills={['Last updated March 14, 2026', 'Operational data only', 'Account controls']}
     >
-      <div className="grid gap-6 md:grid-cols-2">
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+      >
         {sections.map((section) => (
-          <SurfacePanel key={section.title} className="space-y-3 p-6">
-            <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em] text-foreground">{section.title}</h2>
-            <p className="text-sm leading-6 text-muted-foreground">{section.body}</p>
-          </SurfacePanel>
+          <motion.div key={section.title} variants={item}>
+            <SurfacePanel className="h-full p-8 space-y-4 hover:border-primary/30 transition-colors">
+              <h3 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">
+                {section.title}
+              </h3>
+              <p className="text-base text-foreground/60 dark:text-white/60 leading-relaxed">
+                {section.body}
+              </p>
+            </SurfacePanel>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </EditorialFrame>
   )
 }
