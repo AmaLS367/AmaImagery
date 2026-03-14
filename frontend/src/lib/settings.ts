@@ -112,9 +112,15 @@ export function applySettingsToDOM(s: Settings) {
   r.style.setProperty('--ring', hsl)
   r.classList.toggle('dark', s.theme === 'dark')
   r.classList.toggle('reduce-motion', s.motion === 0)
+  r.classList.toggle('expressive-motion', s.motion === 2)
   r.style.setProperty('--motion-mult', String(s.motion === 2 ? 1.4 : s.motion === 1 ? 1 : 0))
   r.style.setProperty('--radius', s.density === 'compact' ? '18px' : '24px')
   r.dataset.visualMode = s.visualMode
+  r.dataset.shellPreset = s.shellPreset
+  r.dataset.componentStyle = s.componentStyle
+  r.dataset.density = s.density
+  r.dataset.glass = s.glass ? 'on' : 'off'
+  r.dataset.motion = String(s.motion)
 }
 
 export function hexToHslString(hex: string): string | null {

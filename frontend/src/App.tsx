@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { MotionConfig } from 'framer-motion'
 import {
   BrowserRouter,
   Navigate,
@@ -230,9 +231,19 @@ function AppShell() {
 }
 
 export default function App() {
+  const { settings } = useSettings()
+
   return (
-    <BrowserRouter>
-      <AppShell />
-    </BrowserRouter>
+    <MotionConfig
+      reducedMotion={settings.motion === 0 ? 'always' : 'never'}
+      transition={{
+        duration: settings.motion === 2 ? 0.55 : 0.3,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
+      <BrowserRouter>
+        <AppShell />
+      </BrowserRouter>
+    </MotionConfig>
   )
 }
