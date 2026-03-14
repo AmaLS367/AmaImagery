@@ -61,7 +61,7 @@ function PageFrame({
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
       <Topbar theme={theme} toggleTheme={toggleTheme} />
-      <main className="container flex-1 pt-0">{children}</main>
+      <main className="flex-1">{children}</main>
       {showFooter ? <Footbar /> : null}
     </div>
   )

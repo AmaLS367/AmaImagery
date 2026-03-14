@@ -80,25 +80,28 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
-      <div className="container flex h-16 items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/72 backdrop-blur-xl">
+      <div className="page-shell flex h-20 items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-6">
-          <NavLink to={appRoutes.landing} className="flex items-center gap-2 font-semibold">
-            <div className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_16px_theme(colors.primary.DEFAULT)]" />
-            <span>{t('appName')}</span>
+          <NavLink to={appRoutes.landing} className="flex items-center gap-3 font-semibold">
+            <div className="h-3 w-3 rounded-full bg-primary shadow-[0_0_24px_theme(colors.primary.DEFAULT)]" />
+            <div className="flex flex-col">
+              <span className="font-display text-lg leading-none tracking-[-0.06em]">{t('appName')}</span>
+              <span className="hidden text-[11px] uppercase tracking-[0.32em] text-muted-foreground md:inline">Creative image system</span>
+            </div>
           </NavLink>
 
-          <nav className="hidden items-center gap-2 md:flex" aria-label="Primary">
+          <nav className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/70 p-1.5 shadow-panel md:flex" aria-label="Primary">
             {productLinks.map((link) => (
               <NavLink
                 key={link.href}
                 to={link.href}
                 className={({ isActive }) =>
                   [
-                    'rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+                    'rounded-full px-4 py-2 text-sm font-semibold tracking-[-0.02em] transition-colors',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                      ? 'bg-primary text-primary-foreground shadow-glow'
+                      : 'text-muted-foreground hover:bg-card hover:text-foreground',
                   ].join(' ')
                 }
               >
@@ -146,7 +149,7 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
             )}
           </AnimatePresence>
 
-          <Button variant="secondary" size="sm" onClick={toggleTheme} aria-label="Toggle theme">
+          <Button variant="secondary" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
           </Button>
           <LanguageSwitcher compact />
