@@ -1,0 +1,49 @@
+{
+  "hero": {
+    "title": "Frequently asked questions",
+    "summary": "Find answers about generation, quality, history, and your account — organized by topic and fully searchable.",
+    "pill1": "Searchable",
+    "pill2": "Category-based"
+  },
+  "search_placeholder": "Search the FAQ",
+  "categories": {
+    "getting-started": "Getting started",
+    "quality": "Quality",
+    "runtime": "Process",
+    "history": "History",
+    "account": "Account"
+  },
+  "no_results": "No answer matched the current query. Try another keyword or switch categories.",
+  "items": {
+    "getting-started": {
+      "q1": "What should I do before the first run?",
+      "a1": "Start with a focused prompt, keep the subject and lighting explicit, and avoid stacking too many stylistic requests at once.",
+      "q2": "When should I use a reference image?",
+      "a2": "Add one when pose, framing, or lighting needs to stay anchored. It is usually better than over-describing those constraints in text."
+    },
+    "quality": {
+      "q1": "How do I improve output quality?",
+      "a1": "Raise steps carefully, keep the scene readable, and use negative guidance for distortion or clutter instead of padding the prompt with unrelated adjectives.",
+      "q2": "Why do similar prompts still vary?",
+      "a2": "The seed, model behavior, and system conditions can all shift the result. Save strong outputs to history and reuse their settings when you want consistency."
+    },
+    "runtime": {
+      "q1": "What does queued mean?",
+      "a1": "Your request has been accepted but is still waiting for available system capacity. The generate page keeps that state visible until the engine begins rendering.",
+      "q2": "What should I do after an error state?",
+      "a2": "Retry with the same settings if the prompt is still valid, or reduce size and CFG if the system is failing under load."
+    },
+    "history": {
+      "q1": "Can I search past generations?",
+      "a1": "Yes. History supports prompt search, ratio filters, CFG bands, and a metadata table for scanning steps, seed, and timestamps.",
+      "q2": "How long are results kept?",
+      "a2": "The visible archive depth follows your history limit setting, which can be adjusted from the settings control center."
+    },
+    "account": {
+      "q1": "Why are login and recovery on different pages?",
+      "a1": "The auth flow stays explicit so sign-in, recovery, and reset can each have their own states without collapsing into a single mixed-purpose screen.",
+      "q2": "Where can I change interface behavior?",
+      "a2": "Open Settings to control theme, accent, notifications, queue behavior, safety defaults, presets, density, and visual mode."
+    }
+  }
+}
