@@ -1,9 +1,25 @@
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 
 import { EditorialFrame } from '../components/editorial/EditorialFrame'
 import { Button } from '../components/ui/button'
 import { SectionHeading, SurfacePanel } from '../components/ui/foundation'
 import { appRoutes } from '../lib/routes'
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 }
+}
 
 const principles = [
   {
@@ -38,57 +54,76 @@ const workflow = [
 export default function About() {
   return (
     <EditorialFrame
-      eyebrow="About"
-      title="AmaImagery is a premium image-generation shell built around clarity."
+      eyebrow="About AmaImagery"
+      title="A premium image-generation shell built around absolute clarity."
       summary="The product keeps generation, history, settings, and recovery as separate real pages while preserving one coherent runtime story for the user."
       pills={['Creator-focused', 'Readable runtime', 'Editorial shell']}
     >
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <SurfacePanel className="space-y-6 p-6 md:p-8">
+      <div className="grid gap-12 xl:grid-cols-[1fr_1fr] items-start">
+        <motion.div 
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="space-y-10"
+        >
           <SectionHeading
             title="Why the system exists"
             description="The interface is designed so prompt work, queue behavior, history fidelity, and shell controls all feel like parts of the same product instead of separate experiments."
           />
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {principles.map((principle) => (
-              <SurfacePanel key={principle.title} className="rounded-[24px] p-5 shadow-none">
-                <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">{principle.title}</h2>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">{principle.body}</p>
-              </SurfacePanel>
+              <motion.div key={principle.title} variants={item}>
+                <SurfacePanel className="p-8 space-y-4 hover:border-primary/30 transition-colors">
+                  <h3 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">
+                    {principle.title}
+                  </h3>
+                  <p className="text-base text-foreground/60 dark:text-white/60 leading-relaxed">
+                    {principle.body}
+                  </p>
+                </SurfacePanel>
+              </motion.div>
             ))}
           </div>
-        </SurfacePanel>
+        </motion.div>
 
-        <SurfacePanel className="space-y-6 p-6 md:p-8">
+        <motion.div 
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="space-y-10"
+        >
           <SectionHeading
             title="How the flow works"
             description="Each major screen owns a different job, but the product contract stays consistent from first prompt to saved result."
           />
           <ol className="space-y-4">
             {workflow.map((step, index) => (
-              <li key={step.title} className="flex gap-4 rounded-[24px] border border-border/60 bg-card/60 p-5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/12 font-semibold text-primary">
-                  {index + 1}
-                </div>
-                <div>
-                  <div className="font-display text-2xl font-semibold tracking-[-0.05em] text-foreground">{step.title}</div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.body}</p>
-                </div>
-              </li>
+              <motion.li key={step.title} variants={item}>
+                <SurfacePanel className="flex gap-6 p-8 group hover:border-primary/30 transition-colors">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 font-bold text-primary group-hover:scale-110 transition-transform">
+                    {index + 1}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">
+                      {step.title}
+                    </div>
+                    <p className="text-base text-foreground/60 dark:text-white/60 leading-relaxed">
+                      {step.body}
+                    </p>
+                  </div>
+                </SurfacePanel>
+              </motion.li>
             ))}
           </ol>
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
+          <div className="flex flex-wrap gap-4 pt-4">
+            <Button asChild size="lg" className="h-14 px-8 rounded-full font-bold">
               <Link to={appRoutes.promptGuide}>Open Prompt Guide</Link>
             </Button>
-            <Button asChild variant="secondary">
+            <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-full font-bold border-border">
               <Link to={appRoutes.history}>View History</Link>
             </Button>
-            <Button asChild variant="ghost">
-              <Link to={appRoutes.settings}>Control the shell</Link>
-            </Button>
           </div>
-        </SurfacePanel>
+        </motion.div>
       </div>
     </EditorialFrame>
   )
