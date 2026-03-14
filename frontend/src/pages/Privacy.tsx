@@ -24,7 +24,7 @@ const sections = [
   },
   {
     title: 'Contact',
-    body: 'Questions about privacy or data handling can be sent to privacy@amaimagery.local.',
+    body: 'Questions about privacy or data handling can be sent to privacy@amaimagery.com.',
   },
 ]
 
