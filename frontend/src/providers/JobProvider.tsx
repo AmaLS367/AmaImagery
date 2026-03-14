@@ -5,7 +5,7 @@ import { addHistory, type HistoryItem } from '../lib/storage'
 import { guessNSFW } from '../lib/nsfw'
 import { useSettings } from './SettingsProvider' 
 
-export type JobStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
+export type JobStatus = 'queued' | 'running' | 'completed' | 'error' | 'canceled'
 export type Job = {
   id: string
   task_id?: string
@@ -101,7 +101,7 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
             // Задача завершена успешно
             setJobs(prev => prev.map(j => j.id === id ? { 
               ...j, 
-              status: 'done', 
+              status: 'completed', 
               result: statusResp, 
               finishedAt: Date.now() 
             } : j))
