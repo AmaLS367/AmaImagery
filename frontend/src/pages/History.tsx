@@ -229,8 +229,8 @@ export default function History() {
                       <div className="font-medium text-white/90">{promptText || 'Untitled result'}</div>
                       <div className="space-y-1 text-xs leading-5 text-white/58">
                         <div>
-                          {formatRatio(item)} · CFG {Number(params.guidance_scale ?? 0).toFixed(1)} · {params.steps ?? '—'} steps · Seed{' '}
-                          {params.seed ?? 'Auto'}
+                          {formatRatio(item)} · CFG {Number(params.guidance_scale ?? 0).toFixed(1)} · {String(params.steps ?? '—')} steps · Seed{' '}
+                          {String(params.seed ?? 'Auto')}
                         </div>
                         <div>
                           Model {item.provider_name || 'AmaFusion'} · {formatTimestamp(item.created_at)}
@@ -305,8 +305,8 @@ export default function History() {
                         <td className="px-4 py-3 text-foreground">{String(item.prompt?.prompt ?? '').slice(0, 48) || 'Untitled prompt'}</td>
                         <td className="px-4 py-3 text-muted-foreground">{formatRatio(item)}</td>
                         <td className="px-4 py-3 text-muted-foreground">{Number(item.params?.guidance_scale ?? 0).toFixed(1)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.params?.steps ?? '—'}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.params?.seed ?? 'Auto'}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{String(item.params?.steps ?? '—')}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{String(item.params?.seed ?? 'Auto')}</td>
                         <td className="px-4 py-3 text-muted-foreground">{formatTimestamp(item.created_at)}</td>
                       </tr>
                     ))}
