@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import {
   BrowserRouter,
   Navigate,
@@ -13,6 +13,7 @@ import { Topbar } from './components/Topbar'
 import { configureApiHeaders } from './lib/api'
 import { appRoutes } from './lib/routes'
 import { ProductLayout } from './layouts/ProductLayout'
+import { useSettings } from './providers/SettingsProvider'
 import './i18n/i18n'
 
 const About = lazy(() => import('./pages/About'))
@@ -73,14 +74,8 @@ function PreserveQueryRedirect({ to }: { to: string }) {
 }
 
 function AppShell() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    () => (localStorage.getItem('theme') as 'light' | 'dark' | null) ?? 'light',
-  )
-
-  useEffect(() => {
-    localStorage.setItem('theme', theme)
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-  }, [theme])
+  const { settings, update } = useSettings()
+  const theme = settings.theme
 
   useEffect(() => {
     const onAuth = () => {
@@ -139,7 +134,7 @@ function AppShell() {
     }
   }, [])
 
-  const toggleTheme = () => setTheme((current) => (current === 'light' ? 'dark' : 'light'))
+  const toggleTheme = () => update('theme', theme === 'light' ? 'dark' : 'light')
 
   return (
     <>
@@ -155,7 +150,7 @@ function AppShell() {
           >
             <Route path={appRoutes.generate} element={<Generate />} />
             <Route path={appRoutes.history} element={<History />} />
-            <Route path={appRoutes.settings} element={<Settings theme={theme} toggleTheme={toggleTheme} />} />
+            <Route path={appRoutes.settings} element={<Settings />} />
           </Route>
 
           <Route
