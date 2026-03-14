@@ -6,7 +6,11 @@ import { Button } from '../components/ui/button'
 import '../styles/Register-styles.css'
 import { useTranslation } from 'react-i18next'
 
-export default function Login() {
+type LoginProps = {
+  initialMode?: 'login' | 'forgot'
+}
+
+export default function Login({ initialMode = 'login' }: LoginProps) {
   const { t } = useTranslation()
 
   type LoginData = { identifier: string; password: string }
@@ -23,11 +27,15 @@ export default function Login() {
 
   const [serverError, setServerError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [mode, setMode] = useState<'login' | 'forgot'>('login')
+  const [mode, setMode] = useState<'login' | 'forgot'>(initialMode)
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch, reset } =
     useForm<FormValues>({ resolver: zodResolver(mode === 'login' ? schemaLogin : schemaForgot), mode: 'onChange' })
 
+
+  useEffect(() => {
+    setMode(initialMode)
+  }, [initialMode])
 
   useEffect(() => {
     reset({ identifier: '', ...(mode === 'login' ? { password: '' } : {}) })
