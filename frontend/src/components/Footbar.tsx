@@ -41,19 +41,19 @@ export const Footbar = memo(function Footbar({ className }: Props) {
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.18 }}
-        className={['mt-10 w-full border-t border-border/60 bg-background text-sm text-muted-foreground', className || ''].join(' ')}
+        className={['mt-10 w-full border-t border-border/60 bg-background/70 text-sm text-muted-foreground backdrop-blur-xl', className || ''].join(' ')}
         aria-label="Footer"
       >
-        <div className="mx-auto max-w-6xl px-3 py-6 md:px-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
-            <div className="space-y-2">
-              <div className="text-lg font-semibold tracking-tight text-foreground">AmaImagery</div>
+        <div className="page-shell py-8">
+          <div className="surface-card grid grid-cols-1 gap-6 p-6 sm:grid-cols-2 md:grid-cols-4 md:p-8">
+            <div className="space-y-3">
+              <div className="font-display text-2xl font-semibold tracking-[-0.05em] text-foreground">AmaImagery</div>
               <p className="text-xs leading-relaxed text-foreground/70">{t('footbar.brandTag')}</p>
             </div>
 
             {footerColumns.map((column) => (
               <div key={column.heading ?? column.headingKey}>
-                <div className="mb-2 font-semibold text-foreground">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                   {column.heading ? column.heading : t(column.headingKey)}
                 </div>
                 <ul className="space-y-1">

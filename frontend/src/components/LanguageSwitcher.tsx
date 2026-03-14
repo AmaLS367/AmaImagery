@@ -11,7 +11,7 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
       <button
         type="button"
         onClick={toggle}
-        className="rounded-md border bg-background px-2 h-8 text-xs hover:bg-accent/50"
+        className="inline-flex h-10 items-center rounded-full border border-border/70 bg-card/80 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-foreground/75 shadow-panel hover:bg-card"
         aria-label="Switch language"
         title={lang === 'ru' ? 'Switch to English' : 'Переключить на русский'}
       >
@@ -22,7 +22,7 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
 
   return (
     <select
-      className="rounded-md border bg-background p-2 text-sm"
+      className="h-11 rounded-[18px] border border-border/70 bg-card/80 px-4 text-sm shadow-panel"
       value={lang}
       onChange={(e)=>setLang(e.target.value as 'en'|'ru')}
       aria-label="Language"
