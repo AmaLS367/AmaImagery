@@ -16,7 +16,7 @@ const footerColumns = [
     ],
   },
   {
-    heading: 'Resources',
+    headingKey: 'nav.resources',
     links: [
       { href: appRoutes.promptGuide, labelKey: 'actions.guide' },
       { href: appRoutes.history, labelKey: 'nav.history' },
@@ -24,7 +24,7 @@ const footerColumns = [
     ],
   },
   {
-    heading: 'Help',
+    headingKey: 'nav.help',
     links: [
       { href: appRoutes.faq, labelKey: 'nav.faq' },
       { href: 'mailto:support@amaimagery.com', labelKey: 'footbar.support', external: true },
@@ -52,9 +52,9 @@ export const Footbar = memo(function Footbar({ className }: Props) {
             </div>
 
             {footerColumns.map((column) => (
-              <div key={column.heading ?? column.headingKey}>
+              <div key={column.headingKey}>
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                  {column.heading ? column.heading : t(column.headingKey)}
+                  {t(column.headingKey)}
                 </div>
                 <ul className="space-y-1">
                   {column.links.map((link) => (

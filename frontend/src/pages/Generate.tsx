@@ -126,7 +126,7 @@ export default function Generate() {
     }
 
     if (activeJob.status === 'error') {
-      setError(normalizeError(activeJob.error || 'Generation failed.'))
+      setError(activeJob.error || 'Generation failed.')
       try {
         localStorage.removeItem(ACTIVE_KEY)
       } catch {
