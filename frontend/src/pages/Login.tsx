@@ -6,7 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 import { AuthFrame } from '../components/auth/AuthFrame'
 import { Button } from '../components/ui/button'
+import { requestPasswordReset } from '../lib/api'
 import { appRoutes } from '../lib/routes'
+import { cn } from '../lib/utils'
+import { useAuth } from '../providers/AuthProvider'
 
 type LoginProps = {
   initialMode?: 'login' | 'forgot'
@@ -14,6 +17,7 @@ type LoginProps = {
 
 export default function Login({ initialMode = 'login' }: LoginProps) {
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   type LoginData = { identifier: string; password: string }
   type ForgotData = { identifier: string }
@@ -31,7 +35,7 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
   const [success, setSuccess] = useState(false)
   const [mode, setMode] = useState<'login' | 'forgot'>(initialMode)
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, watch, reset } =
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } =
     useForm<FormValues>({ resolver: zodResolver(mode === 'login' ? schemaLogin : schemaForgot), mode: 'onChange' })
 
 
@@ -50,44 +54,18 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
     setSuccess(false)
     try {
       if (mode === 'login') {
-        const res = await fetch('/api/v1/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ identifier: (data as LoginData).identifier, password: (data as LoginData).password }),
+        await login({
+          identifier: (data as LoginData).identifier,
+          password: (data as LoginData).password,
         })
-        if (!res.ok) throw new Error((await res.text().catch(() => '')) || `Ошибка ${res.status}`)
-        const payload = await res.json().catch(() => null)
-        
-        // Clear old tokens first
-        try { 
-          localStorage.removeItem('auth')
-          localStorage.removeItem('access_token')
-        } catch {}
-        
-        // Save new tokens properly
-        try { 
-          localStorage.setItem('auth', JSON.stringify({ loggedIn: true, user: payload }))
-          // Also save access token separately for compatibility
-          if (payload?.access_token) {
-            localStorage.setItem('access_token', payload.access_token)
-          }
-        } catch {}
-        
-        window.dispatchEvent(new CustomEvent('auth:update'))
         setSuccess(true)
         navigate(appRoutes.generate)
       } else {
-        const res = await fetch('/api/v1/auth/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: (data as ForgotData).identifier }),
-        })
-        if (!res.ok && res.status !== 204) throw new Error((await res.text().catch(() => '')) || `HTTP ${res.status}`)
-        setSuccess(true) // «Если такой аккаунт есть — письмо отправлено»
+        await requestPasswordReset({ identifier: (data as ForgotData).identifier })
+        setSuccess(true)
       }
-    } catch (e: any) {
-      setServerError(e?.message || (mode === 'login' ? 'Sign-in failed.' : 'Could not send recovery email.'))
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : mode === 'login' ? 'Sign-in failed.' : 'Could not send recovery email.')
     }
   }
 
@@ -95,26 +73,26 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
     return (
       <AuthFrame
         eyebrow="Forgot password"
-        title="Password recovery lives on its own route."
-        note="Recovery remains separate from login so the sign-in page does not collapse multiple auth jobs into one canvas."
-        leftTitle="Reset access without losing the rest of the auth flow."
+        title="Reset your password"
+        note="Enter your email or username and we'll send you a recovery link."
+        leftTitle="Reset access to your account."
         leftSubtitle="Enter the email or username tied to your account and the reset link will be sent there if the record exists."
-        rightTitle="Recovery / Light"
+        rightTitle="Password recovery"
         rightContent={
           <div className="space-y-5">
-            <SurfaceCard title="Dedicated recovery path">
-              Forgot password is a separate destination, not an inline mode hidden inside login.
+            <SurfaceCard title="Separate recovery page">
+              Your recovery request is handled independently for security.
             </SurfaceCard>
           </div>
         }
         leftContent={
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
             <AuthField label="Email or username" hint="name@example.com" error={errors.identifier?.message}>
               <input
                 id="identifier"
                 type="text"
                 autoComplete="username email"
-                className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+                className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
                 {...register('identifier')}
               />
             </AuthField>
@@ -122,11 +100,11 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
             {success ? <Alert tone="success">If that account exists, a reset link has been sent.</Alert> : null}
             {serverError ? <Alert tone="error">{serverError}</Alert> : null}
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={isSubmitting}>
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Button type="submit" disabled={isSubmitting} size="lg" className="h-12 px-8 rounded-full font-bold">
                 {isSubmitting ? 'Send reset link…' : 'Send reset link'}
               </Button>
-              <Button asChild variant="ghost">
+              <Button asChild variant="ghost" className="rounded-full font-bold">
                 <Link to={appRoutes.login}>Back to login</Link>
               </Button>
             </div>
@@ -139,23 +117,23 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
   return (
     <AuthFrame
       eyebrow="Login"
-      title="Dedicated sign-in page with recovery and register routes"
-      note="No shared auth board. Login is its own page with dark and light variants inside this container."
+      title="Sign in to your account"
+      note="Access your workspace, generation history, and personalized settings."
       leftTitle="Welcome back to AmaImagery Studio."
-      leftSubtitle="Sign in to continue with generation, history, and your personalized shell settings."
-      rightTitle="Login / Light"
+      leftSubtitle="Sign in to continue with generation, history, and your personalized settings."
+      rightTitle="Why AmaImagery?"
       rightContent={
         <div className="space-y-5">
-          <SurfaceCard title="Trust line">
-            Clear access to generation, history, and settings with no mixed-purpose auth canvas.
+          <SurfaceCard title="Secure access">
+            Full access to generation, history, and settings with secure authentication.
           </SurfaceCard>
-          <SurfaceCard title="Recovery path">
-            Forgot password is a separate destination, not an inline mode hidden inside login.
+          <SurfaceCard title="Forgot password?">
+            Password recovery is available from the sign-in form below.
           </SurfaceCard>
         </div>
       }
       leftContent={
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
           {success ? <Alert tone="success">Sign-in succeeded. Redirecting to Generate.</Alert> : null}
           {serverError ? <Alert tone="error">{serverError}</Alert> : null}
 
@@ -164,7 +142,7 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
               id="identifier"
               type="text"
               autoComplete="username email"
-              className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+              className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
               {...register('identifier')}
             />
           </AuthField>
@@ -174,26 +152,24 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
               id="password"
               type="password"
               autoComplete="current-password"
-              className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+              className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
               {...register('password')}
             />
           </AuthField>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={isSubmitting}>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <Button type="submit" disabled={isSubmitting} size="lg" className="h-12 px-8 rounded-full font-bold">
               {isSubmitting ? 'Sign in…' : 'Sign in'}
             </Button>
-            <Button asChild variant="ghost">
+            <Button asChild variant="ghost" className="rounded-full font-bold">
               <Link to={appRoutes.forgotPassword}>Forgot password</Link>
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-sm text-white/50">
-            <span>Protected session</span>
+          <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-widest text-foreground/40 dark:text-white/40 pt-6 border-t border-border dark:border-white/10">
+            <span>Secure session</span>
             <span>·</span>
-            <span>runtime-aware auth</span>
-            <span>·</span>
-            <Link to={appRoutes.register} className="text-white/78 hover:text-white">
+            <Link to={appRoutes.register} className="text-primary hover:text-primary/80 transition-colors">
               Create account
             </Link>
           </div>
@@ -216,18 +192,23 @@ function AuthField({
 }) {
   return (
     <label className="block space-y-2">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/58">{label}</div>
+      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{label}</div>
       {children}
-      <div className={error ? 'text-xs text-red-300' : 'text-xs text-white/42'}>{error || hint}</div>
+      <div className={cn(
+        "text-xs font-medium",
+        error ? "text-danger" : "text-foreground/40 dark:text-white/40"
+      )}>
+        {error || hint}
+      </div>
     </label>
   )
 }
 
 function SurfaceCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[24px] border border-white/6 bg-white/[0.02] p-5">
-      <div className="font-display text-[28px] font-semibold tracking-[-0.05em] text-white">{title}</div>
-      <p className="mt-3 text-sm leading-6 text-white/55">{children}</p>
+    <div className="rounded-[32px] border border-border bg-secondary/30 p-6 space-y-3 dark:border-white/10 dark:bg-white/5">
+      <div className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">{title}</div>
+      <p className="text-sm leading-relaxed text-foreground/60 dark:text-white/60 font-medium">{children}</p>
     </div>
   )
 }
@@ -235,12 +216,12 @@ function SurfaceCard({ title, children }: { title: string; children: React.React
 function Alert({ tone, children }: { tone: 'success' | 'error'; children: React.ReactNode }) {
   return (
     <div
-      className={[
-        'rounded-[18px] border px-4 py-3 text-sm',
+      className={cn(
+        "rounded-2xl border px-4 py-3 text-sm font-bold",
         tone === 'success'
-          ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
-          : 'border-red-500/25 bg-red-500/10 text-red-200',
-      ].join(' ')}
+          ? 'border-success/20 bg-success/10 text-success'
+          : 'border-danger/20 bg-danger/10 text-danger',
+      )}
     >
       {children}
     </div>

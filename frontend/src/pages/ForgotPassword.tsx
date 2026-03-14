@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 
 import { AuthFrame } from '../components/auth/AuthFrame'
 import { Button } from '../components/ui/button'
+import { requestPasswordReset } from '../lib/api'
 import { appRoutes } from '../lib/routes'
+import { cn } from '../lib/utils'
 
 export default function ForgotPassword() {
   const [identifier, setIdentifier] = useState('')
@@ -23,14 +25,7 @@ export default function ForgotPassword() {
 
     setSubmitting(true)
     try {
-      const response = await fetch('/api/v1/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim() }),
-      })
-      if (!response.ok && response.status !== 204) {
-        throw new Error((await response.text().catch(() => '')) || `HTTP ${response.status}`)
-      }
+      await requestPasswordReset({ identifier: identifier.trim() })
       setSuccess(true)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not send recovery email.')
@@ -42,20 +37,20 @@ export default function ForgotPassword() {
   return (
     <AuthFrame
       eyebrow="Forgot password"
-      title="Single-task recovery request page with success confirmation"
-      note="Recovery is a dedicated page, not a hidden alternate mode inside login."
-      leftTitle="Reset access without mixing auth states."
+      title="Reset your password"
+      note="Enter your email or username to receive a password reset link."
+      leftTitle="Recover access to your account."
       leftSubtitle="Enter the email or username connected to your account. If the account exists, a reset link will be sent."
-      rightTitle={success ? 'Forgot Password / Success / Light' : 'Forgot Password / Default / Dark'}
+      rightTitle={success ? 'Link sent' : 'Password recovery'}
       rightContent={
-        <SurfaceCard title={success ? 'Reset link sent' : 'Recovery path'}>
+        <SurfaceCard title={success ? 'Reset link sent' : 'How it works'}>
           {success
             ? 'Check your inbox for the secure link to update your password and continue back to AmaImagery.'
-            : 'The request stays single-purpose, with its own success confirmation instead of hiding inside login.'}
+            : 'Enter your email or username and we will send you a secure link to reset your password.'}
         </SurfaceCard>
       }
       leftContent={
-        <form onSubmit={onSubmit} className="space-y-5" noValidate>
+        <form onSubmit={onSubmit} className="space-y-6" noValidate>
           {error ? <Alert tone="error">{error}</Alert> : null}
           {success ? <Alert tone="success">If that account exists, the reset link has been sent.</Alert> : null}
 
@@ -65,15 +60,15 @@ export default function ForgotPassword() {
               onChange={(event) => setIdentifier(event.target.value)}
               type="text"
               autoComplete="username email"
-              className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+              className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
             />
           </AuthField>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={submitting}>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <Button type="submit" disabled={submitting} size="lg" className="h-12 px-8 rounded-full font-bold">
               {submitting ? 'Send reset link…' : 'Send reset link'}
             </Button>
-            <Button asChild variant="ghost">
+            <Button asChild variant="ghost" className="rounded-full font-bold">
               <Link to={appRoutes.login}>Back to sign in</Link>
             </Button>
           </div>
@@ -94,18 +89,18 @@ function AuthField({
 }) {
   return (
     <label className="block space-y-2">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/58">{label}</div>
+      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{label}</div>
       {children}
-      <div className="text-xs text-white/42">{hint}</div>
+      <div className="text-xs font-medium text-foreground/40 dark:text-white/40">{hint}</div>
     </label>
   )
 }
 
 function SurfaceCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[24px] border border-white/6 bg-white/[0.02] p-5">
-      <div className="font-display text-[28px] font-semibold tracking-[-0.05em] text-white">{title}</div>
-      <p className="mt-3 text-sm leading-6 text-white/55">{children}</p>
+    <div className="rounded-[32px] border border-border bg-secondary/30 p-6 space-y-3 dark:border-white/10 dark:bg-white/5">
+      <div className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">{title}</div>
+      <p className="text-sm leading-relaxed text-foreground/60 dark:text-white/60 font-medium">{children}</p>
     </div>
   )
 }
@@ -113,12 +108,12 @@ function SurfaceCard({ title, children }: { title: string; children: React.React
 function Alert({ tone, children }: { tone: 'success' | 'error'; children: React.ReactNode }) {
   return (
     <div
-      className={[
-        'rounded-[18px] border px-4 py-3 text-sm',
+      className={cn(
+        "rounded-2xl border px-4 py-3 text-sm font-bold",
         tone === 'success'
-          ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
-          : 'border-red-500/25 bg-red-500/10 text-red-200',
-      ].join(' ')}
+          ? 'border-success/20 bg-success/10 text-success'
+          : 'border-danger/20 bg-danger/10 text-danger',
+      )}
     >
       {children}
     </div>
