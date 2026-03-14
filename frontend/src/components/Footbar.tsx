@@ -27,7 +27,7 @@ const footerColumns = [
     heading: 'Help',
     links: [
       { href: appRoutes.faq, labelKey: 'nav.faq' },
-      { href: 'mailto:support@amaimagery.local', labelKey: 'footbar.support', external: true },
+      { href: 'mailto:support@amaimagery.com', labelKey: 'footbar.support', external: true },
     ],
   },
 ] as const
