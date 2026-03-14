@@ -1,31 +1,29 @@
 import { test, expect } from '@playwright/test';
 
-test('Generate → History → Open', async ({ page }) => {
-  await page.goto('/');
+test('Generate -> History route flow', async ({ page }) => {
+  await page.goto('/generate');
   await expect(page).toHaveTitle(/.+/);
+  await expect(
+    page.getByRole('heading', { name: /Main product shell with preserved IA and internal state variants\./i }),
+  ).toBeVisible();
 
-  // 1) Промпт (textarea#prompt)
   await page.locator('#prompt').fill('a cat');
 
-  // 2) Кнопка «Сгенерировать»
-  const generateBtn = page.getByRole('button', { name: 'Сгенерировать' });
+  const generateBtn = page.getByRole('button', { name: /^Generate$/ });
   await Promise.all([
-    page.waitForResponse(r => r.url().includes('/api/v1/images/generate') && [200, 201, 202].includes(r.status())),
+    page.waitForResponse((response) => response.url().includes('/api/v1/images/generate') && [200, 201, 202].includes(response.status())),
     generateBtn.click(),
   ]);
 
-  // 3) Вкладка «История»
-  await page.getByRole('tab', { name: 'История' }).click();
+  await page.goto('/history');
+  await expect(page).toHaveURL(/\/history$/);
+  await expect(
+    page.getByRole('heading', { name: /Searchable history with filters, metadata, and explicit state handling\./i }),
+  ).toBeVisible();
 
-  // 4) Первая ссылка на файл в истории: <a href="/api/v1/file?path=...">
-  const firstLink = page.locator('a[href^="/api/v1/file"]').first();
-  await firstLink.waitFor({ state: 'visible', timeout: 30000 });
+  await page.getByRole('button', { name: /^Refresh$/ }).click();
+  await expect(page.getByText('a cat').first()).toBeVisible({ timeout: 30000 });
 
-  const [popup] = await Promise.all([
-    page.waitForEvent('popup'),
-    firstLink.click(),
-  ]);
-  await popup.waitForLoadState('domcontentloaded');
-  await expect(popup).toHaveURL(/\/api\/v1\/file\?path=/);
-  await expect(popup.locator('img')).toBeVisible();
+  const firstImage = page.locator('article img').first();
+  await expect(firstImage).toBeVisible({ timeout: 30000 });
 });
