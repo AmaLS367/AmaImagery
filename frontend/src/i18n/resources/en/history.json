@@ -1,19 +1,43 @@
 {
-  "filterPlaceholder": "Filter by prompt text",
-  "ratioAny": "Any ratio",
-  "cfgAny": "Any CFG",
-  "cfgLt6": "CFG < 6",
-  "cfg6_8": "CFG 6–8",
-  "cfgGt8": "CFG > 8",
-  "refresh": "Refresh",
-  "refreshing": "Refreshing…",
-  "errorLoading": "Failed to load history",
-  "empty": "History is empty.",
-  "badges": {
-    "wxh": "W×H:",
-    "cfg": "CFG:",
-    "steps": "Steps:",
-    "seed": "Seed:",
-    "model": "Model:"
+  "title": "Your generation history",
+  "subtitle": "Browse, search, and filter all your past generations. Find any result by prompt, aspect ratio, or CFG value.",
+  "search_placeholder": "Search prompt text",
+  "filters": {
+    "ratio": {
+      "any": "Any ratio",
+      "1:1": "1:1 Square",
+      "3:4": "3:4 Portrait",
+      "4:3": "4:3 Landscape",
+      "4:5": "4:5 Fine portrait",
+      "9:16": "9:16 Story",
+      "16:9": "16:9 Cinematic"
+    },
+    "cfg": {
+      "any": "Any CFG",
+      "lt6": "Low CFG (< 6)",
+      "6-8": "Standard CFG (6-8)",
+      "gt8": "High CFG (> 8)"
+    }
+  },
+  "actions": {
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "create": "Create your first image"
+  },
+  "states": {
+    "empty": {
+      "title": "No generations yet",
+      "desc": "Your history will appear here after the first completed run. You can search, filter by ratio, and revisit metadata later."
+    },
+    "no_results": {
+      "title": "No results for current filters",
+      "desc": "Clear the prompt query or broaden the ratio and CFG filters to bring archive items back into view."
+    },
+    "error": "Failed to load history."
+  },
+  "card": {
+    "untitled": "Untitled result",
+    "details": "{{ratio}} · CFG {{cfg}} · {{steps}} steps · Seed {{seed}}",
+    "model": "Model {{name}} · {{date}}"
   }
 }

@@ -1,5 +1,6 @@
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
+import { toAssetUrl } from './api'
 import type { HistoryItem } from './storage'
 
 export async function exportHistoryZip(items: HistoryItem[]) {
@@ -11,16 +12,19 @@ export async function exportHistoryZip(items: HistoryItem[]) {
     try {
       const name = String(it.path || '').split(/[\\/]/).pop() || ''
       if (!name) continue
-      
-      let url = `/api/v1/file?path=${encodeURIComponent(name)}`
-      if (it.exp && it.sig) {
-        url += `&exp=${String(it.exp)}&sig=${encodeURIComponent(it.sig)}`
-      } else {
-        // Skip if no signature available
-        continue
+
+      const query = new URLSearchParams({ path: name })
+      if (typeof it.exp === 'number') {
+        query.set('exp', String(it.exp))
       }
-      
-      const resp = await fetch(url)
+      if (typeof it.sig === 'string' && it.sig.length > 0) {
+        query.set('sig', it.sig)
+      }
+
+      const url = toAssetUrl(`/api/v1/file?${query.toString()}`)
+      if (!url) continue
+
+      const resp = await fetch(url, { credentials: 'include' })
       if (!resp.ok) continue
       const blob = await resp.blob()
       thumbs?.file(`${idx++}.png`, blob)
