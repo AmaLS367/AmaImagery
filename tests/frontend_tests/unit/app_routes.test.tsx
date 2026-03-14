@@ -6,6 +6,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@src/App'
+import { AuthProvider } from '@src/providers/AuthProvider'
 import { JobProvider } from '@src/providers/JobProvider'
 import { SettingsProvider } from '@src/providers/SettingsProvider'
 
@@ -16,10 +17,10 @@ const canonicalRoutes = [
   ['/generate', /Main product shell with preserved IA and internal state variants\./i],
   ['/history', /Searchable history with filters, metadata, and explicit state handling\./i],
   ['/settings', /Serious control center with visual lab and live shell preview\./i],
-  ['/login', /Dedicated sign-in page with recovery and register routes/i],
-  ['/register', /Account creation page with policy acknowledgment and clear handoff to sign-in/i],
-  ['/forgot-password', /Single-task recovery request page with success confirmation/i],
-  ['/reset-password?token=smoke-token', /Reset page with valid token, invalid token, and success states/i],
+  ['/login', /Sign in to your account/i],
+  ['/register', /Create your account/i],
+  ['/forgot-password', /Reset your password/i],
+  ['/reset-password?token=smoke-token', /Create your new password/i],
   ['/about', /AmaImagery is a premium image-generation shell built around clarity\./i],
   ['/faq', /Production answers for the product, not placeholder support text\./i],
   ['/prompt-guide', /Write prompts that stay readable for both the model and the operator\./i],
@@ -47,9 +48,11 @@ function renderApp(route: string) {
   window.history.pushState({}, '', route)
   return render(
     <SettingsProvider>
-      <JobProvider>
-        <App />
-      </JobProvider>
+      <AuthProvider>
+        <JobProvider>
+          <App />
+        </JobProvider>
+      </AuthProvider>
     </SettingsProvider>,
   )
 }
@@ -114,8 +117,16 @@ beforeEach(() => {
         return jsonResponse({ access_token: 'test-token', user: { username: 'tester' } })
       }
 
-      if (url.includes('/api/v1/auth/logout') || url.includes('/api/v1/auth/me')) {
+      if (url.includes('/api/v1/auth/me')) {
+        return jsonResponse({ id: 'user-1', email: 'tester@example.com', username: 'tester', settings: {} })
+      }
+
+      if (url.includes('/api/v1/auth/logout')) {
         return jsonResponse({ ok: true })
+      }
+
+      if (url.includes('/api/v1/auth/refresh')) {
+        return new Response(null, { status: 401 })
       }
 
       if (url.includes('/api/v1/images/generate')) {
@@ -180,7 +191,7 @@ describe('app route smoke tests', () => {
     renderApp('/reset?token=redirect-token')
     await waitFor(() => expect(window.location.pathname).toBe('/reset-password'))
     await waitFor(() => expect(window.location.search).toBe('?token=redirect-token'))
-    expect(await screen.findByRole('heading', { name: /Reset page with valid token, invalid token, and success states/i, level: 1 })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Create your new password/i, level: 1 })).toBeInTheDocument()
   })
 
   it('renders the catch-all 404 screen for unknown routes', async () => {

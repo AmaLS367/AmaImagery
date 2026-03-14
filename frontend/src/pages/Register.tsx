@@ -7,9 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { AuthFrame } from '../components/auth/AuthFrame'
 import { Button } from '../components/ui/button'
 import { appRoutes } from '../lib/routes'
+import { cn } from '../lib/utils'
+import { useAuth } from '../providers/AuthProvider'
 
 export default function Register() {
   const navigate = useNavigate()
+  const { register: registerAccount } = useAuth()
 
   type FormData = {
     email: string
@@ -44,59 +47,49 @@ export default function Register() {
     setServerError(null)
     setSuccess(false)
     try {
-      const res = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email, password: data.password, username: data.username }),
+      await registerAccount({
+        email: data.email,
+        password: data.password,
+        username: data.username,
       })
-      if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(text || `HTTP ${res.status}`)
-      }
-      const payload = await res.json().catch(() => null)
-  
-      // Помечаем пользователя как вошедшего, чтобы топбар переключился
-      try { 
-        localStorage.setItem('auth', JSON.stringify({ loggedIn: true, user: payload }))
-        if (payload?.access_token) {
-          localStorage.setItem('access_token', payload.access_token)
-        }
-      } catch {}
-      window.dispatchEvent(new CustomEvent('auth:update'))
-  
       setSuccess(true)
       reset({ username: '', email: '', password: '', confirm: '' })
       navigate(appRoutes.generate)
-    } catch (e: any) {
-      setServerError(e?.message || 'Registration failed.')
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'Registration failed.')
     }
-  }  
+  }
 
   return (
     <AuthFrame
       eyebrow="Register"
-      title="Account creation page with policy acknowledgment and clear handoff to sign-in"
-      note="Production-facing English copy only. No inline dev placeholders."
-      leftTitle="Create an account for guided generation and saved history."
-      leftSubtitle="Simple credential creation without collapsing login, recovery, and reset into a single auth canvas."
-      rightTitle="Register / Light"
+      title="Create your account"
+      note="Sign up to start generating images, save your history, and customize your workspace."
+      leftTitle="Join AmaImagery Studio."
+      leftSubtitle="Create your account with a few simple steps and get started right away."
+      rightTitle="Get started"
       rightContent={
-        <SurfaceCard title="Clean onboarding">
-          Simple credential creation without collapsing login, recovery, and reset into a single auth canvas.
-        </SurfaceCard>
+        <div className="space-y-5">
+          <SurfaceCard title="Simple setup">
+            Quick account creation with instant access to all features.
+          </SurfaceCard>
+          <SurfaceCard title="Data Privacy">
+            Your data is handled according to our strictly professional privacy policy.
+          </SurfaceCard>
+        </div>
       }
       leftContent={
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
           {success ? <Alert tone="success">Account created. Redirecting to Generate.</Alert> : null}
           {serverError ? <Alert tone="error">{serverError}</Alert> : null}
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-2">
             <AuthField label="Username" hint="studio_operator" error={errors.username?.message}>
               <input
                 id="username"
                 type="text"
                 autoComplete="username"
-                className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+                className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
                 {...register('username')}
               />
             </AuthField>
@@ -106,7 +99,7 @@ export default function Register() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+                className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
                 {...register('email')}
               />
             </AuthField>
@@ -116,7 +109,7 @@ export default function Register() {
                 id="password"
                 type="password"
                 autoComplete="new-password"
-                className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+                className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
                 {...register('password')}
               />
             </AuthField>
@@ -126,24 +119,24 @@ export default function Register() {
                 id="confirm"
                 type="password"
                 autoComplete="new-password"
-                className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+                className="h-12 w-full rounded-2xl border border-border bg-secondary/50 px-4 text-foreground outline-none focus:border-primary/50 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white"
                 {...register('confirm')}
               />
             </AuthField>
           </div>
 
-          <div className="space-y-2 text-sm text-white/62">
-            <p className="font-semibold text-white/86">
+          <div className="space-y-2 text-sm font-medium text-foreground/60 dark:text-white/60">
+            <p className="font-bold text-foreground dark:text-white">
               By creating an account, you agree to the service rules and privacy policy.
             </p>
-            <p>The note stays concise and product-facing.</p>
+            <p>Your data is handled according to our privacy policy.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={isSubmitting}>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <Button type="submit" disabled={isSubmitting} size="lg" className="h-12 px-8 rounded-full font-bold">
               {isSubmitting ? 'Create account…' : 'Create account'}
             </Button>
-            <Button asChild variant="ghost">
+            <Button asChild variant="ghost" className="rounded-full font-bold">
               <Link to={appRoutes.login}>Already have an account?</Link>
             </Button>
           </div>
@@ -166,18 +159,23 @@ function AuthField({
 }) {
   return (
     <label className="block space-y-2">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/58">{label}</div>
+      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{label}</div>
       {children}
-      <div className={error ? 'text-xs text-red-300' : 'text-xs text-white/42'}>{error || hint}</div>
+      <div className={cn(
+        "text-xs font-medium",
+        error ? "text-danger" : "text-foreground/40 dark:text-white/40"
+      )}>
+        {error || hint}
+      </div>
     </label>
   )
 }
 
 function SurfaceCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[24px] border border-white/6 bg-white/[0.02] p-5">
-      <div className="font-display text-[28px] font-semibold tracking-[-0.05em] text-white">{title}</div>
-      <p className="mt-3 text-sm leading-6 text-white/55">{children}</p>
+    <div className="rounded-[32px] border border-border bg-secondary/30 p-6 space-y-3 dark:border-white/10 dark:bg-white/5">
+      <div className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">{title}</div>
+      <p className="text-sm leading-relaxed text-foreground/60 dark:text-white/60 font-medium">{children}</p>
     </div>
   )
 }
@@ -185,12 +183,12 @@ function SurfaceCard({ title, children }: { title: string; children: React.React
 function Alert({ tone, children }: { tone: 'success' | 'error'; children: React.ReactNode }) {
   return (
     <div
-      className={[
-        'rounded-[18px] border px-4 py-3 text-sm',
+      className={cn(
+        "rounded-2xl border px-4 py-3 text-sm font-bold",
         tone === 'success'
-          ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
-          : 'border-red-500/25 bg-red-500/10 text-red-200',
-      ].join(' ')}
+          ? 'border-success/20 bg-success/10 text-success'
+          : 'border-danger/20 bg-danger/10 text-danger',
+      )}
     >
       {children}
     </div>
