@@ -11,8 +11,7 @@ export const appRoutes = {
   faq: '/faq',
   promptGuide: '/prompt-guide',
   privacy: '/privacy',
-  modes: '/modes',
-  prototype: '/prototype',
+
   notFound: '/404',
 } as const
 

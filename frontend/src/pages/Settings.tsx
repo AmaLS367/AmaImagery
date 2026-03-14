@@ -467,9 +467,6 @@ export default function Settings() {
           </div>
 
           <Button onClick={applyVisualMode}>Apply visual mode</Button>
-          <Button asChild variant="ghost">
-            <Link to={appRoutes.modes}>Open Modes study</Link>
-          </Button>
         </SurfacePanel>
       </div>
 
