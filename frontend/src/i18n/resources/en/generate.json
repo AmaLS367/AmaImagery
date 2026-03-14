@@ -1,20 +1,101 @@
 {
-  "title": "Generation parameters",
+  "title": "Compose",
+  "subtitle": "Write your prompt, add negative guidance, and attach a reference image before generating.",
   "prompt": "Prompt",
+  "prompt_placeholder": "Fashion portrait in editorial midnight studio, precise eyes, quiet confidence, polished chrome accents.",
   "neg": "Negative prompt",
+  "neg_placeholder": "blurry, extra digits, distorted face, low contrast, noisy skin",
   "style": "Style",
-  "style_real": "Realism",
-  "style_anime": "Anime",
-  "steps": "Steps",
-  "cfg": "CFG",
-  "width": "Width",
-  "height": "Height",
-  "seed": "Seed",
-  "seed_random": "Random",
-  "ref": "Reference image",
-  "ref_ex": "Upload example",
-  "ref_drop": "Drop here",
-  "ip_scale": "IP Scale",
-  "waiting": "Waiting for generation…",
-  "result": "Result"
+  "style_options": {
+    "realistic": "Editorial",
+    "anime": "Illustration"
+  },
+  "ref": {
+    "title": "Reference upload",
+    "description": "Use an image to guide pose, composition, or lighting before the run starts.",
+    "button": "Choose image",
+    "drop": "Drop image here or browse to add pose, lighting, or style guidance.",
+    "clear": "Clear reference",
+    "error_type": "Reference upload accepts image files only.",
+    "error_size": "Reference upload is limited to 8 MB."
+  },
+  "actions": {
+    "generate": "Generate",
+    "working": "Working",
+    "cancel": "Cancel run",
+    "retry": "Retry with same settings",
+    "edit": "Edit controls",
+    "open": "Open result",
+    "download": "Download image",
+    "history": "View history",
+    "faq": "Open FAQ"
+  },
+  "advanced": {
+    "title": "Advanced controls",
+    "steps": "Steps",
+    "cfg": "CFG scale",
+    "width": "Width",
+    "height": "Height",
+    "seed": "Seed",
+    "seed_auto": "Auto",
+    "seed_random": "Randomize seed",
+    "ip_scale": "IP scale",
+    "shot_preset": "Shot preset",
+    "density": "Component density",
+    "visual_mode": "Visual mode",
+    "reset": "Reset advanced controls"
+  },
+  "result": {
+    "title": "Result",
+    "description": "Your generated image will appear here with download and history options.",
+    "ready_title": "Ready for a new run",
+    "ready_desc": "Write a prompt and click Generate to create your first image.",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "error": "Error",
+      "ready": "Ready"
+    },
+    "stage": {
+      "queued": "Preparing request",
+      "running": "Generating image"
+    }
+  },
+  "status": {
+    "queued": {
+      "title": "Queue position #{{position}}",
+      "desc1": "Preparing task. Prompt and settings are locked for this run.",
+      "desc2": "Waiting for system availability. The generation will start as soon as possible."
+    },
+    "running": {
+      "title": "Generating...",
+      "desc": "Active generation is running. Your image will appear shortly."
+    },
+    "completed": {
+      "title": "Generation completed",
+      "desc": "Result is ready for review, download, and can be found in history."
+    },
+    "error": {
+      "title": "Generation could not complete",
+      "desc": "The system timed out or encountered an issue. Please try again or adjust your settings."
+    },
+    "idle": {
+      "title": "Ready for a new run",
+      "desc": "Adjust your prompt and settings, then hit Generate."
+    }
+  },
+  "facts": {
+    "title": "Run facts",
+    "style": "Style",
+    "aspect": "Aspect",
+    "seed": "Seed",
+    "queue": "Queue",
+    "idle": "Idle",
+    "active": "active"
+  },
+  "errors": {
+    "prompt_short": "Prompt needs at least three characters.",
+    "no_artifact": "Image was not returned by the system."
+  }
 }

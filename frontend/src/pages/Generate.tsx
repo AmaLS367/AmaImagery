@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowUpRight,
@@ -9,44 +9,59 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
-  SlidersHorizontal,
   Sparkles,
   TriangleAlert,
+  Settings2,
+  Zap,
+  Maximize2,
+  Trash2,
+  Layers
 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { MetaPill, SectionEyebrow, SurfacePanel } from '../components/ui/foundation'
+import { MetaPill, SurfacePanel } from '../components/ui/foundation'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { appRoutes } from '../lib/routes'
-import { type GeneratePayload } from '../lib/api'
+import { toAssetUrl, type GeneratePayload, type TaskStatusResp } from '../lib/api'
 import { loadForm, saveForm } from '../lib/storage'
 import { cn } from '../lib/utils'
-import { normalizeError } from '../lib/errors'
 import { useSettings } from '../providers/SettingsProvider'
 import { useJobs } from '../providers/JobProvider'
 
 const ACTIVE_KEY = 'amaimagery.activeJobId'
 
-type VisualMode = 'work-product' | 'mood-board'
-type Density = 'constrained' | 'expanded'
-type ShotPreset = 'creator-portrait' | 'product-crop' | 'wide-frame'
-
 const styleOptions = [
-  { value: 'realistic', label: 'Editorial' },
-  { value: 'anime', label: 'Illustration' },
+  { value: 'realistic', labelKey: 'generate:style_options.realistic' },
+  { value: 'anime', labelKey: 'generate:style_options.anime' },
 ] as const
 
-const shotPresets: { value: ShotPreset; label: string }[] = [
-  { value: 'creator-portrait', label: 'Creator portrait' },
-  { value: 'product-crop', label: 'Product crop' },
-  { value: 'wide-frame', label: 'Wide frame' },
-]
+function buildGeneratedImageUrl(result: TaskStatusResp): string | null {
+  if (result.image_url) {
+    return toAssetUrl(result.image_url)
+  }
+
+  const filename = result.image_filename || String(result.image_path || '').split(/[\\/]/).pop() || ''
+  if (!filename) {
+    return null
+  }
+
+  const query = new URLSearchParams({ path: filename })
+  if (typeof result.exp === 'number') {
+    query.set('exp', String(result.exp))
+  }
+  if (typeof result.sig === 'string' && result.sig.length > 0) {
+    query.set('sig', result.sig)
+  }
+
+  return toAssetUrl(`/api/v1/file?${query.toString()}`)
+}
 
 export default function Generate() {
+  const { t } = useTranslation(['generate', 'common'])
   const { settings } = useSettings()
   const { jobs, start, cancel, get } = useJobs()
 
@@ -59,9 +74,6 @@ export default function Generate() {
   const [seed, setSeed] = useState<number | null>(loadForm()?.seed ?? null)
   const [ipScale, setIpScale] = useState(loadForm()?.ipScale ?? 0.65)
   const [style, setStyle] = useState<'realistic' | 'anime'>(loadForm()?.style ?? 'realistic')
-  const [shotPreset, setShotPreset] = useState<ShotPreset>('creator-portrait')
-  const [density, setDensity] = useState<Density>('constrained')
-  const [visualMode, setVisualMode] = useState<VisualMode>('work-product')
 
   const [error, setError] = useState<string | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
@@ -79,18 +91,14 @@ export default function Generate() {
   })
 
   const activeJob = get(activeId || null)
-  const orderedRuntimeJobs = useMemo(
-    () =>
-      [...jobs]
-        .filter((job) => job.status === 'queued' || job.status === 'running')
-        .sort((left, right) => left.startedAt - right.startedAt),
-    [jobs],
-  )
+  const orderedRuntimeJobs = [...jobs]
+    .filter((job) => job.status === 'queued' || job.status === 'running')
+    .sort((left, right) => left.startedAt - right.startedAt)
 
   const queuePosition = activeId ? orderedRuntimeJobs.findIndex((job) => job.id === activeId) + 1 : 0
   const busy = activeJob?.status === 'running' || activeJob?.status === 'queued'
-  const stage = busy ? activeJob.status : error ? 'error' : imgUrl ? 'done' : 'idle'
-  const styleLabel = styleOptions.find((option) => option.value === style)?.label ?? 'Editorial'
+  const stage = busy ? activeJob.status : error ? 'error' : imgUrl ? 'completed' : 'idle'
+  const styleLabel = t(styleOptions.find((option) => option.value === style)?.labelKey ?? 'generate:style_options.realistic')
 
   useEffect(() => {
     saveForm({ prompt, neg, steps, guidance, width, height, seed, ipScale, style })
@@ -99,22 +107,14 @@ export default function Generate() {
   useEffect(() => {
     if (!activeJob) return
 
-    if (activeJob.status === 'done' && activeJob.result) {
+    if (activeJob.status === 'completed' && activeJob.result) {
       const result = activeJob.result
+      const nextImgUrl = buildGeneratedImageUrl(result)
 
-      if (result.image_url) {
-        setImgUrl(result.image_url)
-      } else if (result.image_filename && result.exp && result.sig) {
-        setImgUrl(
-          `/api/v1/file?path=${encodeURIComponent(result.image_filename)}&exp=${String(result.exp)}&sig=${encodeURIComponent(result.sig)}`,
-        )
-      } else if (result.image_filename) {
-        setImgUrl(`/api/v1/file?path=${encodeURIComponent(result.image_filename)}`)
-      } else if (result.image_path) {
-        const name = String(result.image_path).split(/[\\/]/).pop() || String(result.image_path)
-        setImgUrl(`/api/v1/file?path=${encodeURIComponent(name)}`)
+      if (nextImgUrl) {
+        setImgUrl(nextImgUrl)
       } else {
-        setError('Image artifact was not returned by the provider.')
+        setError(t('generate:errors.no_artifact'))
       }
 
       try {
@@ -126,7 +126,7 @@ export default function Generate() {
     }
 
     if (activeJob.status === 'error') {
-      setError(activeJob.error || 'Generation failed.')
+      setError(activeJob.error || t('generate:status.error.title'))
       try {
         localStorage.removeItem(ACTIVE_KEY)
       } catch {
@@ -134,15 +134,15 @@ export default function Generate() {
       }
       setActiveId(null)
     }
-  }, [activeJob])
+  }, [activeJob, t])
 
   async function onFilePicked(file: File) {
     if (!file.type.startsWith('image/')) {
-      setError('Reference upload accepts image files only.')
+      setError(t('generate:ref.error_type'))
       return
     }
     if (file.size > 8 * 1024 * 1024) {
-      setError('Reference upload is limited to 8 MB.')
+      setError(t('generate:ref.error_size'))
       return
     }
     setError(null)
@@ -158,7 +158,7 @@ export default function Generate() {
 
   async function runGeneration() {
     if (!prompt || prompt.trim().length < 3) {
-      setError('Prompt needs at least three characters.')
+      setError(t('generate:errors.prompt_short'))
       return
     }
 
@@ -201,215 +201,303 @@ export default function Generate() {
   }
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="page-shell space-y-6 py-8 xl:py-10"
-    >
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <SurfacePanel glass className="space-y-5 p-6 md:p-8">
-          <SectionEyebrow>Generate</SectionEyebrow>
-          <div className="space-y-4">
-            <h1 className="font-display text-4xl font-semibold tracking-[-0.06em] text-foreground sm:text-5xl lg:text-6xl">
-              Main product shell with preserved IA and internal state variants.
+    <section className="page-shell py-12 xl:py-20 space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+         <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+              <Sparkles className="h-3 w-3" />
+              Creation Studio
+            </div>
+            <h1 className="font-display text-4xl font-bold tracking-tight text-foreground dark:text-white sm:text-6xl leading-tight">
+              {t('generate:title')}
             </h1>
-            <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-              Desktop-first composer with result stage, visible advanced controls, and explicit queued, running,
-              completed, and error feedback inside the same workspace.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <MetaPill>Generate / Default / Dark</MetaPill>
-            <MetaPill>Advanced controls visible</MetaPill>
-            <MetaPill>Reference upload + runtime status</MetaPill>
-          </div>
-        </SurfacePanel>
-
-        <SurfacePanel className="space-y-5 p-6 md:p-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-              <SlidersHorizontal className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Advanced controls in view</h2>
-              <p className="text-sm leading-6 text-muted-foreground">
-                IP scale, shot preset, density, and visual mode stay readable instead of hiding behind a secondary route.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SurfacePanel className="rounded-[24px] p-4 shadow-none">
-              <div className="text-xs uppercase tracking-[0.26em] text-muted-foreground">IP scale</div>
-              <div className="mt-2 font-display text-2xl font-semibold tracking-[-0.05em]">{ipScale.toFixed(2)}</div>
-            </SurfacePanel>
-            <SurfacePanel className="rounded-[24px] p-4 shadow-none">
-              <div className="text-xs uppercase tracking-[0.26em] text-muted-foreground">Shot preset</div>
-              <div className="mt-2 font-display text-2xl font-semibold tracking-[-0.05em]">
-                {shotPresets.find((preset) => preset.value === shotPreset)?.label}
-              </div>
-            </SurfacePanel>
-            <SurfacePanel className="rounded-[24px] p-4 shadow-none">
-              <div className="text-xs uppercase tracking-[0.26em] text-muted-foreground">Component density</div>
-              <div className="mt-2 font-display text-2xl font-semibold tracking-[-0.05em]">
-                {density === 'constrained' ? 'Constrained' : 'Expanded'}
-              </div>
-            </SurfacePanel>
-            <SurfacePanel className="rounded-[24px] p-4 shadow-none">
-              <div className="text-xs uppercase tracking-[0.26em] text-muted-foreground">Visual mode</div>
-              <div className="mt-2 font-display text-2xl font-semibold tracking-[-0.05em]">
-                {visualMode === 'work-product' ? 'Work product' : 'Mood board'}
-              </div>
-            </SurfacePanel>
-          </div>
-        </SurfacePanel>
+         </div>
+         <div className="flex gap-3">
+            <Button asChild variant="outline" className="rounded-full font-bold border-border">
+              <Link to={appRoutes.promptGuide}>
+                <Layers className="mr-2 h-4 w-4" />
+                {t('common:actions.guide')}
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-full font-bold border-border">
+              <Link to={appRoutes.history}>
+                <Clock3 className="mr-2 h-4 w-4" />
+                Archive
+              </Link>
+            </Button>
+         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_380px]">
-        <Card glass={settings.glass} className="overflow-visible">
-          <CardHeader className="space-y-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-2">
-                <CardTitle>Generate / Default</CardTitle>
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Compose the prompt, keep negative guidance explicit, and prepare reference input before committing the
-                  run.
-                </p>
-              </div>
-              <Button asChild variant="ghost" size="sm">
-                <Link to={appRoutes.promptGuide}>Prompt Guide</Link>
-              </Button>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-4">
-              <MetaPill>Style {styleLabel}</MetaPill>
-              <MetaPill>CFG {guidance.toFixed(1)}</MetaPill>
-              <MetaPill>
-                Size {width}×{height}
-              </MetaPill>
-              <MetaPill>Seed {seed ?? 'Auto'}</MetaPill>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-5">
-            <div className="space-y-3">
-              <Label htmlFor="prompt">Prompt</Label>
+      <div className="grid gap-12 xl:grid-cols-[1fr_420px] items-start">
+        <div className="space-y-10">
+          <SurfacePanel className="p-10 space-y-10">
+            <div className="space-y-6">
+              <Label htmlFor="prompt" className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:prompt')}</Label>
               <Textarea
                 id="prompt"
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
-                placeholder="Fashion portrait in editorial midnight studio, precise eyes, quiet confidence, polished chrome accents."
+                placeholder={t('generate:prompt_placeholder')}
+                className="min-h-[160px] resize-none text-xl font-medium border-border bg-secondary/30 dark:bg-white/5 dark:border-white/10 rounded-[32px] p-8 focus:border-primary/50 transition-all placeholder:text-foreground/20 dark:placeholder:text-white/10"
               />
             </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="neg">Negative prompt</Label>
+            <div className="space-y-6">
+              <Label htmlFor="neg" className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:neg')}</Label>
               <Textarea
                 id="neg"
                 value={neg}
                 onChange={(event) => setNeg(event.target.value)}
-                placeholder="blurry, extra digits, distorted face, low contrast, noisy skin"
+                placeholder={t('generate:neg_placeholder')}
+                className="min-h-[100px] resize-none text-base border-border bg-secondary/30 dark:bg-white/5 dark:border-white/10 rounded-[24px] p-6 focus:border-primary/50 transition-all placeholder:text-foreground/20 dark:placeholder:text-white/10"
               />
             </div>
 
-            <div className="space-y-3">
-              <Label>Style</Label>
-              <div className="flex flex-wrap gap-3">
-                {styleOptions.map((option) => (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={style === option.value ? 'default' : 'secondary'}
-                    onClick={() => setStyle(option.value)}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
+            <div className="grid gap-10 sm:grid-cols-2 pt-4">
+              <div className="space-y-6">
+                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:style')}</Label>
+                <div className="flex gap-3">
+                  {styleOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={style === option.value ? 'default' : 'outline'}
+                      className={cn(
+                        "flex-1 h-12 rounded-xl font-bold border-border transition-all",
+                        style === option.value && "shadow-glow"
+                      )}
+                      onClick={() => setStyle(option.value)}
+                    >
+                      {t(option.labelKey)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                 <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:ref.title')}</Label>
+                 <div
+                  onDrop={onDrop}
+                  onDragOver={(event) => event.preventDefault()}
+                  className={cn(
+                    'relative overflow-hidden rounded-[24px] border-2 border-dashed border-border/60 transition-all hover:border-primary/40 bg-secondary/30 dark:bg-white/5 dark:border-white/10',
+                    refPreview ? 'aspect-video border-solid border-primary/20 bg-primary/5' : 'p-4 min-h-[100px] flex items-center justify-center'
+                  )}
+                >
+                  {refPreview ? (
+                    <>
+                      <img src={refPreview} alt="Reference preview" className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity hover:opacity-100 flex items-center justify-center gap-2">
+                         <Button variant="secondary" size="sm" className="rounded-full font-bold" onClick={() => fileInputRef.current?.click()}>
+                          Replace
+                        </Button>
+                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full border border-danger/20 bg-danger/10 text-danger hover:bg-danger/15" onClick={() => { setRefPreview(null); refBase64.current = null; }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-3 text-center">
+                      <ImageUp className="h-6 w-6 text-foreground/20 dark:text-white/20" />
+                      <div className="space-y-1">
+                         <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 dark:text-white/40">{t('generate:ref.drop')}</p>
+                         <button className="text-xs font-bold text-primary hover:underline" onClick={() => fileInputRef.current?.click()}>
+                            {t('generate:ref.button')}
+                         </button>
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0]
+                      if (file) await onFilePicked(file)
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
-            <div
-              onDrop={onDrop}
-              onDragOver={(event) => event.preventDefault()}
-              className={cn(
-                'rounded-[28px] border border-dashed border-border/70 p-5 transition-colors',
-                refPreview ? 'bg-primary/8' : 'bg-card/55',
-              )}
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold">Reference upload</div>
-                  <p className="max-w-md text-sm leading-6 text-muted-foreground">
-                    Use an image to guide pose, composition, or lighting before the run starts.
-                  </p>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  id="reference-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0]
-                    if (file) await onFilePicked(file)
-                  }}
-                />
-                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                  <ImageUp className="mr-2 h-4 w-4" />
-                  Choose image
-                </Button>
-              </div>
-
-              {refPreview ? (
-                <div className="mt-4 overflow-hidden rounded-[24px] border border-border/60">
-                  <img src={refPreview} alt="Reference preview" className="h-56 w-full object-cover" />
-                </div>
-              ) : (
-                <div className="mt-4 rounded-[24px] border border-border/50 bg-background/40 px-4 py-5 text-sm text-muted-foreground">
-                  Drop image here or browse to add pose, lighting, or style guidance.
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Button onClick={runGeneration} disabled={busy} size="lg">
+            <div className="flex flex-wrap items-center gap-6 border-t border-border pt-10 dark:border-white/10">
+              <Button 
+                onClick={runGeneration} 
+                disabled={busy} 
+                size="lg" 
+                className="h-16 px-12 text-lg font-bold rounded-full shadow-glow-lg group"
+              >
                 {busy ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Working
+                    <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                    {t('generate:actions.working')}
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate
+                    <Zap className="mr-3 h-6 w-6 fill-current" />
+                    {t('generate:actions.generate')}
                   </>
                 )}
               </Button>
               {busy && activeId ? (
-                <Button variant="outline" onClick={() => cancel(activeId)}>
-                  Cancel run
+                <Button variant="outline" size="lg" className="h-16 px-10 rounded-full font-bold border-border" onClick={() => cancel(activeId)}>
+                  {t('generate:actions.cancel')}
                 </Button>
               ) : null}
-              <Button variant="ghost" onClick={() => setRefPreview(null)}>
-                Clear reference
-              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </SurfacePanel>
 
-        <Card glass={settings.glass}>
-          <CardHeader>
-            <CardTitle>Advanced controls</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="space-y-2">
-                <Label htmlFor="steps">Steps</Label>
-                <Input id="steps" type="number" min={1} max={200} value={steps} onChange={(event) => setSteps(Number(event.target.value))} />
+          <SurfacePanel className="overflow-hidden p-0">
+            <div className="border-b border-border p-8 flex items-center justify-between dark:border-white/10">
+              <div className="flex items-center gap-3">
+                 <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Monitor className="h-4 w-4" />
+                 </div>
+                 <h2 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">{t('generate:result.title')}</h2>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="guidance">CFG scale</Label>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={stage}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                >
+                  <MetaPill className={cn(
+                    "font-bold",
+                    stage === 'completed' ? 'border-success/20 bg-success/5 text-success' : 
+                    stage === 'error' ? 'border-danger/20 bg-danger/5 text-danger' : 
+                    busy ? 'border-primary/20 bg-primary/5 text-primary' : ''
+                  )}>
+                     {t(`generate:result.status.${stage}`)}
+                  </MetaPill>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            
+            <div className="p-10">
+              <div className="relative aspect-square sm:aspect-[16/10] w-full overflow-hidden rounded-[40px] border border-border bg-secondary shadow-inner dark:bg-black/20 dark:border-white/5">
+                <AnimatePresence mode="wait">
+                  {imgUrl ? (
+                    <motion.img 
+                      key={imgUrl}
+                      initial={{ opacity: 0, scale: 1.05 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      src={imgUrl} 
+                      alt="Generated result" 
+                      className="h-full w-full object-contain" 
+                    />
+                  ) : (
+                    <motion.div 
+                      key="placeholder"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="relative flex h-full items-center justify-center p-8 text-center"
+                    >
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(13,148,255,0.12),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.08),transparent_40%)]" />
+                      <div className="relative space-y-6">
+                        <div className="mx-auto w-24 h-24 rounded-[32px] bg-secondary/50 flex items-center justify-center dark:bg-white/5 shadow-sm">
+                           <Sparkles className="h-10 w-10 text-primary/40" />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="font-display text-3xl font-bold tracking-tight text-foreground/80 dark:text-white/80">
+                            {t('generate:result.ready_title')}
+                          </div>
+                          <p className="mx-auto max-w-sm text-base leading-relaxed text-foreground/40 dark:text-white/40 font-medium">
+                            {t('generate:result.ready_desc')}
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {busy ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/40 backdrop-blur-3xl dark:bg-black/40">
+                    <div className="flex flex-col items-center gap-6 rounded-[48px] border border-white/10 bg-white/5 p-12 text-white shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] dark:bg-white/5">
+                      <div className="relative h-20 w-24">
+                        <div className="absolute inset-0 flex justify-center gap-1.5 items-end h-full">
+                           {[0, 1, 2, 3].map(i => (
+                             <motion.div 
+                                key={i}
+                                animate={{ height: ['20%', '100%', '20%'] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
+                                className="w-3 rounded-full bg-primary shadow-glow"
+                             />
+                           ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-center">
+                        <div className="text-2xl font-black uppercase tracking-tighter">{t(`generate:result.status.${stage}`)}</div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">
+                          {t(`generate:result.stage.${stage}`)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {imgUrl && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-wrap gap-4 mt-8"
+                >
+                  <Button asChild size="lg" variant="secondary" className="h-14 px-8 rounded-full font-bold shadow-sm">
+                    <a href={imgUrl} target="_blank" rel="noreferrer">
+                      <Maximize2 className="mr-2 h-5 w-5" />
+                      {t('generate:actions.open')}
+                    </a>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold border-border">
+                    <a href={imgUrl} download>
+                      <Download className="mr-2 h-5 w-5" />
+                      {t('generate:actions.download')}
+                    </a>
+                  </Button>
+                  <Button asChild size="lg" variant="ghost" className="h-14 px-8 rounded-full font-bold ml-auto text-foreground/60">
+                    <Link to={appRoutes.history}>
+                      <Clock3 className="mr-2 h-5 w-5" />
+                      {t('generate:actions.history')}
+                    </Link>
+                  </Button>
+                </motion.div>
+              )}
+            </div>
+          </SurfacePanel>
+        </div>
+
+        {/* Sidebar */}
+        <aside className="space-y-8 sticky top-24">
+           <SurfacePanel className="p-8 space-y-10">
+            <div className="flex items-center gap-3">
+               <Settings2 className="h-5 w-5 text-primary" />
+               <h3 className="font-display text-xl font-bold text-foreground dark:text-white">{t('generate:advanced.title')}</h3>
+            </div>
+
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                   <Label htmlFor="steps" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.steps')}</Label>
+                   <span className="text-xs font-bold text-primary">{steps}</span>
+                </div>
+                <Input 
+                  id="steps" 
+                  type="number" 
+                  min={1} 
+                  max={200} 
+                  value={steps} 
+                  onChange={(event) => setSteps(Number(event.target.value))} 
+                  className="h-12 rounded-xl border-border bg-secondary/50 font-bold"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                   <Label htmlFor="guidance" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.cfg')}</Label>
+                   <span className="text-xs font-bold text-primary">{guidance.toFixed(1)}</span>
+                </div>
                 <Input
                   id="guidance"
                   type="number"
@@ -418,287 +506,139 @@ export default function Generate() {
                   step={0.5}
                   value={guidance}
                   onChange={(event) => setGuidance(Number(event.target.value))}
+                  className="h-12 rounded-xl border-border bg-secondary/50 font-bold"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="width">Width</Label>
-                <Input id="width" type="number" min={256} step={64} value={width} onChange={(event) => setWidth(Number(event.target.value))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="height">Height</Label>
-                <Input id="height" type="number" min={256} step={64} value={height} onChange={(event) => setHeight(Number(event.target.value))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="seed">Seed</Label>
-                <Input
-                  id="seed"
-                  type="number"
-                  value={seed ?? ''}
-                  onChange={(event) => setSeed(event.target.value === '' ? null : Number(event.target.value))}
-                  placeholder="Auto"
-                />
-              </div>
-              <div className="self-end">
-                <Button variant="secondary" className="w-full" onClick={seedRandom}>
-                  Randomize seed
-                </Button>
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <Label htmlFor="ipScale">IP scale</Label>
-                <span className="font-semibold">{ipScale.toFixed(2)}</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <Label htmlFor="width" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.width')}</Label>
+                  <Input id="width" type="number" min={256} step={64} value={width} onChange={(event) => setWidth(Number(event.target.value))} className="h-12 rounded-xl border-border bg-secondary/50 font-bold" />
+                </div>
+                <div className="space-y-4">
+                  <Label htmlFor="height" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.height')}</Label>
+                  <Input id="height" type="number" min={256} step={64} value={height} onChange={(event) => setHeight(Number(event.target.value))} className="h-12 rounded-xl border-border bg-secondary/50 font-bold" />
+                </div>
               </div>
-              <input
-                id="ipScale"
-                type="range"
-                min={0}
-                max={1.5}
-                step={0.05}
-                value={ipScale}
-                onChange={(event) => setIpScale(Number(event.target.value))}
-                className="w-full accent-primary"
-              />
-            </div>
 
-            <div className="space-y-3">
-              <Label>Shot preset</Label>
-              <div className="grid gap-2">
-                {shotPresets.map((preset) => (
-                  <Button
-                    key={preset.value}
-                    variant={shotPreset === preset.value ? 'default' : 'secondary'}
-                    className="justify-start"
-                    onClick={() => setShotPreset(preset.value)}
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="space-y-3">
-                <Label>Component density</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant={density === 'constrained' ? 'default' : 'secondary'} onClick={() => setDensity('constrained')}>
-                    Constrained
-                  </Button>
-                  <Button variant={density === 'expanded' ? 'default' : 'secondary'} onClick={() => setDensity('expanded')}>
-                    Expanded
+              <div className="space-y-4">
+                <Label htmlFor="seed" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.seed')}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="seed"
+                    type="number"
+                    value={seed ?? ''}
+                    onChange={(event) => setSeed(event.target.value === '' ? null : Number(event.target.value))}
+                    placeholder={t('generate:advanced.seed_auto')}
+                    className="h-12 rounded-xl border-border bg-secondary/50 font-bold flex-1"
+                  />
+                  <Button variant="secondary" size="icon" className="h-12 w-12 rounded-xl" onClick={seedRandom} title={t('generate:advanced.seed_random')}>
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label>Visual mode</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant={visualMode === 'work-product' ? 'default' : 'secondary'} onClick={() => setVisualMode('work-product')}>
-                    Work product
-                  </Button>
-                  <Button variant={visualMode === 'mood-board' ? 'default' : 'secondary'} onClick={() => setVisualMode('mood-board')}>
-                    Mood board
-                  </Button>
+              <div className="space-y-6 pt-4 border-t border-border dark:border-white/5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="ipScale" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.ip_scale')}</Label>
+                  <span className="text-xs font-bold text-primary">{ipScale.toFixed(2)}</span>
                 </div>
+                <input
+                  id="ipScale"
+                  type="range"
+                  min={0}
+                  max={1.5}
+                  step={0.05}
+                  value={ipScale}
+                  onChange={(event) => setIpScale(Number(event.target.value))}
+                  className="w-full h-1.5 bg-secondary dark:bg-white/10 rounded-full appearance-none cursor-pointer accent-primary"
+                />
               </div>
             </div>
 
-            <Button variant="ghost" onClick={() => setIpScale(0.65)}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Reset advanced controls
+            <Button variant="ghost" size="sm" className="w-full h-10 rounded-full text-[10px] font-black uppercase tracking-widest text-foreground/40 hover:text-foreground" onClick={() => {
+              setSteps(28); setGuidance(7.5); setWidth(896); setHeight(1152); setSeed(null); setIpScale(0.65);
+            }}>
+              <RotateCcw className="mr-2 h-3.5 w-3.5" />
+              {t('generate:advanced.reset')}
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </SurfacePanel>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card glass={settings.glass}>
-          <CardHeader className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-2">
-                <CardTitle>Result</CardTitle>
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Result stage stays in the same shell and reflects the exact runtime state instead of moving the user
-                  into a separate screen.
-                </p>
-              </div>
-              <MetaPill>
-                {stage === 'queued'
-                  ? 'Queued'
-                  : stage === 'running'
-                    ? 'Running'
-                    : stage === 'done'
-                      ? 'Completed'
-                      : stage === 'error'
-                        ? 'Error'
-                        : 'Ready'}
-              </MetaPill>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <MetaPill>{styleLabel}</MetaPill>
-              <MetaPill>
-                {width}×{height}
-              </MetaPill>
-              <MetaPill>CFG {guidance.toFixed(1)}</MetaPill>
-              <MetaPill>Seed {seed ?? 'Auto'}</MetaPill>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="relative overflow-hidden rounded-[32px] border border-border/60 bg-[#07101a]">
-              {imgUrl ? (
-                <img src={imgUrl} alt="Generated result" className="h-[520px] w-full object-contain" />
-              ) : (
-                <div className="relative flex h-[520px] items-center justify-center">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(13,148,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.16),transparent_24%)]" />
-                  <div className="relative space-y-3 text-center text-white/72">
-                    <div className="font-display text-3xl font-semibold tracking-[-0.05em]">Ready for a new run</div>
-                    <p className="max-w-sm text-sm leading-6 text-white/55">
-                      Result previews, queue status, and final actions stay in this stage once a generation starts.
+          <AnimatePresence mode="wait">
+            {busy && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+              >
+                <SurfacePanel className="p-8 space-y-6 border-primary/20 bg-primary/5">
+                  <div className="flex items-center gap-3 text-primary">
+                    <div className="rounded-full bg-primary/10 p-2">
+                      <Clock3 className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-display text-xl font-bold tracking-tight">
+                      {stage === 'queued' 
+                        ? t('generate:status.queued.title', { position: queuePosition || 1 })
+                        : t('generate:status.running.title')}
+                    </h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: stage === 'queued' ? '15%' : '70%' }}
+                        className="h-full bg-primary shadow-glow" 
+                      />
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/60 dark:text-white/60 font-medium">
+                      {stage === 'queued' ? t('generate:status.queued.desc1') : t('generate:status.running.desc')}
                     </p>
                   </div>
-                </div>
-              )}
+                </SurfacePanel>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              {busy ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#07101a]/60 backdrop-blur">
-                  <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/8 px-5 py-3 text-sm font-semibold text-white">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {stage === 'queued' ? 'Preparing queue state' : 'Rendering with provider'}
-                  </div>
+          {error && (
+            <SurfacePanel className="p-8 border-danger/20 bg-danger/5 space-y-6">
+              <div className="flex items-center gap-3 text-danger">
+                <div className="rounded-full bg-danger/10 p-2">
+                  <TriangleAlert className="h-5 w-5" />
                 </div>
-              ) : null}
-            </div>
+                <h3 className="font-display text-xl font-bold tracking-tight">{t('generate:status.error.title')}</h3>
+              </div>
+              <p className="text-sm leading-relaxed text-danger/80 font-medium">
+                {error || t('generate:status.error.desc')}
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button variant="secondary" onClick={retryCurrentSettings} className="w-full rounded-full font-bold">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {t('generate:actions.retry')}
+                </Button>
+              </div>
+            </SurfacePanel>
+          )}
 
-            <div className="flex flex-wrap gap-3">
-              <Button asChild variant="secondary" disabled={!imgUrl}>
-                <a href={imgUrl ?? '#'} target="_blank" rel="noreferrer">
-                  <ArrowUpRight className="mr-2 h-4 w-4" />
-                  Open result
-                </a>
-              </Button>
-              <Button asChild variant="outline" disabled={!imgUrl}>
-                <a href={imgUrl ?? '#'} download>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download image
-                </a>
-              </Button>
-              <Button asChild variant="ghost">
-                <Link to={appRoutes.history}>View history</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <SurfacePanel className="space-y-4 p-6">
-            {stage === 'queued' ? (
-              <>
-                <div className="flex items-center gap-3 text-foreground">
-                  <Clock3 className="h-5 w-5 text-primary" />
-                  <h3 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Queue position #{queuePosition || 1}</h3>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Preparing task payload. Prompt, negative prompt, and reference data are locked for this run.
-                </p>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Waiting for worker availability. The runtime will move to active generation as soon as a worker is
-                  free.
-                </p>
-              </>
-            ) : null}
-
-            {stage === 'running' ? (
-              <>
-                <div className="flex items-center gap-3 text-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <h3 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Provider status: Generating</h3>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full w-2/3 rounded-full bg-primary animate-pulse" />
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Active generation is running. Result actions will unlock as soon as the provider returns an artifact.
-                </p>
-              </>
-            ) : null}
-
-            {stage === 'done' ? (
-              <>
-                <div className="flex items-center gap-3 text-foreground">
-                  <CheckCircle2 className="h-5 w-5 text-success" />
-                  <h3 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Generation completed</h3>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Result is ready for review, download, and traceable follow-up in history.
-                </p>
-                <div className="grid gap-3">
-                  <MetaPill>Open result</MetaPill>
-                  <MetaPill>Download image</MetaPill>
-                  <MetaPill>View history</MetaPill>
-                </div>
-              </>
-            ) : null}
-
-            {stage === 'error' ? (
-              <>
-                <div className="flex items-center gap-3 text-foreground">
-                  <TriangleAlert className="h-5 w-5 text-danger" />
-                  <h3 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Generation could not complete</h3>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  {error || 'The source timed out before returning an artifact. Keep your prompt and retry, or adjust size and CFG.'}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="secondary" onClick={retryCurrentSettings}>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Retry with same settings
-                  </Button>
-                  <Button variant="outline" onClick={() => setError(null)}>
-                    Edit controls
-                  </Button>
-                  <Button asChild variant="ghost">
-                    <Link to={appRoutes.faq}>Open FAQ</Link>
-                  </Button>
-                </div>
-              </>
-            ) : null}
-
-            {stage === 'idle' ? (
-              <>
-                <div className="flex items-center gap-3 text-foreground">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Ready for a new run</h3>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Use the prompt composer, reference guidance, and advanced controls before generating a new artifact.
-                </p>
-              </>
-            ) : null}
+          <SurfacePanel className="p-8 space-y-6">
+             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{t('generate:facts.title')}</div>
+             <div className="space-y-4">
+                <StatusRow label={t('generate:facts.style')} value={styleLabel} />
+                <StatusRow label={t('generate:facts.aspect')} value={`${width}×${height}`} />
+                <StatusRow label={t('generate:facts.seed')} value={seed ? String(seed) : t('generate:facts.idle')} />
+                <StatusRow label={t('generate:facts.queue')} value={busy ? `${queuePosition || 1} ${t('generate:facts.active')}` : t('generate:facts.idle')} />
+             </div>
           </SurfacePanel>
-
-          <SurfacePanel className="space-y-4 p-6">
-            <div className="text-xs uppercase tracking-[0.26em] text-muted-foreground">Run facts</div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <FactRow label="Style" value={styleLabel} />
-              <FactRow label="Aspect" value={`${width}×${height}`} />
-              <FactRow label="Seed" value={seed ? String(seed) : 'Auto'} />
-              <FactRow label="Queue" value={busy ? `${queuePosition || 1} active` : 'Idle'} />
-            </div>
-          </SurfacePanel>
-        </div>
+        </aside>
       </div>
-    </motion.section>
+    </section>
   )
 }
 
-function FactRow({ label, value }: { label: string; value: string }) {
+function StatusRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-[20px] border border-border/60 bg-card/65 px-4 py-3 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-semibold text-foreground">{value}</span>
+    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest border-b border-border pb-3 dark:border-white/5 last:border-0 last:pb-0">
+      <span className="text-foreground/40 dark:text-white/40">{label}</span>
+      <span className="text-foreground dark:text-white">{value}</span>
     </div>
   )
 }
@@ -714,4 +654,25 @@ async function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+function Monitor(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="20" height="14" x="2" y="3" rx="2" />
+      <line x1="8" x2="16" y1="21" y2="21" />
+      <line x1="12" x2="12" y1="17" y2="21" />
+    </svg>
+  )
 }
