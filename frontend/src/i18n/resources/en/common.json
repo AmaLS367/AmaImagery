@@ -1,5 +1,6 @@
 {
   "appName": "AmaImagery Studio",
+  "appSubtitle": "Image Studio",
   "nav": {
     "login": "Log in",
     "register": "Sign up",
@@ -11,7 +12,9 @@
     "settings": "Settings",
     "faq": "FAQ",
     "about": "About",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "resources": "Resources",
+    "help": "Help"
   },
   "theme": {
     "dark": "Dark theme"
