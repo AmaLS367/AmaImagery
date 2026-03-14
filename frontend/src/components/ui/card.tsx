@@ -8,8 +8,8 @@ export function Card({ className, glass, ...props }: CardProps) {
   return (
     <div 
       className={cn(
-        'overflow-hidden rounded-[24px] border text-card-foreground shadow-panel',
-        glass ? 'surface-glass' : 'bg-card/92',
+        'runtime-surface overflow-hidden text-card-foreground',
+        glass && 'runtime-surface--glass',
         className
       )} 
       {...props} 
