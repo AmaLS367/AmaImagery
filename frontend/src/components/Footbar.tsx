@@ -1,96 +1,78 @@
 import { memo } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 
+import { appRoutes } from '../lib/routes'
+
 type Props = { className?: string }
 
-function goTab(name: string) {
-  try { window.dispatchEvent(new CustomEvent('goto-tab', { detail: name })) } catch {}
-}
+const footerColumns = [
+  {
+    headingKey: 'nav.about',
+    links: [
+      { href: appRoutes.about, labelKey: 'nav.about' },
+      { href: appRoutes.privacy, labelKey: 'nav.privacy' },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { href: appRoutes.promptGuide, labelKey: 'actions.guide' },
+      { href: appRoutes.history, labelKey: 'nav.history' },
+      { href: appRoutes.settings, labelKey: 'nav.settings' },
+    ],
+  },
+  {
+    heading: 'Help',
+    links: [
+      { href: appRoutes.faq, labelKey: 'nav.faq' },
+      { href: 'mailto:support@amaimagery.local', labelKey: 'footbar.support', external: true },
+    ],
+  },
+] as const
 
 export const Footbar = memo(function Footbar({ className }: Props) {
-
   const { t } = useTranslation()
 
   return (
-    <div className="w-[calc(100vw-(100vw-110%))] overflow-x-hidden mt-auto shrink-0 mt-10">
+    <div className="mt-auto w-full shrink-0 overflow-x-hidden">
       <motion.footer
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.18 }}
-        className={[
-          // Цвет как у страницы (без затемнения)
-          'border-t border-border/60 bg-background w-full',
-          'text-sm text-muted-foreground',
-          className || '',
-        ].join(' ')}
-        aria-label="Нижний информационный блок"
+        className={['mt-10 w-full border-t border-border/60 bg-background text-sm text-muted-foreground', className || ''].join(' ')}
+        aria-label="Footer"
       >
-        <div className="mx-auto max-w-6xl px-3 md:px-6 py-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {/* Brand */}
+        <div className="mx-auto max-w-6xl px-3 py-6 md:px-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
             <div className="space-y-2">
               <div className="text-lg font-semibold tracking-tight text-foreground">AmaImagery</div>
-              <p className="text-xs leading-relaxed text-foreground/70">
-                {t('footbar.brandTag')}
-              </p>
+              <p className="text-xs leading-relaxed text-foreground/70">{t('footbar.brandTag')}</p>
             </div>
 
-            {/* О AmaImagery */}
-            <div>
-              <div className="mb-2 font-semibold text-foreground">{t('nav.about')}</div>
-              <ul className="space-y-1">
-                <li>
-                  <button onClick={() => goTab('about')} className="hover:text-foreground underline-offset-4 hover:underline">
-                    {t('nav.about')}
-                  </button>
-                </li>
-                <li>
-                <button onClick={() => goTab('privacy')} className="hover:text-foreground underline-offset-4 hover:underline">
-                  {t('nav.privacy')}
-                </button>
-                </li>
-              </ul>
-            </div>
-
-            {/* Полезное */}
-            <div>
-              <div className="mb-2 font-semibold text-foreground">Полезное</div>
-              <ul className="space-y-1">
-                <li>
-                  <button onClick={() => goTab('guide')} className="hover:text-foreground underline-offset-4 hover:underline">
-                    {t('actions.guide')}
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => goTab('history')} className="hover:text-foreground underline-offset-4 hover:underline">
-                    {t('nav.history')}
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => goTab('settings')} className="hover:text-foreground underline-offset-4 hover:underline">
-                    {t('nav.settings')}
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            {/* Помощь */}
-            <div>
-              <div className="mb-2 font-semibold text-foreground">Помощь</div>
-              <ul className="space-y-1">
-                <li>
-                  <button onClick={() => goTab('faq')} className="hover:text-foreground underline-offset-4 hover:underline">
-                    {t('nav.faq')}
-                  </button>
-                </li>
-                <li>
-                  <a href="mailto:support@amaimagery.local" className="hover:text-foreground underline-offset-4 hover:underline">
-                    {t('footbar.support')}
-                  </a>
-                </li>
-              </ul>
-            </div>
+            {footerColumns.map((column) => (
+              <div key={column.heading ?? column.headingKey}>
+                <div className="mb-2 font-semibold text-foreground">
+                  {column.heading ? column.heading : t(column.headingKey)}
+                </div>
+                <ul className="space-y-1">
+                  {column.links.map((link) => (
+                    <li key={link.href}>
+                      {'external' in link && link.external ? (
+                        <a href={link.href} className="underline-offset-4 hover:text-foreground hover:underline">
+                          {t(link.labelKey)}
+                        </a>
+                      ) : (
+                        <Link to={link.href} className="underline-offset-4 hover:text-foreground hover:underline">
+                          {t(link.labelKey)}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
       </motion.footer>

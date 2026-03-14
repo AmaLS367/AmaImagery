@@ -1,27 +1,36 @@
-import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { useTranslation } from 'react-i18next'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom'
 
-import { configureApiHeaders } from './lib/api'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
-import Generate from './pages/Generate'
-import History from './pages/History'
-import Settings from './pages/Settings'
-import PromptGuide from './pages/PromptGuide'
-import Register from './pages/Register'
-import Login from './pages/Login'
-import { Topbar } from './components/Topbar'
+import { LegacyNavigationBridge } from './components/LegacyNavigationBridge'
 import { Footbar } from './components/Footbar'
-import About from './pages/About'
-import FAQ from './pages/FAQ'
-import Reset from './pages/Reset'
-import Privacy from './pages/Privacy'
+import { Topbar } from './components/Topbar'
+import { configureApiHeaders } from './lib/api'
+import { appRoutes } from './lib/routes'
+import { ProductLayout } from './layouts/ProductLayout'
 import './i18n/i18n'
-import Error404 from './pages/Error404'
 
-type Tab = 'gen' | 'history' | 'settings' | 'guide' | 'about' | 'faq' | 'privacy' | 'register' | 'login' | 'reset' | 'error404'
+const About = lazy(() => import('./pages/About'))
+const Error404 = lazy(() => import('./pages/Error404'))
+const FAQ = lazy(() => import('./pages/FAQ'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const Generate = lazy(() => import('./pages/Generate'))
+const History = lazy(() => import('./pages/History'))
+const Landing = lazy(() => import('./pages/Landing'))
+const Login = lazy(() => import('./pages/Login'))
+const Modes = lazy(() => import('./pages/Modes'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const PromptGuide = lazy(() => import('./pages/PromptGuide'))
+const Prototype = lazy(() => import('./pages/Prototype'))
+const Register = lazy(() => import('./pages/Register'))
+const Reset = lazy(() => import('./pages/Reset'))
+const Settings = lazy(() => import('./pages/Settings'))
 
-// глобальная установка заголовков Authorization для всех API-вызовов
 function setAuthHeaders() {
   configureApiHeaders((): Record<string, string> => {
     try {
@@ -29,92 +38,78 @@ function setAuthHeaders() {
       if (!raw) return {}
       const obj = JSON.parse(raw)
       const token = obj?.user?.access_token || obj?.access_token || obj?.token
-      const h: Record<string, string> = {}
-      if (token) h.Authorization = `Bearer ${token}`
-      return h
+      const headers: Record<string, string> = {}
+      if (token) headers.Authorization = `Bearer ${token}`
+      return headers
     } catch {
       return {}
     }
   })
 }
 
-export default function App() {
-  const [tab, setTab] = useState<Tab>('gen')
+function PageFrame({
+  children,
+  showFooter = true,
+  theme,
+  toggleTheme,
+}: {
+  children: React.ReactNode
+  showFooter?: boolean
+  theme: 'light' | 'dark'
+  toggleTheme: () => void
+}) {
+  return (
+    <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
+      <Topbar theme={theme} toggleTheme={toggleTheme} />
+      <main className="container flex-1 pt-0">{children}</main>
+      {showFooter ? <Footbar /> : null}
+    </div>
+  )
+}
+
+function PreserveQueryRedirect({ to }: { to: string }) {
+  const location = useLocation()
+  return <Navigate replace to={{ pathname: to, search: location.search }} />
+}
+
+function AppShell() {
   const [theme, setTheme] = useState<'light' | 'dark'>(
-    () => (localStorage.getItem('theme') as any) ?? 'light'
+    () => (localStorage.getItem('theme') as 'light' | 'dark' | null) ?? 'light',
   )
 
   useEffect(() => {
     localStorage.setItem('theme', theme)
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
-  const toggleTheme = () => setTheme(t => (t === 'light' ? 'dark' : 'light'))
 
-  // скрытые вкладки переключаются через глобальное событие
-  useEffect(() => {
-    const handler = (e: any) => setTab(e.detail as Tab)
-    window.addEventListener('goto-tab', handler)
-    return () => window.removeEventListener('goto-tab', handler)
-  }, [])
-
-  // первичная навигация по path -> tab, иначе 404
-  useEffect(() => {
-    try {
-      const path = window.location.pathname.replace(/\/+$/, '') || '/'
-      const routes: Record<string, Tab> = {
-        '/': 'gen',
-        '/gen': 'gen',
-        '/history': 'history',
-        '/settings': 'settings',
-        '/guide': 'guide',
-        '/about': 'about',
-        '/faq': 'faq',
-        '/privacy': 'privacy',
-        '/register': 'register',
-        '/login': 'login',
-        '/reset': 'reset',
-      }
-      setTab(routes[path] ?? 'error404')
-    } catch {}
-  }, [])
-
-
-  // обновлять заголовки и мягко перерисовывать при логине/логауте
   useEffect(() => {
     const onAuth = () => {
       setAuthHeaders()
-      setTab(t => t)
     }
+
     window.addEventListener('auth:update', onAuth)
     return () => window.removeEventListener('auth:update', onAuth)
   }, [])
 
-  // первичная установка Authorization
   useEffect(() => {
     setAuthHeaders()
-    
-    // Check if user has valid tokens, if not clear them
-    // Only check once on mount, not on every render
+
     let mounted = true
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('access_token')
-        if (!token) {
-          // No token, no need to check
-          return
-        }
-        
+        if (!token) return
+
         const response = await fetch('/api/v1/auth/me', {
           credentials: 'include',
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         })
-        
+
         if (!mounted) return
-        
+
         if (!response.ok && response.status === 401) {
-          // Only clear on 401, not on other errors
           localStorage.removeItem('access_token')
           const authData = localStorage.getItem('auth')
           if (authData) {
@@ -124,95 +119,161 @@ export default function App() {
                 delete auth.user.access_token
                 localStorage.setItem('auth', JSON.stringify(auth))
               }
-            } catch {}
+            } catch {
+              // ignore auth storage parse errors
+            }
           }
           window.dispatchEvent(new Event('auth:update'))
         }
-      } catch (e) {
-        // Ignore network errors on initial check
+      } catch (error) {
         if (mounted) {
-          console.warn('Auth check failed:', e)
+          console.warn('Auth check failed:', error)
         }
       }
     }
-    
+
     checkAuth()
-    
+
     return () => {
       mounted = false
     }
   }, [])
 
-  const { t } = useTranslation()
+  const toggleTheme = () => setTheme((current) => (current === 'light' ? 'dark' : 'light'))
+
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
-      <Topbar theme={theme} toggleTheme={toggleTheme} />
+    <>
+      <LegacyNavigationBridge />
+      <Suspense fallback={<div className="min-h-screen bg-background text-foreground" />}>
+        <Routes>
+          <Route path="/gen" element={<Navigate replace to={appRoutes.generate} />} />
+          <Route path="/guide" element={<Navigate replace to={appRoutes.promptGuide} />} />
+          <Route path="/reset" element={<PreserveQueryRedirect to={appRoutes.resetPassword} />} />
 
-      <div className="container pt-0 flex-1">
-        {tab === 'error404' ? (
-          <Error404 />
-        ) : tab === 'register' ? (
-          <Register />
-        ) : tab === 'login' ? (
-          <Login />
-        ) : tab === 'reset' ? (
-          <Reset />
-        ) : (
-          <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-            <div className="flex items-center justify-center pb-3">
-            <TabsList>
-              <TabsTrigger value="gen">{t('navtop:gen')}</TabsTrigger>
-              <TabsTrigger value="history">{t('navtop:history')}</TabsTrigger>
-              <TabsTrigger value="settings">{t('navtop:settings')}</TabsTrigger>
-            </TabsList>
-            </div>
+          <Route
+            element={<ProductLayout theme={theme} toggleTheme={toggleTheme} />}
+          >
+            <Route path={appRoutes.generate} element={<Generate />} />
+            <Route path={appRoutes.history} element={<History />} />
+            <Route path={appRoutes.settings} element={<Settings theme={theme} toggleTheme={toggleTheme} />} />
+          </Route>
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={tab}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <TabsContent value="gen" className="focus-visible:outline-none">
-                  {tab === 'gen' && <Generate />}
-                </TabsContent>
-                <TabsContent value="history" className="focus-visible:outline-none">
-                  {tab === 'history' && <History />}
-                </TabsContent>
-                <TabsContent value="guide" className="focus-visible:outline-none">
-                  {tab === 'guide' && <PromptGuide />}
-                </TabsContent>
-                <TabsContent value="about" className="focus-visible:outline-none">
-                  {tab === 'about' && <About />}
-                </TabsContent>
-                <TabsContent value="faq" className="focus-visible:outline-none">
-                  {tab === 'faq' && <FAQ />}
-                </TabsContent>
-                <TabsContent value="privacy" className="focus-visible:outline-none">
-                  {tab === 'privacy' && <Privacy />}
-                </TabsContent>
-                <TabsContent value="settings" className="focus-visible:outline-none">
-                  {tab === 'settings' && <Settings theme={theme} toggleTheme={toggleTheme} />}
-                </TabsContent>
-              </motion.div>
-            </AnimatePresence>
-          </Tabs>
-        )}
-        {tab !== 'register' && tab !== 'login' && tab !== 'reset' && tab !== 'error404' && <Footbar />}
-      </div>
+          <Route
+            path={appRoutes.landing}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme}>
+                <Landing />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.about}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme}>
+                <About />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.faq}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme}>
+                <FAQ />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.promptGuide}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme}>
+                <PromptGuide />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.privacy}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme}>
+                <Privacy />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.modes}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme}>
+                <Modes />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.prototype}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme}>
+                <Prototype />
+              </PageFrame>
+            }
+          />
 
-      <AnimatePresence>
-        <motion.div
-          key={tab + '-overlay'}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0 }}
-          exit={{ opacity: 0.8 }}
-          transition={{ duration: 0.25 }}
-          className="pointer-events-none fixed inset-0 -z-10 bg-primary"
-        />
-      </AnimatePresence>
-    </div>
+          <Route
+            path={appRoutes.login}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
+                <Login />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.register}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
+                <Register />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.forgotPassword}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
+                <ForgotPassword />
+              </PageFrame>
+            }
+          />
+          <Route
+            path={appRoutes.resetPassword}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
+                <Reset />
+              </PageFrame>
+            }
+          />
+
+          <Route
+            path={appRoutes.notFound}
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
+                <Error404 />
+              </PageFrame>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
+                <Error404 />
+              </PageFrame>
+            }
+          />
+        </Routes>
+      </Suspense>
+    </>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
   )
 }
