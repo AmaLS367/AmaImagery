@@ -1,8 +1,6 @@
-/* @vitest-environment jsdom */
-
 import '@testing-library/jest-dom/vitest'
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@src/App'
@@ -13,21 +11,19 @@ import { SettingsProvider } from '@src/providers/SettingsProvider'
 type FetchInput = RequestInfo | URL
 
 const canonicalRoutes = [
-  ['/', /HomePage/i],
-  ['/generate', /Main product shell with preserved IA and internal state variants\./i],
-  ['/history', /Searchable history with filters, metadata, and explicit state handling\./i],
-  ['/settings', /Serious control center with visual lab and live shell preview\./i],
-  ['/login', /Sign in to your account/i],
-  ['/register', /Create your account/i],
-  ['/forgot-password', /Reset your password/i],
-  ['/reset-password?token=smoke-token', /Create your new password/i],
-  ['/about', /AmaImagery is a premium image-generation shell built around clarity\./i],
-  ['/faq', /Production answers for the product, not placeholder support text\./i],
-  ['/prompt-guide', /Write prompts that stay readable for both the model and the operator\./i],
-  ['/privacy', /Privacy is framed around how the product actually works\./i],
-  ['/404', /This route is not part of the screen system\./i],
-  ['/modes', /Curated visual direction study for the AmaImagery shell\./i],
-  ['/prototype', /Full clickthrough map and start states for the Figma file\./i],
+  ['/', 'landing'],
+  ['/generate', 'generate'],
+  ['/history', 'history'],
+  ['/settings', 'settings'],
+  ['/login', 'login'],
+  ['/register', 'register'],
+  ['/forgot-password', 'forgot-password'],
+  ['/reset-password?token=smoke-token', 'reset-password'],
+  ['/about', 'about'],
+  ['/faq', 'faq'],
+  ['/prompt-guide', 'prompt-guide'],
+  ['/privacy', 'privacy'],
+  ['/404', 'not-found'],
 ] as const
 
 function jsonResponse(data: unknown, init?: ResponseInit) {
@@ -55,6 +51,12 @@ function renderApp(route: string) {
       </AuthProvider>
     </SettingsProvider>,
   )
+}
+
+async function expectPage(pageId: string) {
+  await waitFor(() => {
+    expect(document.querySelector(`[data-page-id="${pageId}"]`)).toBeInTheDocument()
+  })
 }
 
 beforeEach(() => {
@@ -105,28 +107,31 @@ beforeEach(() => {
         return jsonResponse({ data: {} })
       }
 
+      if (url.includes('/api/v1/auth/me') || url.includes('/api/v1/auth/refresh')) {
+        return jsonResponse({ detail: 'unauthorized' }, { status: 401 })
+      }
+
       if (url.includes('/api/v1/auth/forgot-password')) {
         return new Response(null, { status: 204 })
       }
 
       if (url.includes('/api/v1/auth/reset-password')) {
-        return jsonResponse({ ok: true })
+        return new Response(null, { status: 200 })
       }
 
       if (url.includes('/api/v1/auth/login') || url.includes('/api/v1/auth/register')) {
-        return jsonResponse({ access_token: 'test-token', user: { username: 'tester' } })
-      }
-
-      if (url.includes('/api/v1/auth/me')) {
-        return jsonResponse({ id: 'user-1', email: 'tester@example.com', username: 'tester', settings: {} })
+        return jsonResponse({
+          id: 'user-1',
+          email: 'tester@example.com',
+          username: 'tester',
+          access_token: 'test-token',
+          token_type: 'bearer',
+          expires_in: 900,
+        })
       }
 
       if (url.includes('/api/v1/auth/logout')) {
-        return jsonResponse({ ok: true })
-      }
-
-      if (url.includes('/api/v1/auth/refresh')) {
-        return new Response(null, { status: 401 })
+        return new Response(null, { status: 204 })
       }
 
       if (url.includes('/api/v1/images/generate')) {
@@ -158,44 +163,44 @@ afterEach(() => {
 })
 
 describe('app route smoke tests', () => {
-  it.each(canonicalRoutes)('renders %s as a standalone route', async (route, heading) => {
+  it.each(canonicalRoutes)('renders %s as a standalone route', async (route, pageId) => {
     renderApp(route)
-    expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeInTheDocument()
+    await expectPage(pageId)
   })
 
   it('keeps landing and generate separated', async () => {
     renderApp('/')
-    expect(await screen.findByRole('heading', { name: /HomePage/i, level: 1 })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /Main product shell with preserved IA and internal state variants\./i, level: 1 })).not.toBeInTheDocument()
+    await expectPage('landing')
+    expect(document.querySelector('[data-page-id="generate"]')).not.toBeInTheDocument()
 
     cleanup()
 
     renderApp('/generate')
-    expect(await screen.findByRole('heading', { name: /Main product shell with preserved IA and internal state variants\./i, level: 1 })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /HomePage/i, level: 1 })).not.toBeInTheDocument()
+    await expectPage('generate')
+    expect(document.querySelector('[data-page-id="landing"]')).not.toBeInTheDocument()
   })
 
   it('redirects legacy routes to their canonical destinations', async () => {
     renderApp('/gen')
     await waitFor(() => expect(window.location.pathname).toBe('/generate'))
-    expect(await screen.findByRole('heading', { name: /Main product shell with preserved IA and internal state variants\./i, level: 1 })).toBeInTheDocument()
+    await expectPage('generate')
 
     cleanup()
 
     renderApp('/guide')
     await waitFor(() => expect(window.location.pathname).toBe('/prompt-guide'))
-    expect(await screen.findByRole('heading', { name: /Write prompts that stay readable for both the model and the operator\./i, level: 1 })).toBeInTheDocument()
+    await expectPage('prompt-guide')
 
     cleanup()
 
     renderApp('/reset?token=redirect-token')
     await waitFor(() => expect(window.location.pathname).toBe('/reset-password'))
     await waitFor(() => expect(window.location.search).toBe('?token=redirect-token'))
-    expect(await screen.findByRole('heading', { name: /Create your new password/i, level: 1 })).toBeInTheDocument()
+    await expectPage('reset-password')
   })
 
   it('renders the catch-all 404 screen for unknown routes', async () => {
     renderApp('/totally-missing-route')
-    expect(await screen.findByRole('heading', { name: /This route is not part of the screen system\./i, level: 1 })).toBeInTheDocument()
+    await expectPage('not-found')
   })
 })

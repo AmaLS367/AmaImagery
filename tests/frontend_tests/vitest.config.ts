@@ -1,7 +1,11 @@
 import { defineConfig } from 'vitest/config'
 import path from 'path'
 export default defineConfig({
-  test: { include: ['unit/**/*.test.ts', 'unit/**/*.test.tsx'], environment: 'node' },
+  test: {
+    include: ['unit/**/*.test.ts', 'unit/**/*.test.tsx'],
+    environment: 'jsdom',
+    setupFiles: [path.resolve(__dirname, './setup.ts')],
+  },
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {

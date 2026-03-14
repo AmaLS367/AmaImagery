@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense } from 'react'
 import {
   BrowserRouter,
   Navigate,
@@ -10,7 +10,6 @@ import {
 import { LegacyNavigationBridge } from './components/LegacyNavigationBridge'
 import { Footbar } from './components/Footbar'
 import { Topbar } from './components/Topbar'
-import { configureApiHeaders } from './lib/api'
 import { appRoutes } from './lib/routes'
 import { ProductLayout } from './layouts/ProductLayout'
 import { useSettings } from './providers/SettingsProvider'
@@ -24,29 +23,13 @@ const Generate = lazy(() => import('./pages/Generate'))
 const History = lazy(() => import('./pages/History'))
 const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
-const Modes = lazy(() => import('./pages/Modes'))
+
 const Privacy = lazy(() => import('./pages/Privacy'))
 const PromptGuide = lazy(() => import('./pages/PromptGuide'))
-const Prototype = lazy(() => import('./pages/Prototype'))
+
 const Register = lazy(() => import('./pages/Register'))
 const Reset = lazy(() => import('./pages/Reset'))
 const Settings = lazy(() => import('./pages/Settings'))
-
-function setAuthHeaders() {
-  configureApiHeaders((): Record<string, string> => {
-    try {
-      const raw = localStorage.getItem('auth')
-      if (!raw) return {}
-      const obj = JSON.parse(raw)
-      const token = obj?.user?.access_token || obj?.access_token || obj?.token
-      const headers: Record<string, string> = {}
-      if (token) headers.Authorization = `Bearer ${token}`
-      return headers
-    } catch {
-      return {}
-    }
-  })
-}
 
 function PageFrame({
   children,
@@ -73,66 +56,19 @@ function PreserveQueryRedirect({ to }: { to: string }) {
   return <Navigate replace to={{ pathname: to, search: location.search }} />
 }
 
+function PageMarker({
+  pageId,
+  children,
+}: {
+  pageId: string
+  children: React.ReactNode
+}) {
+  return <div data-page-id={pageId}>{children}</div>
+}
+
 function AppShell() {
   const { settings, update } = useSettings()
   const theme = settings.theme
-
-  useEffect(() => {
-    const onAuth = () => {
-      setAuthHeaders()
-    }
-
-    window.addEventListener('auth:update', onAuth)
-    return () => window.removeEventListener('auth:update', onAuth)
-  }, [])
-
-  useEffect(() => {
-    setAuthHeaders()
-
-    let mounted = true
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('access_token')
-        if (!token) return
-
-        const response = await fetch('/api/v1/auth/me', {
-          credentials: 'include',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!mounted) return
-
-        if (!response.ok && response.status === 401) {
-          localStorage.removeItem('access_token')
-          const authData = localStorage.getItem('auth')
-          if (authData) {
-            try {
-              const auth = JSON.parse(authData)
-              if (auth && auth.user) {
-                delete auth.user.access_token
-                localStorage.setItem('auth', JSON.stringify(auth))
-              }
-            } catch {
-              // ignore auth storage parse errors
-            }
-          }
-          window.dispatchEvent(new Event('auth:update'))
-        }
-      } catch (error) {
-        if (mounted) {
-          console.warn('Auth check failed:', error)
-        }
-      }
-    }
-
-    checkAuth()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
 
   const toggleTheme = () => update('theme', theme === 'light' ? 'dark' : 'light')
 
@@ -148,16 +84,39 @@ function AppShell() {
           <Route
             element={<ProductLayout theme={theme} toggleTheme={toggleTheme} />}
           >
-            <Route path={appRoutes.generate} element={<Generate />} />
-            <Route path={appRoutes.history} element={<History />} />
-            <Route path={appRoutes.settings} element={<Settings />} />
+            <Route
+              path={appRoutes.generate}
+              element={
+                <PageMarker pageId="generate">
+                  <Generate />
+                </PageMarker>
+              }
+            />
+            <Route
+              path={appRoutes.history}
+              element={
+                <PageMarker pageId="history">
+                  <History />
+                </PageMarker>
+              }
+            />
+            <Route
+              path={appRoutes.settings}
+              element={
+                <PageMarker pageId="settings">
+                  <Settings />
+                </PageMarker>
+              }
+            />
           </Route>
 
           <Route
             path={appRoutes.landing}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme}>
-                <Landing />
+                <PageMarker pageId="landing">
+                  <Landing />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -165,7 +124,9 @@ function AppShell() {
             path={appRoutes.about}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme}>
-                <About />
+                <PageMarker pageId="about">
+                  <About />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -173,7 +134,9 @@ function AppShell() {
             path={appRoutes.faq}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme}>
-                <FAQ />
+                <PageMarker pageId="faq">
+                  <FAQ />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -181,7 +144,9 @@ function AppShell() {
             path={appRoutes.promptGuide}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme}>
-                <PromptGuide />
+                <PageMarker pageId="prompt-guide">
+                  <PromptGuide />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -189,32 +154,21 @@ function AppShell() {
             path={appRoutes.privacy}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme}>
-                <Privacy />
+                <PageMarker pageId="privacy">
+                  <Privacy />
+                </PageMarker>
               </PageFrame>
             }
           />
-          <Route
-            path={appRoutes.modes}
-            element={
-              <PageFrame theme={theme} toggleTheme={toggleTheme}>
-                <Modes />
-              </PageFrame>
-            }
-          />
-          <Route
-            path={appRoutes.prototype}
-            element={
-              <PageFrame theme={theme} toggleTheme={toggleTheme}>
-                <Prototype />
-              </PageFrame>
-            }
-          />
+
 
           <Route
             path={appRoutes.login}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
-                <Login />
+                <PageMarker pageId="login">
+                  <Login />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -222,7 +176,9 @@ function AppShell() {
             path={appRoutes.register}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
-                <Register />
+                <PageMarker pageId="register">
+                  <Register />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -230,7 +186,9 @@ function AppShell() {
             path={appRoutes.forgotPassword}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
-                <ForgotPassword />
+                <PageMarker pageId="forgot-password">
+                  <ForgotPassword />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -238,7 +196,9 @@ function AppShell() {
             path={appRoutes.resetPassword}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
-                <Reset />
+                <PageMarker pageId="reset-password">
+                  <Reset />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -247,7 +207,9 @@ function AppShell() {
             path={appRoutes.notFound}
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
-                <Error404 />
+                <PageMarker pageId="not-found">
+                  <Error404 />
+                </PageMarker>
               </PageFrame>
             }
           />
@@ -255,7 +217,9 @@ function AppShell() {
             path="*"
             element={
               <PageFrame theme={theme} toggleTheme={toggleTheme} showFooter={false}>
-                <Error404 />
+                <PageMarker pageId="not-found">
+                  <Error404 />
+                </PageMarker>
               </PageFrame>
             }
           />
