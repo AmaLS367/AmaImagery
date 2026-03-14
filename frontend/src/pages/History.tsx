@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock3, RefreshCw, Search, TriangleAlert } from 'lucide-react'
+import { Clock3, RefreshCw, Search, TriangleAlert, Filter, Layers } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-import { listMyGenerations, type GenerationItem } from '../lib/api'
+import { listMyGenerations, toAssetUrl, type GenerationItem } from '../lib/api'
 import { appRoutes } from '../lib/routes'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { MetaPill, SectionEyebrow, SurfacePanel } from '../components/ui/foundation'
+import { MetaPill, SurfacePanel } from '../components/ui/foundation'
+import { EditorialFrame } from '../components/editorial/EditorialFrame'
+import { cn } from '../lib/utils'
 
 type RatioKey = 'any' | '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '4:5'
 type CfgKey = 'any' | 'lt6' | '6-8' | 'gt8'
@@ -40,10 +43,20 @@ function formatRatio(item: GenerationItem) {
 }
 
 function buildImageUrl(item: GenerationItem) {
-  if (item.image_url) return item.image_url
-  const name = String(item.image_path || '').split(/[\\/]/).pop() || ''
-  if (!name || typeof item.exp !== 'number' || typeof item.sig !== 'string' || item.sig.length === 0) return null
-  return `/api/v1/file?path=${encodeURIComponent(name)}&exp=${String(item.exp)}&sig=${encodeURIComponent(item.sig)}`
+  if (item.image_url) return toAssetUrl(item.image_url)
+
+  const filename = item.image_filename || String(item.image_path || '').split(/[\\/]/).pop() || ''
+  if (!filename) return null
+
+  const query = new URLSearchParams({ path: filename })
+  if (typeof item.exp === 'number') {
+    query.set('exp', String(item.exp))
+  }
+  if (typeof item.sig === 'string' && item.sig.length > 0) {
+    query.set('sig', item.sig)
+  }
+
+  return toAssetUrl(`/api/v1/file?${query.toString()}`)
 }
 
 function formatTimestamp(value: string) {
@@ -64,7 +77,7 @@ export default function History() {
 
   const [query, setQuery] = useState('')
   const [ratio, setRatio] = useState<RatioKey>('any')
-  const [cfg, setCfg] = useState<CfgKey>('6-8')
+  const [cfg, setCfg] = useState<CfgKey>('any')
 
   async function load() {
     setLoading(true)
@@ -98,230 +111,256 @@ export default function History() {
     })
   }, [items, query, ratio, cfg])
 
-  const filteredRows = filtered.slice(0, 5)
   const empty = !loading && !error && items.length === 0
   const filteredEmpty = !loading && !error && items.length > 0 && filtered.length === 0
 
   return (
-    <section className="page-shell space-y-6 py-8 xl:py-10">
-      <SurfacePanel glass className="space-y-5 p-6 md:p-8">
-        <SectionEyebrow>History</SectionEyebrow>
-        <div className="space-y-4">
-          <h1 className="font-display text-4xl font-semibold tracking-[-0.06em] text-foreground sm:text-5xl">
-            Searchable history with filters, metadata, and explicit state handling.
-          </h1>
-          <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-            Search by prompt excerpt, filter by ratio and CFG band, and keep loading, empty, error, and filtered
-            feedback readable inside the same archive screen.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <MetaPill>Search</MetaPill>
-          <MetaPill>Ratio</MetaPill>
-          <MetaPill>CFG</MetaPill>
-          <MetaPill>Refresh</MetaPill>
-        </div>
-      </SurfacePanel>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_420px]">
-        <SurfacePanel className="space-y-6 p-6 md:p-8">
-          <div className="text-sm font-semibold text-foreground">History / Populated / Dark</div>
-
-          <div className="flex flex-wrap items-center gap-3">
+    <EditorialFrame
+      eyebrow="History"
+      title="A deep archive of your creative evolution."
+      summary="Search by prompt, filter by metadata, and reconstruct past results with pixel-perfect fidelity."
+      pills={[`${items.length} Generations`, 'Searchable', 'Metadata-rich']}
+    >
+      <div className="grid gap-12 xl:grid-cols-[1fr_380px] items-start">
+        <div className="space-y-10">
+          {/* Controls */}
+          <SurfacePanel className="p-6 flex flex-wrap items-center gap-4">
             <div className="relative min-w-[260px] flex-1">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search prompt text"
-                className="pl-11"
+                placeholder="Search generations..."
+                className="pl-11 h-12 rounded-full border-border bg-secondary/50"
               />
             </div>
 
-            <select
-              value={ratio}
-              onChange={(event) => setRatio(event.target.value as RatioKey)}
-              className="h-12 rounded-[18px] border border-border/70 bg-card/85 px-4 text-sm shadow-panel"
-            >
-              <option value="any">Any ratio</option>
-              <option value="1:1">1:1</option>
-              <option value="3:4">3:4</option>
-              <option value="4:3">4:3</option>
-              <option value="4:5">4:5</option>
-              <option value="9:16">9:16</option>
-              <option value="16:9">16:9</option>
-            </select>
-
-            <select
-              value={cfg}
-              onChange={(event) => setCfg(event.target.value as CfgKey)}
-              className="h-12 rounded-[18px] border border-border/70 bg-card/85 px-4 text-sm shadow-panel"
-            >
-              <option value="any">Any CFG</option>
-              <option value="lt6">CFG &lt; 6</option>
-              <option value="6-8">CFG 6-8</option>
-              <option value="gt8">CFG &gt; 8</option>
-            </select>
-
-            <Button variant="secondary" onClick={load} disabled={loading}>
-              {loading ? 'Refreshing…' : 'Refresh'}
-            </Button>
-          </div>
-
-          {loading && !items.length ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-[320px] animate-pulse rounded-[28px] bg-card/55" />
-              ))}
-            </div>
-          ) : null}
-
-          {empty ? (
-            <SurfacePanel className="rounded-[28px] p-6 shadow-none">
-              <div className="space-y-3">
-                <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">No generations yet</h2>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Your history will appear here after the first completed run. You can search, filter by ratio, and
-                  revisit metadata later.
-                </p>
-                <Button asChild>
-                  <Link to={appRoutes.generate}>Create your first image</Link>
-                </Button>
-              </div>
-            </SurfacePanel>
-          ) : null}
-
-          {filteredEmpty ? (
-            <SurfacePanel className="rounded-[28px] p-6 shadow-none">
-              <div className="space-y-3">
-                <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">No results for current filters</h2>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Clear the prompt query or broaden the ratio and CFG filters to bring archive items back into view.
-                </p>
-              </div>
-            </SurfacePanel>
-          ) : null}
-
-          {!loading && filtered.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              {filtered.slice(0, 6).map((item) => {
-                if (broken[item.id]) return null
-
-                const imageUrl = buildImageUrl(item)
-                const promptText = String(item.prompt?.prompt ?? '')
-                const params = item.params || {}
-
-                return (
-                  <article key={item.id} className="overflow-hidden rounded-[28px] border border-border/60 bg-[#09121c] text-white shadow-panel">
-                    <div className="relative h-52 overflow-hidden border-b border-white/5 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.12),transparent_25%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_24%),linear-gradient(180deg,#0a1624,#08111a)]">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                          onError={() => setBroken((current) => ({ ...current, [item.id]: true }))}
-                        />
-                      ) : null}
-                    </div>
-                    <div className="space-y-3 p-4">
-                      <div className="font-medium text-white/90">{promptText || 'Untitled result'}</div>
-                      <div className="space-y-1 text-xs leading-5 text-white/58">
-                        <div>
-                          {formatRatio(item)} · CFG {Number(params.guidance_scale ?? 0).toFixed(1)} · {String(params.steps ?? '—')} steps · Seed{' '}
-                          {String(params.seed ?? 'Auto')}
-                        </div>
-                        <div>
-                          Model {item.provider_name || 'AmaFusion'} · {formatTimestamp(item.created_at)}
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          ) : null}
-        </SurfacePanel>
-
-        <div className="space-y-6">
-          <SurfacePanel className="space-y-4 p-6">
-            <div className="text-sm font-semibold text-foreground">History / Loading / Light</div>
-            <p className="text-sm leading-6 text-muted-foreground">
-              {loading ? 'Refreshing generation records and metadata…' : 'Search, filter, and refresh remain visible while the archive changes state.'}
-            </p>
-          </SurfacePanel>
-
-          <SurfacePanel className="space-y-4 p-6">
-            <div className="text-sm font-semibold text-foreground">History / Empty / Dark</div>
-            <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">No generations yet</h2>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Your history will appear here after the first completed run. You can search, filter by ratio, and revisit
-              metadata later.
-            </p>
-            <Button asChild>
-              <Link to={appRoutes.generate}>Create your first image</Link>
-            </Button>
-          </SurfacePanel>
-
-          <SurfacePanel className="space-y-4 p-6">
-            <div className="text-sm font-semibold text-foreground">History / Error / Dark</div>
             <div className="flex items-center gap-3">
-              <TriangleAlert className="h-5 w-5 text-danger" />
-              <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Failed to load history</h2>
-            </div>
-            <p className="text-sm leading-6 text-muted-foreground">
-              {error || 'The request could not complete. Retry now or verify your session.'}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={load}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh again
-              </Button>
-              <Button asChild variant="outline">
-                <Link to={appRoutes.login}>Sign in again</Link>
+              <select
+                value={ratio}
+                onChange={(event) => setRatio(event.target.value as RatioKey)}
+                className="h-12 rounded-full border border-border bg-secondary/50 px-6 text-sm font-bold text-foreground/70 outline-none focus:border-primary/50 transition-colors"
+              >
+                <option value="any">Any Ratio</option>
+                <option value="1:1">1:1</option>
+                <option value="3:4">3:4</option>
+                <option value="4:3">4:3</option>
+                <option value="4:5">4:5</option>
+                <option value="9:16">9:16</option>
+                <option value="16:9">16:9</option>
+              </select>
+
+              <select
+                value={cfg}
+                onChange={(event) => setCfg(event.target.value as CfgKey)}
+                className="h-12 rounded-full border border-border bg-secondary/50 px-6 text-sm font-bold text-foreground/70 outline-none focus:border-primary/50 transition-colors"
+              >
+                <option value="any">Any CFG</option>
+                <option value="lt6">CFG &lt; 6</option>
+                <option value="6-8">CFG 6-8</option>
+                <option value="gt8">CFG &gt; 8</option>
+              </select>
+
+              <Button variant="outline" size="icon" className="h-12 w-12 rounded-full border-border" onClick={load} disabled={loading}>
+                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               </Button>
             </div>
           </SurfacePanel>
 
-          <SurfacePanel className="space-y-4 p-6">
-            <div className="text-sm font-semibold text-foreground">History / Filtered Results / Light</div>
-            {filteredRows.length ? (
-              <div className="overflow-hidden rounded-[24px] border border-border/60">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-card/70 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3">Prompt excerpt</th>
-                      <th className="px-4 py-3">Ratio</th>
-                      <th className="px-4 py-3">CFG</th>
-                      <th className="px-4 py-3">Steps</th>
-                      <th className="px-4 py-3">Seed</th>
-                      <th className="px-4 py-3">Timestamp</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((item) => (
-                      <tr key={item.id} className="border-t border-border/60">
-                        <td className="px-4 py-3 text-foreground">{String(item.prompt?.prompt ?? '').slice(0, 48) || 'Untitled prompt'}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatRatio(item)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{Number(item.params?.guidance_scale ?? 0).toFixed(1)}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{String(item.params?.steps ?? '—')}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{String(item.params?.seed ?? 'Auto')}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatTimestamp(item.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 rounded-[24px] border border-border/60 bg-card/55 px-4 py-5 text-sm text-muted-foreground">
-                <Clock3 className="h-4 w-4" />
-                Filtered metadata will appear here once results match the current search.
-              </div>
-            )}
-          </SurfacePanel>
+          {/* Grid */}
+          <div className="space-y-6">
+            <AnimatePresence mode="popLayout">
+              {loading && !items.length ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+                >
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="h-[400px] animate-pulse rounded-[32px] bg-secondary/50 border border-border" />
+                  ))}
+                </motion.div>
+              ) : empty ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="py-20"
+                >
+                  <SurfacePanel className="p-12 text-center space-y-6 max-w-lg mx-auto">
+                    <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto">
+                      <Layers className="h-10 w-10" />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="font-display text-3xl font-bold tracking-tight text-foreground dark:text-white">No generations yet</h2>
+                      <p className="text-foreground/60 dark:text-white/60 font-medium">Your creative journey starts here. Launch the studio to create your first masterpiece.</p>
+                    </div>
+                    <Button asChild size="lg" className="h-14 px-10 rounded-full font-bold">
+                      <Link to={appRoutes.generate}>Create your first image</Link>
+                    </Button>
+                  </SurfacePanel>
+                </motion.div>
+              ) : filteredEmpty ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="py-20"
+                >
+                  <SurfacePanel className="p-12 text-center space-y-4 max-w-lg mx-auto">
+                    <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center mx-auto dark:bg-white/5">
+                      <Search className="h-8 w-8 text-foreground/20" />
+                    </div>
+                    <h2 className="font-display text-2xl font-bold text-foreground dark:text-white">No results found</h2>
+                    <p className="text-foreground/60 dark:text-white/60 font-medium">Try adjusting your search query or filters.</p>
+                    <Button variant="ghost" onClick={() => { setQuery(''); setRatio('any'); setCfg('any'); }} className="font-bold">
+                      Clear all filters
+                    </Button>
+                  </SurfacePanel>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  layout
+                  className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+                >
+                  {filtered.map((item) => {
+                    if (broken[item.id]) return null
+                    const imageUrl = buildImageUrl(item)
+                    const params = item.params || {}
+                    const promptText = typeof item.prompt?.prompt === 'string' ? item.prompt.prompt : 'Untitled Result'
+                    const stepsText = params.steps == null ? '—' : String(params.steps)
+                    const modelText = typeof item.provider_name === 'string' && item.provider_name.length > 0 ? item.provider_name : 'AmaFusion'
+
+                    return (
+                      <motion.article 
+                        key={item.id} 
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="group overflow-hidden rounded-[32px] border border-border bg-card shadow-sm hover:border-primary/30 transition-all dark:border-white/10 dark:bg-white/5"
+                      >
+                        <div className="relative h-64 overflow-hidden bg-secondary dark:bg-black/20">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt=""
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              loading="lazy"
+                              onError={() => setBroken((current) => ({ ...current, [item.id]: true }))}
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                               <Layers className="h-10 w-10 text-foreground/10" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                             <div className="flex gap-2">
+                                <MetaPill className="bg-black/40 border-white/10 text-white backdrop-blur-md">{formatRatio(item)}</MetaPill>
+                             </div>
+                          </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                          <div className="font-bold text-foreground line-clamp-2 leading-relaxed dark:text-white group-hover:text-primary transition-colors">
+                            {promptText}
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-[10px] font-black uppercase tracking-widest text-foreground/40 dark:text-white/40">
+                            <div className="space-y-1">
+                               <div className="text-primary/60">Guidance</div>
+                               <div className="text-foreground dark:text-white/70">{Number(params.guidance_scale ?? 0).toFixed(1)}</div>
+                            </div>
+                            <div className="space-y-1">
+                               <div className="text-primary/60">Steps</div>
+                               <div className="text-foreground dark:text-white/70">{stepsText}</div>
+                            </div>
+                            <div className="space-y-1">
+                               <div className="text-primary/60">Model</div>
+                               <div className="text-foreground dark:text-white/70 truncate">{modelText}</div>
+                            </div>
+                            <div className="space-y-1">
+                               <div className="text-primary/60">Date</div>
+                               <div className="text-foreground dark:text-white/70">{formatTimestamp(item.created_at)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.article>
+                    )
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
+
+        {/* Sidebar */}
+        <aside className="space-y-8 sticky top-24">
+          <SurfacePanel className="p-8 space-y-6">
+            <div className="space-y-2">
+              <h3 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">Archive Status</h3>
+              <p className="text-sm text-foreground/60 dark:text-white/60 font-medium leading-relaxed">
+                Your history is currently synchronized with the studio runtime.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+               <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/50 border border-border dark:bg-white/5 dark:border-white/10">
+                  <div className="flex items-center gap-3">
+                     <div className="h-2 w-2 rounded-full bg-success shadow-[0_0_10px_theme(colors.success.DEFAULT)]" />
+                     <span className="text-xs font-bold uppercase tracking-widest text-foreground/70 dark:text-white/70">Connected</span>
+                  </div>
+                  <RefreshCw className={cn("h-3.5 w-3.5 text-foreground/30", loading && "animate-spin")} />
+               </div>
+               
+               <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40 px-1">
+                     <span>Storage Capacity</span>
+                     <span>{Math.min(100, Math.round((items.length / LIMIT) * 100))}%</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden dark:bg-white/5">
+                     <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(items.length / LIMIT) * 100}%` }}
+                        className="h-full bg-primary rounded-full shadow-glow" 
+                     />
+                  </div>
+               </div>
+            </div>
+          </SurfacePanel>
+
+          {error && (
+            <SurfacePanel className="p-8 border-danger/20 bg-danger/5 space-y-6">
+              <div className="flex items-center gap-3 text-danger">
+                <TriangleAlert className="h-6 w-6" />
+                <h3 className="font-display text-xl font-bold">Sync Error</h3>
+              </div>
+              <p className="text-sm text-danger/80 font-medium leading-relaxed">
+                {error}
+              </p>
+              <Button variant="outline" onClick={load} className="w-full rounded-full border-danger/30 text-danger hover:bg-danger/10">
+                Retry Connection
+              </Button>
+            </SurfacePanel>
+          )}
+
+          <SurfacePanel className="p-8 space-y-6">
+             <div className="flex items-center gap-3">
+                <Clock3 className="h-5 w-5 text-primary" />
+                <h3 className="font-display text-xl font-bold text-foreground dark:text-white">Sync Metadata</h3>
+             </div>
+             <div className="space-y-4">
+                {filtered.slice(0, 4).map(item => (
+                  <div key={item.id} className="flex items-center justify-between gap-4 text-[10px] font-bold border-b border-border pb-3 dark:border-white/5 last:border-0 last:pb-0">
+                    <span className="text-foreground/40 dark:text-white/40 truncate flex-1">{typeof item.prompt?.prompt === 'string' ? item.prompt.prompt : 'Untitled'}</span>
+                    <span className="text-primary shrink-0">{formatTimestamp(item.created_at)}</span>
+                  </div>
+                ))}
+                {filtered.length === 0 && (
+                  <p className="text-[10px] font-bold text-foreground/30 uppercase tracking-widest italic">No matching metadata</p>
+                )}
+             </div>
+          </SurfacePanel>
+        </aside>
       </div>
-    </section>
+    </EditorialFrame>
   )
 }
