@@ -1,28 +1,30 @@
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+
+import { AuthFrame } from '../components/auth/AuthFrame'
 import { Button } from '../components/ui/button'
-import '../styles/Register-styles.css'
-import { useTranslation } from 'react-i18next'
+import { appRoutes } from '../lib/routes'
 
 type LoginProps = {
   initialMode?: 'login' | 'forgot'
 }
 
 export default function Login({ initialMode = 'login' }: LoginProps) {
-  const { t } = useTranslation()
+  const navigate = useNavigate()
 
   type LoginData = { identifier: string; password: string }
   type ForgotData = { identifier: string }
   type FormValues = { identifier: string; password?: string }
 
   const schemaLogin = z.object({
-    identifier: z.string().min(2, t('login:messages.required')),
-    password: z.string().min(8, t('register:rules.len')),
+    identifier: z.string().min(2, 'Email or username is required.'),
+    password: z.string().min(8, 'Password must contain at least 8 characters.'),
   })
   const schemaForgot = z.object({
-    identifier: z.string().min(2, t('login:messages.required')),
+    identifier: z.string().min(2, 'Email or username is required.'),
   })
 
   const [serverError, setServerError] = useState<string | null>(null)
@@ -42,70 +44,6 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
     setServerError(null)
     setSuccess(false)
   }, [mode, reset])
-
-  // particles.js — тот же фон
-  useEffect(() => {
-    const id = 'reg-particles'
-    const prefersReduced = typeof window !== 'undefined'
-      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    if (prefersReduced) return
-
-    let container = document.getElementById(id)
-    if (!container) {
-      container = document.createElement('div')
-      container.id = id
-      container.className = 'reg-particles'
-      document.body.appendChild(container)
-    }
-
-    const init = () => {
-      const particlesJS = (window as any).particlesJS
-      if (!particlesJS) return
-      const BLUE = '#4DA3FF'
-      particlesJS(id, {
-        particles: {
-          number: { value: 90, density: { enable: true, value_area: 900 } },
-          color: { value: BLUE }, shape: { type: 'circle' }, opacity: { value: 0.35 },
-          size: { value: 3, random: true },
-          line_linked: { enable: true, distance: 140, color: BLUE, opacity: 0.25, width: 1 },
-          move: { enable: true, speed: 1.0, direction: 'none', straight: false, out_mode: 'out' }
-        },
-        interactivity: {
-          detect_on: 'canvas',
-          events: { onhover: { enable: true, mode: 'grab' }, onclick: { enable: true, mode: 'push' }, resize: true },
-          modes: { grab: { distance: 160, line_linked: { opacity: 0.35 } }, push: { particles_nb: 3 } }
-        },
-        retina_detect: true,
-      })
-    }
-
-    if (!(window as any).particlesJS) {
-      const s = document.createElement('script')
-      s.src = 'https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js'
-      s.async = true
-      s.onload = init
-      document.body.appendChild(s)
-    } else init()
-
-    return () => { const n = document.getElementById(id); if (n) n.innerHTML = '' }
-  }, [])
-
-  // флоат-лейблы
-  useEffect(() => {
-    const sub = watch((_all, { name }) => {
-      if (!name) return
-      const input = document.querySelector<HTMLInputElement>(`#${name}`)
-      const field = input?.closest('.reg-field')
-      if (input && field) input.value.trim() ? field.classList.add('has-value') : field.classList.remove('has-value')
-    })
-    setTimeout(() => {
-      document.querySelectorAll<HTMLInputElement>('.reg-input').forEach((el) => {
-        const field = el.closest('.reg-field')
-        if (field) el.value.trim() ? field.classList.add('has-value') : field.classList.remove('has-value')
-      })
-    }, 0)
-    return () => sub.unsubscribe()
-  }, [watch])
 
   const onSubmit = async (data: FormValues) => {
     setServerError(null)
@@ -137,83 +75,174 @@ export default function Login({ initialMode = 'login' }: LoginProps) {
         } catch {}
         
         window.dispatchEvent(new CustomEvent('auth:update'))
-        window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'gen' }))
         setSuccess(true)
+        navigate(appRoutes.generate)
       } else {
         const res = await fetch('/api/v1/auth/forgot-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifier: (data as ForgotData).identifier }),
         })
-        if (!res.ok && res.status !== 204) throw new Error((await res.text().catch(() => '')) || `Ошибка ${res.status}`)
+        if (!res.ok && res.status !== 204) throw new Error((await res.text().catch(() => '')) || `HTTP ${res.status}`)
         setSuccess(true) // «Если такой аккаунт есть — письмо отправлено»
       }
     } catch (e: any) {
-      setServerError(e?.message || (mode === 'login' ? 'Ошибка входа' : 'Не удалось отправить письмо'))
+      setServerError(e?.message || (mode === 'login' ? 'Sign-in failed.' : 'Could not send recovery email.'))
     }
   }
-  
+
+  if (mode === 'forgot') {
+    return (
+      <AuthFrame
+        eyebrow="Forgot password"
+        title="Password recovery lives on its own route."
+        note="Recovery remains separate from login so the sign-in page does not collapse multiple auth jobs into one canvas."
+        leftTitle="Reset access without losing the rest of the auth flow."
+        leftSubtitle="Enter the email or username tied to your account and the reset link will be sent there if the record exists."
+        rightTitle="Recovery / Light"
+        rightContent={
+          <div className="space-y-5">
+            <SurfaceCard title="Dedicated recovery path">
+              Forgot password is a separate destination, not an inline mode hidden inside login.
+            </SurfaceCard>
+          </div>
+        }
+        leftContent={
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            <AuthField label="Email or username" hint="name@example.com" error={errors.identifier?.message}>
+              <input
+                id="identifier"
+                type="text"
+                autoComplete="username email"
+                className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+                {...register('identifier')}
+              />
+            </AuthField>
+
+            {success ? <Alert tone="success">If that account exists, a reset link has been sent.</Alert> : null}
+            {serverError ? <Alert tone="error">{serverError}</Alert> : null}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Send reset link…' : 'Send reset link'}
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to={appRoutes.login}>Back to login</Link>
+              </Button>
+            </div>
+          </form>
+        }
+      />
+    )
+  }
 
   return (
-    <div className="reg-root">
-      <div id="reg-particles" className="reg-particles" aria-hidden="true" />
-      <div className="reg-wrap">
-        <h1 className="reg-title">
-          {mode === 'login' ? t('login:title') : t('reset:modes.request')}
-        </h1>
-
-        {success && (
-            <div className="reg-alert reg-alert--success">
-              {mode === 'login' ? t('login:messages.success') : t('reset:messages.linkSent')}
-            </div>
-        )}
-        {serverError && <div className="reg-alert reg-alert--error">{serverError}</div>}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="reg-form" noValidate>
-          <div className="reg-field">
-            <input id="identifier" type="text" className="reg-input" autoComplete="username email" {...register('identifier')} />
-            <label htmlFor="identifier" className="reg-label">{t('login:fields.emailOrUsername')}</label>
-            {errors.identifier && <p className="reg-error">{errors.identifier.message}</p>}
+    <AuthFrame
+      eyebrow="Login"
+      title="Dedicated sign-in page with recovery and register routes"
+      note="No shared auth board. Login is its own page with dark and light variants inside this container."
+      leftTitle="Welcome back to AmaImagery Studio."
+      leftSubtitle="Sign in to continue with generation, history, and your personalized shell settings."
+      rightTitle="Login / Light"
+      rightContent={
+        <div className="space-y-5">
+          <SurfaceCard title="Trust line">
+            Clear access to generation, history, and settings with no mixed-purpose auth canvas.
+          </SurfaceCard>
+          <SurfaceCard title="Recovery path">
+            Forgot password is a separate destination, not an inline mode hidden inside login.
+          </SurfaceCard>
         </div>
+      }
+      leftContent={
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          {success ? <Alert tone="success">Sign-in succeeded. Redirecting to Generate.</Alert> : null}
+          {serverError ? <Alert tone="error">{serverError}</Alert> : null}
 
-        {mode === 'login' && (
-          <div className="reg-field">
-            <input id="password" type="password" className="reg-input" autoComplete="current-password" {...register('password')} />
-            <label htmlFor="password" className="reg-label">{t('login:fields.password')}</label>
-            {errors.password && <p className="reg-error">{errors.password.message}</p>}
+          <AuthField label="Email or username" hint="name@example.com" error={errors.identifier?.message}>
+            <input
+              id="identifier"
+              type="text"
+              autoComplete="username email"
+              className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+              {...register('identifier')}
+            />
+          </AuthField>
+
+          <AuthField label="Password" hint="••••••••" error={errors.password?.message}>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 text-white outline-none focus:border-primary/50"
+              {...register('password')}
+            />
+          </AuthField>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Sign in…' : 'Sign in'}
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to={appRoutes.forgotPassword}>Forgot password</Link>
+            </Button>
           </div>
-        )}
 
-          <Button type="submit" disabled={isSubmitting} className="reg-submit">
-          {isSubmitting
-            ? (mode === 'login' ? `${t('login:actions.submit')}…` : `${t('reset:actions.sendLink')}…`)
-            : (mode === 'login' ? t('login:actions.submit') : t('reset:actions.sendLink'))}
-          </Button>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-            {mode === 'login' ? (
-              <button
-                type="button"
-                onClick={() => setMode('forgot')}
-                className="reg-note"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                {t('login:actions.forgot')}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setMode('login')}
-                className="reg-note"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                {t('reset:actions.toLogin')}
-              </button>
-            )}
-
+          <div className="flex flex-wrap gap-2 text-sm text-white/50">
+            <span>Protected session</span>
+            <span>·</span>
+            <span>runtime-aware auth</span>
+            <span>·</span>
+            <Link to={appRoutes.register} className="text-white/78 hover:text-white">
+              Create account
+            </Link>
           </div>
         </form>
-      </div>
+      }
+    />
+  )
+}
+
+function AuthField({
+  label,
+  hint,
+  error,
+  children,
+}: {
+  label: string
+  hint: string
+  error?: string
+  children: React.ReactNode
+}) {
+  return (
+    <label className="block space-y-2">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/58">{label}</div>
+      {children}
+      <div className={error ? 'text-xs text-red-300' : 'text-xs text-white/42'}>{error || hint}</div>
+    </label>
+  )
+}
+
+function SurfaceCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[24px] border border-white/6 bg-white/[0.02] p-5">
+      <div className="font-display text-[28px] font-semibold tracking-[-0.05em] text-white">{title}</div>
+      <p className="mt-3 text-sm leading-6 text-white/55">{children}</p>
+    </div>
+  )
+}
+
+function Alert({ tone, children }: { tone: 'success' | 'error'; children: React.ReactNode }) {
+  return (
+    <div
+      className={[
+        'rounded-[18px] border px-4 py-3 text-sm',
+        tone === 'success'
+          ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200'
+          : 'border-red-500/25 bg-red-500/10 text-red-200',
+      ].join(' ')}
+    >
+      {children}
     </div>
   )
 }
