@@ -1,34 +1,59 @@
 import { useEffect, useMemo, useState } from 'react'
-import { listMyGenerations, type GenerationItem } from '../lib/api'
-import { Button } from '../components/ui/button'
-import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
+import { Clock3, RefreshCw, Search, TriangleAlert } from 'lucide-react'
 
-type RatioKey = 'any' | '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
+import { listMyGenerations, type GenerationItem } from '../lib/api'
+import { appRoutes } from '../lib/routes'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { MetaPill, SectionEyebrow, SurfacePanel } from '../components/ui/foundation'
+
+type RatioKey = 'any' | '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '4:5'
 type CfgKey = 'any' | 'lt6' | '6-8' | 'gt8'
 
 const LIMIT = 50
 
-function ratioMatch(it: GenerationItem, r: RatioKey) {
-  if (r === 'any') return true
-  const w = Number(it.params?.width ?? 0)
-  const h = Number(it.params?.height ?? 1)
-  const norm = (a: number, b: number) => (a / b).toFixed(3)
-  const map: Record<Exclude<RatioKey, 'any'>, string> = {
-    '1:1': norm(1, 1),
-    '3:4': norm(3, 4),
-    '4:3': norm(4, 3),
-    '9:16': norm(9, 16),
-    '16:9': norm(16, 9),
-  }
-  return norm(w, h) === map[r]
+function ratioMatch(item: GenerationItem, ratio: RatioKey) {
+  if (ratio === 'any') return true
+  return formatRatio(item) === ratio
 }
 
-function cfgMatch(it: GenerationItem, cfg: CfgKey) {
+function cfgMatch(item: GenerationItem, cfg: CfgKey) {
   if (cfg === 'any') return true
-  const g = Number(it.params?.guidance_scale ?? 7)
-  if (cfg === 'lt6') return g < 6
-  if (cfg === '6-8') return g >= 6 && g <= 8
-  return g > 8
+  const guidance = Number(item.params?.guidance_scale ?? 7)
+  if (cfg === 'lt6') return guidance < 6
+  if (cfg === '6-8') return guidance >= 6 && guidance <= 8
+  return guidance > 8
+}
+
+function formatRatio(item: GenerationItem) {
+  const width = Number(item.params?.width ?? 0)
+  const height = Number(item.params?.height ?? 0)
+  if (!width || !height) return 'Unknown'
+
+  const gcd = (left: number, right: number): number => (right === 0 ? left : gcd(right, left % right))
+  const divisor = gcd(width, height)
+  const ratio = `${width / divisor}:${height / divisor}`
+
+  if (ratio === '5:4') return '4:5'
+  return ratio
+}
+
+function buildImageUrl(item: GenerationItem) {
+  if (item.image_url) return item.image_url
+  const name = String(item.image_path || '').split(/[\\/]/).pop() || ''
+  if (!name || typeof item.exp !== 'number' || typeof item.sig !== 'string' || item.sig.length === 0) return null
+  return `/api/v1/file?path=${encodeURIComponent(name)}&exp=${String(item.exp)}&sig=${encodeURIComponent(item.sig)}`
+}
+
+function formatTimestamp(value: string) {
+  const date = new Date(value)
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export default function History() {
@@ -37,22 +62,19 @@ export default function History() {
   const [error, setError] = useState<string | null>(null)
   const [broken, setBroken] = useState<Record<string, true>>({})
 
-  // Фильтры
-  const [q, setQ] = useState('')
+  const [query, setQuery] = useState('')
   const [ratio, setRatio] = useState<RatioKey>('any')
-  const [cfg, setCfg] = useState<CfgKey>('any')
+  const [cfg, setCfg] = useState<CfgKey>('6-8')
 
-  // Translate
-  const { t } = useTranslation()
-
-  const load = async () => {
+  async function load() {
     setLoading(true)
     setError(null)
+
     try {
-      const { items } = await listMyGenerations(LIMIT, 0)
-      setItems(items)
-    } catch (e: any) {
-      setError(e?.message || t('history:errorLoading'))
+      const response = await listMyGenerations(LIMIT, 0)
+      setItems(response.items)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to load history.')
       setItems([])
     } finally {
       setLoading(false)
@@ -64,131 +86,242 @@ export default function History() {
   }, [])
 
   const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase()
-    const byText = (it: GenerationItem) => {
-      if (!query) return true
-      const txt = String(it.prompt?.prompt ?? '')
-      return txt.toLowerCase().includes(query)
-    }
-    return items.filter((it) => byText(it) && ratioMatch(it, ratio) && cfgMatch(it, cfg))
-  }, [items, q, ratio, cfg])
+    const normalizedQuery = query.trim().toLowerCase()
+
+    return items.filter((item) => {
+      const promptText = String(item.prompt?.prompt ?? '').toLowerCase()
+      return (
+        (!normalizedQuery || promptText.includes(normalizedQuery)) &&
+        ratioMatch(item, ratio) &&
+        cfgMatch(item, cfg)
+      )
+    })
+  }, [items, query, ratio, cfg])
+
+  const filteredRows = filtered.slice(0, 5)
+  const empty = !loading && !error && items.length === 0
+  const filteredEmpty = !loading && !error && items.length > 0 && filtered.length === 0
 
   return (
-    <div className="space-y-4">
-      {/* Панель фильтров */}
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t('history:filterPlaceholder')}
-          className="h-10 w-full sm:w-72 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-
-        <select
-          value={ratio}
-          onChange={(e) => setRatio(e.target.value as RatioKey)}
-          className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="any">{t('history:ratioAny')}</option>
-          <option value="1:1">1:1</option>
-          <option value="3:4">3:4</option>
-          <option value="4:3">4:3</option>
-          <option value="9:16">9:16</option>
-          <option value="16:9">16:9</option>
-        </select>
-
-        <select
-          value={cfg}
-          onChange={(e) => setCfg(e.target.value as CfgKey)}
-          className="h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="any">{t('history:cfgAny')}</option>
-          <option value="lt6">CFG &lt; 6</option>
-          <option value="6-8">CFG 6–8</option>
-          <option value="gt8">CFG &gt; 8</option>
-        </select>
-
-        <Button
-          onClick={load}
-          variant="secondary"
-          className="ml-auto h-10"
-          disabled={loading}
-        >
-          {loading ? t('history:refreshing') : t('history:refresh')}
-        </Button>
-      </div>
-
-      {/* Состояния */}
-      {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
+    <section className="page-shell space-y-6 py-8 xl:py-10">
+      <SurfacePanel glass className="space-y-5 p-6 md:p-8">
+        <SectionEyebrow>History</SectionEyebrow>
+        <div className="space-y-4">
+          <h1 className="font-display text-4xl font-semibold tracking-[-0.06em] text-foreground sm:text-5xl">
+            Searchable history with filters, metadata, and explicit state handling.
+          </h1>
+          <p className="max-w-3xl text-base leading-7 text-muted-foreground">
+            Search by prompt excerpt, filter by ratio and CFG band, and keep loading, empty, error, and filtered
+            feedback readable inside the same archive screen.
+          </p>
         </div>
-      )}
-
-      {loading && !items.length && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-72 animate-pulse rounded-xl bg-muted/30" />
-          ))}
+        <div className="flex flex-wrap gap-2">
+          <MetaPill>Search</MetaPill>
+          <MetaPill>Ratio</MetaPill>
+          <MetaPill>CFG</MetaPill>
+          <MetaPill>Refresh</MetaPill>
         </div>
-      )}
+      </SurfacePanel>
 
-      {/* Список */}
-      {!loading && !filtered.length ? (
-        <div className="text-sm text-muted-foreground">{t('history:empty')}</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((it) => {
-            if (broken[it.id]) return null
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_420px]">
+        <SurfacePanel className="space-y-6 p-6 md:p-8">
+          <div className="text-sm font-semibold text-foreground">History / Populated / Dark</div>
 
-            const direct = (it as any).image_url
-            const name = String(it.image_path || '').split(/[\\/]/).pop() || ''
-            const hasSig = typeof (it as any).exp === 'number' && typeof (it as any).sig === 'string' && (it as any).sig.length > 0
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[260px] flex-1">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search prompt text"
+                className="pl-11"
+              />
+            </div>
 
-            const imgUrl =
-              (typeof direct === 'string' && direct.length > 0)
-                ? direct
-                : (hasSig
-                    ? `/api/v1/file?path=${encodeURIComponent(name)}&exp=${String((it as any).exp)}&sig=${encodeURIComponent(String((it as any).sig))}`
-                    : null)
-            const promptTxt = String(it.prompt?.prompt ?? '')
-            const p = it.params || {}
+            <select
+              value={ratio}
+              onChange={(event) => setRatio(event.target.value as RatioKey)}
+              className="h-12 rounded-[18px] border border-border/70 bg-card/85 px-4 text-sm shadow-panel"
+            >
+              <option value="any">Any ratio</option>
+              <option value="1:1">1:1</option>
+              <option value="3:4">3:4</option>
+              <option value="4:3">4:3</option>
+              <option value="4:5">4:5</option>
+              <option value="9:16">9:16</option>
+              <option value="16:9">16:9</option>
+            </select>
 
-            return (
-              <div key={it.id} className="overflow-hidden rounded-xl border bg-card text-card-foreground">
-                {imgUrl ? (
-                  <a href={imgUrl} target="_blank" rel="noreferrer">
-                    <img
-                      src={imgUrl}
-                      alt=""
-                      className="h-56 w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                      onError={() => setBroken((prev) => ({ ...prev, [it.id]: true }))}
-                    />
-                  </a>
-                ) : null}
+            <select
+              value={cfg}
+              onChange={(event) => setCfg(event.target.value as CfgKey)}
+              className="h-12 rounded-[18px] border border-border/70 bg-card/85 px-4 text-sm shadow-panel"
+            >
+              <option value="any">Any CFG</option>
+              <option value="lt6">CFG &lt; 6</option>
+              <option value="6-8">CFG 6-8</option>
+              <option value="gt8">CFG &gt; 8</option>
+            </select>
 
-                <div className="space-y-2 p-3">
-                  <div className="line-clamp-3 text-sm text-muted-foreground">{promptTxt}</div>
+            <Button variant="secondary" onClick={load} disabled={loading}>
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </div>
 
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-md bg-muted/50 px-2 py-1">{t('history:badges.wxh')} {p.width}×{p.height}</span>
-                    {'guidance_scale' in p && <span className="rounded-md bg-muted/50 px-2 py-1">CFG: {p.guidance_scale}</span>}
-                    {'steps' in p && <span className="rounded-md bg-muted/50 px-2 py-1">{t('history:badges.steps')} {p.steps}</span>}
-                    {'seed' in p && p.seed != null && <span className="rounded-md bg-muted/50 px-2 py-1">{t('history:badges.seed')} {p.seed}</span>}
-                    {'model_id' in p && p.model_id && <span className="rounded-md bg-muted/50 px-2 py-1">{t('history:badges.model')} {String(p.model_id).split('/').pop() || String(p.model_id)}</span>}
-                  </div>
+          {loading && !items.length ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-[320px] animate-pulse rounded-[28px] bg-card/55" />
+              ))}
+            </div>
+          ) : null}
 
-                  <div className="text-[11px] text-muted-foreground/80">
-                    {new Date(it.created_at).toLocaleString()}
-                  </div>
-                </div>
+          {empty ? (
+            <SurfacePanel className="rounded-[28px] p-6 shadow-none">
+              <div className="space-y-3">
+                <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">No generations yet</h2>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Your history will appear here after the first completed run. You can search, filter by ratio, and
+                  revisit metadata later.
+                </p>
+                <Button asChild>
+                  <Link to={appRoutes.generate}>Create your first image</Link>
+                </Button>
               </div>
-            )
-          })}
+            </SurfacePanel>
+          ) : null}
+
+          {filteredEmpty ? (
+            <SurfacePanel className="rounded-[28px] p-6 shadow-none">
+              <div className="space-y-3">
+                <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">No results for current filters</h2>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Clear the prompt query or broaden the ratio and CFG filters to bring archive items back into view.
+                </p>
+              </div>
+            </SurfacePanel>
+          ) : null}
+
+          {!loading && filtered.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {filtered.slice(0, 6).map((item) => {
+                if (broken[item.id]) return null
+
+                const imageUrl = buildImageUrl(item)
+                const promptText = String(item.prompt?.prompt ?? '')
+                const params = item.params || {}
+
+                return (
+                  <article key={item.id} className="overflow-hidden rounded-[28px] border border-border/60 bg-[#09121c] text-white shadow-panel">
+                    <div className="relative h-52 overflow-hidden border-b border-white/5 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.12),transparent_25%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_24%),linear-gradient(180deg,#0a1624,#08111a)]">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          onError={() => setBroken((current) => ({ ...current, [item.id]: true }))}
+                        />
+                      ) : null}
+                    </div>
+                    <div className="space-y-3 p-4">
+                      <div className="font-medium text-white/90">{promptText || 'Untitled result'}</div>
+                      <div className="space-y-1 text-xs leading-5 text-white/58">
+                        <div>
+                          {formatRatio(item)} · CFG {Number(params.guidance_scale ?? 0).toFixed(1)} · {params.steps ?? '—'} steps · Seed{' '}
+                          {params.seed ?? 'Auto'}
+                        </div>
+                        <div>
+                          Model {item.provider_name || 'AmaFusion'} · {formatTimestamp(item.created_at)}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          ) : null}
+        </SurfacePanel>
+
+        <div className="space-y-6">
+          <SurfacePanel className="space-y-4 p-6">
+            <div className="text-sm font-semibold text-foreground">History / Loading / Light</div>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {loading ? 'Refreshing generation records and metadata…' : 'Search, filter, and refresh remain visible while the archive changes state.'}
+            </p>
+          </SurfacePanel>
+
+          <SurfacePanel className="space-y-4 p-6">
+            <div className="text-sm font-semibold text-foreground">History / Empty / Dark</div>
+            <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">No generations yet</h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Your history will appear here after the first completed run. You can search, filter by ratio, and revisit
+              metadata later.
+            </p>
+            <Button asChild>
+              <Link to={appRoutes.generate}>Create your first image</Link>
+            </Button>
+          </SurfacePanel>
+
+          <SurfacePanel className="space-y-4 p-6">
+            <div className="text-sm font-semibold text-foreground">History / Error / Dark</div>
+            <div className="flex items-center gap-3">
+              <TriangleAlert className="h-5 w-5 text-danger" />
+              <h2 className="font-display text-[28px] font-semibold tracking-[-0.05em]">Failed to load history</h2>
+            </div>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {error || 'The request could not complete. Retry now or verify your session.'}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="secondary" onClick={load}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh again
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={appRoutes.login}>Sign in again</Link>
+              </Button>
+            </div>
+          </SurfacePanel>
+
+          <SurfacePanel className="space-y-4 p-6">
+            <div className="text-sm font-semibold text-foreground">History / Filtered Results / Light</div>
+            {filteredRows.length ? (
+              <div className="overflow-hidden rounded-[24px] border border-border/60">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-card/70 text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3">Prompt excerpt</th>
+                      <th className="px-4 py-3">Ratio</th>
+                      <th className="px-4 py-3">CFG</th>
+                      <th className="px-4 py-3">Steps</th>
+                      <th className="px-4 py-3">Seed</th>
+                      <th className="px-4 py-3">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((item) => (
+                      <tr key={item.id} className="border-t border-border/60">
+                        <td className="px-4 py-3 text-foreground">{String(item.prompt?.prompt ?? '').slice(0, 48) || 'Untitled prompt'}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{formatRatio(item)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{Number(item.params?.guidance_scale ?? 0).toFixed(1)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.params?.steps ?? '—'}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.params?.seed ?? 'Auto'}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{formatTimestamp(item.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-[24px] border border-border/60 bg-card/55 px-4 py-5 text-sm text-muted-foreground">
+                <Clock3 className="h-4 w-4" />
+                Filtered metadata will appear here once results match the current search.
+              </div>
+            )}
+          </SurfacePanel>
         </div>
-      )}
-    </div>
+      </div>
+    </section>
   )
 }
