@@ -5,6 +5,8 @@
     "@playwright/test": "^1.55.1"
   },
   "scripts": {
-    "test": "playwright test"
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug"
   }
 }
