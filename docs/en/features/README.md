@@ -2,93 +2,75 @@
 
 ## Overview
 
-Complete documentation of all features available in the AI Image Generator, including image generation, editing, upscaling, resizing, and content moderation.
+This page distinguishes between:
+
+- ✅ features that are available in the current repository
+- 🧪 provider-dependent or environment-dependent capabilities
+- 🚧 planned surfaces that remain visible in docs planning, but are not public APIs yet
+
+## Current Feature Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Text-to-image generation | ✅ Live | Public flow via `/api/v1/images/generate` |
+| Generation status polling | ✅ Live | `/api/v1/images/status/{task_id}` |
+| Generation history | ✅ Live | `/api/v1/users/me/generations` |
+| User settings | ✅ Live | `/api/v1/users/me/settings` |
+| Hygiene mode | ✅ Live | `/api/v1/users/me/hygiene-mode` |
+| NSFW moderation routes | ✅ Live | Under `/api/v1/nsfw/*` |
+| Signed file delivery | ✅ Live | Via `/api/v1/file` |
+| Admin pages | ✅ Live | Under `/admin/*` |
+| Local Diffusers runtime | 🧪 Supported | Environment/provider dependent |
+| External ComfyUI runtime | 🧪 Supported | Environment/provider dependent |
+| Image editing | 🚧 Planned / not public | Not exposed as a current public API |
+| Upscaling | 🚧 Planned / not public | Not exposed as a current public API |
+| Resizing | 🚧 Planned / not public | Not exposed as a current public API |
 
 ## Core Features
 
 ### 🎨 Image Generation
-Generate high-quality images from text prompts using Stable Diffusion models.
+Generate images from text prompts through the current async job flow.
 
-**Capabilities:**
-- Text-to-image generation
-- Custom model selection
-- Advanced parameters (steps, guidance, seed)
-- Batch generation
-- Negative prompts
-
-### ✏️ Image Editing
-Edit existing images with AI-powered tools.
-
-**Capabilities:**
-- Inpainting (fill masked areas)
-- Outpainting (expand images)
-- Image-to-image with prompts
-- Style transfer with IP-Adapter
-- Controlnet guidance
-
-### 🔍 Image Upscaling
-Enhance image resolution and quality.
-
-**Capabilities:**
-- AI-powered upscaling
-- Multiple scaling factors (2x, 4x)
-- Detail enhancement
-- Artifact reduction
-
-### 📐 Image Resizing
-Resize and crop images efficiently.
-
-**Capabilities:**
-- Smart cropping
-- Aspect ratio maintenance
-- Batch resizing
-- Quality preservation
+**Capabilities today:**
+- text-to-image generation
+- prompt + negative prompt submission
+- generation parameters such as width, height, steps, and guidance
+- provider-backed execution through `comfyui` or `diffusers`
 
 ### 🛡️ Content Moderation
-Ensure safe and appropriate content.
+Moderation and hygiene controls exist today.
 
-**Capabilities:**
-- NSFW detection
-- Prompt filtering
-- Negative word blocking
-- Content safety scoring
+**Capabilities today:**
+- NSFW preference toggle
+- NSFW rule inspection and reload routes
+- prompt hygiene mode support
 
 ### 📁 File Management
-Manage generated images and uploads.
+Artifact delivery is part of the current contract.
 
-**Capabilities:**
-- Signed URLs for secure access
-- File upload validation
-- Storage management
-- Automatic cleanup
+**Capabilities today:**
+- signed file access flow
+- artifact download path
+- persisted output handling through the worker lifecycle
 
-## Documentation Sections
+## Planned / Coming Soon Areas
 
-- [Image Generation](./image-generation.md) - Generation details
-- [Image Editing](./image-editing.md) - Editing features
-- [Image Upscaling](./image-upscaling.md) - Upscaling guide
-- [Image Resizing](./image-resizing.md) - Resizing options
-- [Content Moderation](./content-moderation.md) - Moderation system
-- [File Management](./file-management.md) - File handling
+The following sections remain part of the documentation roadmap, but should be read as planned material until the repository exposes real public support:
 
-## Feature Comparison
+- `Image Editing` — Coming soon
+- `Image Upscaling` — Coming soon
+- `Image Resizing` — Coming soon
+- deeper feature playbooks and walkthroughs — Coming soon
 
-| Feature | Free Tier | Pro Tier |
-|---------|-----------|----------|
-| Basic Generation | ✅ Limited | ✅ Unlimited |
-| Advanced Editing | ❌ | ✅ |
-| Upscaling | ✅ 2x only | ✅ Up to 4x |
-| Batch Processing | ❌ | ✅ |
-| Priority Queue | ❌ | ✅ |
-| API Access | ✅ Limited | ✅ Full |
-
-## API Endpoints
+## API Endpoints In Scope Today
 
 - `POST /api/v1/images/generate` - Generate images
-- `POST /api/v1/images/edit` - Edit images
-- `POST /api/v1/images/upscale` - Upscale images
-- `POST /api/v1/images/resize` - Resize images
-- `POST /api/v1/moderation/nsfw` - Check NSFW
+- `GET /api/v1/images/status/{task_id}` - Poll status
+- `GET /api/v1/users/me/generations` - View generation history
+- `GET/PATCH /api/v1/users/me/settings` - Manage saved settings
+- `GET/PATCH /api/v1/users/me/hygiene-mode` - Manage hygiene mode
+- `PATCH /api/v1/nsfw/users/me/nsfw` - Toggle NSFW preference
+- `POST /api/v1/nsfw/check` - Check text against moderation rules
+- `GET /api/v1/file` - Download signed artifact
 
-See [API Documentation](../backend/api/endpoints/images.md) for details.
-
+See [Reference](../reference/README.md) for the current contract.

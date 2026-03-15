@@ -1,148 +1,148 @@
-# AI Image Generator Documentation (English)
+# AmaImagery Documentation (English)
 
-Welcome to the **AI Image Generator** documentation! This comprehensive guide covers all aspects of the system, from setup to deployment.
+Welcome to the **AmaImagery** documentation. This guide keeps the current repository, runtime, and deployment flows in sync without throwing away the visual structure of the docs.
 
-## 🎯 What is AI Image Generator?
+## 🎯 What is AmaImagery?
 
-AI Image Generator is a powerful, self-hosted image generation platform based on Stable Diffusion. It features:
+AmaImagery is a self-hosted image generation platform built around:
 
-- 🎨 **High-quality image generation** with Stable Diffusion 1.5
-- ✏️ **Image editing** and manipulation capabilities
-- 🔍 **Upscaling** for enhanced resolution
-- 🛡️ **Built-in safety features** and content moderation
-- 🔒 **Enterprise-grade security** with JWT authentication
-- 📊 **Monitoring and metrics** with Prometheus
-- 🌐 **Modern web interface** with React
-- 🐳 **Docker deployment** ready
+- 🎨 **Text-to-image generation** through the current `/api/v1/images/generate` flow
+- 🔄 **Async worker lifecycle** with persisted task state
+- 🔌 **Provider abstraction** for `comfyui` and `diffusers`
+- 🛡️ **Auth, admin, and moderation surfaces** already present in the backend
+- 🌐 **React + Vite frontend** with generation, history, settings, and auth pages
+- 🐳 **Docker-based deployment flows** for local and production setups
+
+Planned or not-yet-public features such as editing, upscaling, and resizing stay visible in roadmap/tutorial sections, but they are not documented as shipped public APIs.
 
 ## 📚 Documentation Sections
 
 ### [🔧 Backend](./backend/README.md)
-Complete backend documentation including FastAPI, API endpoints, services, database, and ML inference pipeline.
+Current backend architecture, real route surface, providers, queues, repositories, observability, and admin/readiness behavior.
 
 ### [🎨 Frontend](./frontend/README.md)
-Frontend documentation covering React components, state management, styling, and API integration.
+Current React/Vite frontend structure, routes, and integration points.
 
 ### [🐳 Docker](./docker/README.md)
-Docker and containerization documentation including Docker Compose configurations and deployment.
+Compose files, runtime targets, env templates, and container flows that exist today.
 
 ### [🧪 Tests](./tests/README.md)
-Testing documentation including unit tests, integration tests, E2E tests, and testing best practices.
+Backend test strategy, frontend checks, and current validation commands.
 
 ### [🤖 Models](./models/README.md)
-ML models documentation covering Stable Diffusion, AmaFusion, DreamShaper, VAE, and IP-Adapter.
+Current model assets, provider/runtime expectations, and licensing context.
 
 ### [🚀 Deployment](./deployment/README.md)
-Production deployment guides including environment setup, cloud deployment, and maintenance.
+Production-minded deployment notes and provider rollout guidance.
 
 ### [📜 Scripts](./scripts/README.md)
-Documentation for bootstrap, build, migration, and utility scripts.
+Actual shell, PowerShell, and Python helper scripts in the repository.
 
 ### [💻 Development](./development/README.md)
-Developer guides including setup, project structure, coding standards, and contributing guidelines.
+Local setup, API + worker flow, and current developer workflow.
 
 ### [🔄 Migrations](./migrations/README.md)
-Refactoring and migration notes documenting architectural changes and upgrade guides.
+Current Alembic migration path and schema evolution notes.
 
 ### [🔒 Security](./security/README.md)
-Security documentation covering authentication, authorization, rate limiting, and best practices.
+Security posture, reporting path, and sensitive runtime surfaces.
 
 ### [⚡ Features](./features/README.md)
-Feature documentation explaining image generation, editing, upscaling, and content moderation.
+Current features, provider-specific capabilities, and planned surfaces.
 
 ### [🔍 Troubleshooting](./troubleshooting/README.md)
-Common issues, error codes, and solutions for GPU, memory, and performance problems.
+Current operational issues and debugging notes.
 
 ### [⚖️ Legal](./legal/README.md)
-Legal information including licenses, model licenses, data sources, and usage restrictions.
+Project licensing, model licensing, and attribution guidance.
 
 ### [📚 Reference](./reference/README.md)
-Quick reference for API, configuration, CLI commands, environment variables, and glossary.
+Current endpoints, commands, env variables, and ports.
 
 ### [🎓 Tutorials](./tutorials/README.md)
-Step-by-step tutorials for common tasks and advanced features.
+Guided material and planned tutorials. Some entries are roadmap placeholders by design.
 
 ## 🚀 Quick Start Guide
 
 ### For Developers
-1. Read [Getting Started](./development/getting-started.md)
-2. Set up your [Development Environment](./development/setup/windows.md)
-3. Understand the [Project Structure](./development/project-structure.md)
-4. Learn about [Testing](./tests/README.md)
+1. Read [Development](./development/README.md)
+2. Check [Backend](./backend/README.md)
+3. Run the quality checks in [Tests](./tests/README.md)
 
-### For DevOps
-1. Review [System Requirements](./deployment/requirements.md)
-2. Follow [Docker Deployment Guide](./docker/getting-started.md)
-3. Configure [Environment Variables](./deployment/environment/environment-variables.md)
-4. Set up [Monitoring](./deployment/production/monitoring.md)
+### For Operators / DevOps
+1. Review [Docker](./docker/README.md)
+2. Follow [Deployment](./deployment/README.md)
+3. Use [Provider Rollout](./deployment/provider-rollout.md) when switching runtimes
 
 ### For API Users
-1. Read [API Overview](./backend/api/overview.md)
-2. Learn about [Authentication](./backend/api/authentication.md)
-3. Explore [API Endpoints](./backend/api/endpoints/images.md)
-4. Check [API Examples](./backend/api/examples.md)
+1. Read [Reference](./reference/README.md)
+2. Review [Backend](./backend/README.md)
+3. Check [Troubleshooting](./troubleshooting/README.md) if your environment differs from the documented happy path
 
 ## 🏗️ Architecture Overview
 
 ```
 ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   Frontend  │◄────►│    Backend   │◄────►│  Database   │
-│   (React)   │      │   (FastAPI)  │      │ (PostgreSQL)│
+│   Frontend  │◄────►│    Backend   │◄────►│ PostgreSQL  │
+│   (React)   │      │   (FastAPI)  │      │ lifecycle   │
 └─────────────┘      └──────────────┘      └─────────────┘
                             │
                             ▼
                      ┌──────────────┐
-                     │   ML Models  │
-                     │ (Stable Diff)│
+                     │  Worker +    │
+                     │  Providers   │
                      └──────────────┘
 ```
 
-See [Architecture Documentation](./backend/architecture.md) for details.
+The current runtime truth is:
+
+- PostgreSQL stores generation lifecycle state
+- Redis is queue/rate-limit infrastructure, not the primary source of task truth
+- `comfyui` and `diffusers` are the real provider modes
+- admin pages live under `/admin/*`
 
 ## 📦 Technology Stack
 
 **Backend:**
-- FastAPI 0.116.1
+- FastAPI
 - Python 3.11+
-- PyTorch 2.2.2
-- Diffusers 0.29.2
 - PostgreSQL
 - Redis
+- SQLAlchemy + Alembic
 
 **Frontend:**
 - React + TypeScript
 - Vite
 - Tailwind CSS
-- i18next (internationalization)
+- i18next
 
 **Infrastructure:**
 - Docker & Docker Compose
 - Nginx
-- Prometheus metrics
-- Alembic migrations
+- Async generation worker
+- Optional local Diffusers runtime or external ComfyUI runtime
 
 ## 🔗 Quick Links
 
-- [Installation Guide](./development/getting-started.md)
-- [API Documentation](./backend/api/overview.md)
-- [Docker Setup](./docker/getting-started.md)
+- [Development Guide](./development/README.md)
+- [Reference](./reference/README.md)
+- [Docker Setup](./docker/README.md)
 - [Contributing](../../CONTRIBUTING.md)
-- [Troubleshooting](./troubleshooting/common-issues.md)
+- [Troubleshooting](./troubleshooting/README.md)
 
 ## 📞 Getting Help
 
-- Check [Troubleshooting](./troubleshooting/README.md) for common issues
-- Review [Error Codes](./troubleshooting/error-codes.md)
-- See [FAQ](./troubleshooting/common-issues.md)
+- Check [Troubleshooting](./troubleshooting/README.md)
+- Review the current section README for your area
+- Use roadmap/tutorial pages as planning context, not as proof that a public API already exists
 
 ## 📄 License
 
 This project uses multiple licenses. See [Legal](./legal/README.md) for details:
-- Code: See project LICENSE
-- Stable Diffusion models: CreativeML Open RAIL-M
-- VAE: MIT License
+
+- application code licensing at the repository root
+- model and dataset obligations under `models/`, `NOTICE.txt`, and `ATTRIBUTIONS.md`
 
 ---
 
-**Version:** 0.1.0 | **Last Updated:** March 11, 2026
-
+**Version:** 0.1.0 | **Last Updated:** March 15, 2026

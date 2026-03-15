@@ -1,8 +1,8 @@
-# AI Image Generator Documentation
+# AmaImagery Documentation
 
 📚 **Multi-language Documentation** | Многоязычная документация
 
-Welcome to the AI Image Generator documentation. This project provides a powerful image generation system based on Stable Diffusion with FastAPI backend and React frontend.
+Welcome to the **AmaImagery** documentation hub. This project is a self-hosted image generation platform with a FastAPI backend, a React frontend, an async worker pipeline, and Docker-based deployment flows.
 
 ---
 
@@ -20,80 +20,80 @@ Welcome to the AI Image Generator documentation. This project provides a powerfu
 
 ## 📖 Documentation Structure
 
-Each language contains comprehensive documentation organized by technology area:
+Each language keeps the same visual structure, but the docs are aligned to the current repository shape:
 
 ### 🔧 **Backend**
-FastAPI, Python services, API endpoints, inference pipeline, prompt hygiene, database, and monitoring.
+FastAPI routes, auth, generation flow, provider integration, admin pages, readiness, repositories, and worker lifecycle.
 
 ### 🎨 **Frontend**
-React, TypeScript, UI components, state management, styling with Tailwind CSS.
+React/Vite application, routing, state handling, API integration, and i18n.
 
 ### 🐳 **Docker**
-Containerization, Docker Compose configurations, deployment with Docker.
+Compose files, runtime targets, env templates, and local/production container flows.
 
 ### 🧪 **Tests**
-Unit tests, integration tests, E2E tests, security tests, performance testing.
+Backend test strategy, frontend build/typecheck flow, and runtime verification commands.
 
 ### 🤖 **Models**
-ML models documentation: Stable Diffusion, AmaFusion, DreamShaper, VAE, IP-Adapter, CLIP.
+Current local model assets, provider/runtime expectations, and licensing context.
 
 ### 🚀 **Deployment**
-Production deployment, environment configuration, cloud deployment guides.
+Supported deployment shapes, production checklist, provider rollout, and operational notes.
 
 ### 📜 **Scripts**
-Bootstrap scripts, build scripts, migration scripts, utility scripts.
+Bootstrap, build, migration, run, smoke, and Python helper scripts that actually exist in the repo.
 
 ### 💻 **Development**
-Getting started, project structure, coding standards, Git workflow, contributing.
+How to set up the project today, run API and worker locally, and work against the real runtime.
 
 ### 🔒 **Security**
-Authentication, authorization, rate limiting, input validation, content filtering.
+Auth surface, rate limiting, file delivery, admin access, and current security posture.
 
 ### ⚡ **Features**
-Image generation, editing, upscaling, resizing, content moderation, file management.
+What is available now, what is provider-dependent, and what is still planned rather than publicly shipped.
 
 ### 🔍 **Troubleshooting**
-Common issues, error codes, GPU problems, memory issues, performance optimization.
+Current operational issues, not old or speculative setup paths.
 
 ### ⚖️ **Legal**
-Licenses, model licenses, data sources, attributions, usage restrictions.
+Project licensing, model licensing, attribution, and usage obligations.
 
 ### 📚 **Reference**
-API reference, configuration, CLI commands, environment variables, glossary.
+Current endpoints, env variables, commands, and ports.
 
 ### 🎓 **Tutorials**
-Step-by-step guides for common tasks and advanced features.
+Planned guided walk-throughs and learning material. Some tutorial pages are still roadmap items.
 
 ---
 
 ## 🚀 Quick Start
 
-1. Choose your language above
-2. Start with the **Development** section for setup
-3. Check **Deployment** for production setup
-4. Explore **Features** to understand capabilities
+1. Choose your language above.
+2. Start with **Development** for local setup or **Docker** for the fastest end-to-end path.
+3. Use **Reference** for real endpoints, commands, and env variables.
+4. Treat pages marked `Coming soon` as roadmap/planning material, not shipped functionality.
 
 ---
 
 ## 🤝 Contributing to Documentation
 
-We welcome contributions to improve and translate documentation!
+We welcome contributions to improve and translate documentation.
 
-1. Documentation follows the same structure across all languages
-2. Use templates from `_templates/` folder
-3. Place language-independent images in `_shared/images/`
-4. Update `.translation-status.json` when adding translations
+1. Documentation keeps the same visual structure across languages.
+2. Use templates from `_templates/` when adding new pages.
+3. Place language-independent assets in `_shared/`.
+4. Update `.translation-status.json` when adding new translations.
+5. When docs and code disagree, the repo implementation wins.
 
-See [Contributing Guide](../CONTRIBUTING.md) for details.
+See [Contributing Guide](../CONTRIBUTING.md) for the repository workflow.
 
 ---
 
 ## 📝 License
 
-This documentation is part of the AI Image Generator project.
-See [Legal](./en/legal/README.md) section for license information.
+This documentation is part of **AmaImagery**.
+See [Legal](./en/legal/README.md) for project and model licensing information.
 
 ---
 
-**Last Updated:** March 11, 2026 | **Version:** 0.1.0
-
+**Last Updated:** March 15, 2026 | **Version:** 0.1.0
