@@ -39,7 +39,7 @@ class GenerateImageCommand(Command):
     guidance_scale: float = 7.5
     ref_image_b64: str | None = None
     ip_scale: float = 0.6
-    style: Style = "anime"
+    style: Style = "realistic"
 
 
 @dataclass

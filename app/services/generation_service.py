@@ -101,7 +101,7 @@ class GenerationService:
         return fixed, corr
 
     def _prepare_generation_params(self, request: GenReq, processed_prompt: str) -> dict[str, Any]:
-        style = getattr(request, "style", "anime")
+        style = getattr(request, "style", "realistic")
 
         quality_prefix = "masterpiece, best quality, ultra-detailed"
         if style == "anime":

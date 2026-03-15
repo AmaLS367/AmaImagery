@@ -24,7 +24,7 @@ class GenerationRequest:
     guidance_scale: float | None = None
     ref_image_b64: str | None = None
     ip_scale: float | None = None
-    style: Style = "anime"
+    style: Style = "realistic"
 
     def __post_init__(self):
         if not self.prompt or len(self.prompt.strip()) == 0:

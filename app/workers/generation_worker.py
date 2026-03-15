@@ -204,7 +204,7 @@ def _generation_to_request(generation: Generation) -> GenerationRequest:
         guidance_scale=params.get("guidance_scale"),
         ref_image_b64=params.get("ref_image_b64"),
         ip_scale=params.get("ip_scale"),
-        style=params.get("style", "anime"),
+        style=params.get("style", "realistic"),
     )
 
 
