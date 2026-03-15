@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete guide for developers to set up, develop, and contribute to the AI Image Generator project.
+Practical guide for setting up, developing, and contributing to **AmaImagery** as the repository exists today.
 
 ## Getting Started
 
@@ -10,8 +10,8 @@ Complete guide for developers to set up, develop, and contribute to the AI Image
 - Python 3.11+
 - Node.js 18+
 - Git
-- Docker (optional but recommended)
-- NVIDIA GPU with CUDA 11.8+ (for local development)
+- Docker (optional but recommended for full-stack local runs)
+- NVIDIA GPU only if you want local GPU-backed Diffusers work
 
 ### Quick Setup
 
@@ -26,12 +26,15 @@ cd AmaImagery
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
+# Add ML dependencies only when you need local Diffusers runtime
+pip install -e ".[ml]"
 ```
 
 3. **Set up frontend**
 ```bash
 cd frontend
-npm install
+npm ci
+cd ..
 ```
 
 4. **Configure environment**
@@ -42,93 +45,89 @@ cp .env.example .env
 
 5. **Run migrations**
 ```bash
-python -m alembic upgrade head
+alembic upgrade head
 ```
 
-6. **Start development servers**
+6. **Start development processes**
 ```bash
-# Terminal 1 - Backend
-python run_dev.py
+# Terminal 1 - Backend API
+python run.py
 
-# Terminal 2 - Frontend
+# Terminal 2 - Generation worker
+python -m app.entrypoints.generation_worker
+
+# Terminal 3 - Frontend
 cd frontend
 npm run dev
 ```
 
 ## Documentation Sections
 
-- [Getting Started](./getting-started.md) - Detailed setup guide
-- [Setup](./setup/) - Platform-specific setup
-  - [Windows](./setup/windows.md)
-  - [Linux](./setup/linux.md)
-  - [macOS](./setup/macos.md)
-- [Project Structure](./project-structure.md) - Codebase overview
-- [Coding Standards](./coding-standards.md) - Code style and conventions
-- [Git Workflow](./git-workflow.md) - Branching and commits
-- [Debugging](./debugging.md) - Debugging techniques
-- [Contributing](../../../CONTRIBUTING.md) - How to contribute
-- [Code Review](./code-review.md) - Code review process
+| Topic | Status |
+|------|--------|
+| Getting Started deep-dive | 🚧 Coming soon |
+| Platform-specific setup pages | 🚧 Coming soon |
+| Project structure deep-dive | 🚧 Coming soon |
+| Coding standards page | 🚧 Coming soon |
+| Git workflow page | 🚧 Coming soon |
+| Debugging page | 🚧 Coming soon |
+| Code review page | 🚧 Coming soon |
+| [Contributing](../../../CONTRIBUTING.md) | ✅ Available |
+
+This README is the canonical development entrypoint until those leaf pages are filled in.
 
 ## Development Tools
 
 ### Code Quality
-- **Linting:** ruff, eslint
-- **Formatting:** black, prettier
+- **Linting:** ruff
+- **Formatting:** repo-specific workflow, optional black for Python formatting
 - **Type Checking:** mypy, TypeScript
-- **Testing:** pytest, vitest
+- **Testing:** pytest, frontend typecheck/build, Playwright-based frontend tests in the repo test tree
 
 ### IDE Setup
-- VSCode (recommended)
+- VSCode
 - PyCharm
-- Recommended extensions/plugins
+- Any editor that handles Python + TypeScript cleanly
 
 ## Project Structure
 
 ```
 amaimagery/
 ├── app/              # Backend application
-│   ├── api/         # API routes
-│   ├── core/        # Core functionality
-│   ├── services/    # Business logic
-│   └── ...
 ├── frontend/         # React frontend
-│   ├── src/
-│   └── ...
-├── tests/           # Backend tests
-├── migrations/      # Database migrations
-├── models/          # ML models
-├── docker/          # Docker configs
-└── scripts/         # Utility scripts
+├── tests/            # Backend and integration tests
+├── migrations/       # Alembic migrations
+├── models/           # Local model assets and metadata
+├── docker/           # Docker configs and env templates
+└── scripts/          # Utility scripts
 ```
-
-See [Project Structure](./project-structure.md) for details.
 
 ## Common Tasks
 
 ### Running Tests
 ```bash
-pytest tests/
-cd frontend_tests && npm test
+pytest -q
+python -m ruff check app tests
+python -m mypy app
+
+cd frontend
+npm run typecheck
+npm run build
 ```
 
 ### Creating Migrations
 ```bash
-alembic revision --autogenerate -m "description"
+alembic revision -m "description"
 alembic upgrade head
 ```
 
-### Building for Production
+### Running Docker Locally
 ```bash
-# Backend
-docker build -t amaimagery-backend .
-
-# Frontend
-cd frontend && npm run build
+docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d --build
 ```
 
 ## Getting Help
 
 - Check [Troubleshooting](../troubleshooting/README.md)
-- Review existing issues
-- Ask in discussions
-
+- Review existing issues and discussions
+- Use [Reference](../reference/README.md) for the current contract

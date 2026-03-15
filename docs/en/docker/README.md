@@ -2,86 +2,84 @@
 
 ## Overview
 
-The application is fully containerized with Docker and Docker Compose, with an explicit split between lightweight ComfyUI orchestration and local Diffusers ML runtime.
+The application is containerized with Docker and Docker Compose, with an explicit split between a lightweight core runtime and a heavier local Diffusers runtime.
 
 ## Key Features
 
 ### 🐳 Runtime Targets
-- `runtime-core` for API and ComfyUI orchestration without local ML dependencies
-- `runtime-ml` for local Diffusers workers and API instances that must boot Diffusers
-- Layer caching for faster rebuilds
+- `runtime-core` for API and worker without local Diffusers dependencies
+- `runtime-ml` for local Diffusers execution
+- layer caching for faster rebuilds
 
 ### 🎯 Multiple Compose Configurations
-- **compose.local.yml** - Local ComfyUI-first stack without local Diffusers runtime
+- **compose.local.yml** - Local core stack
 - **compose.local.diffusers.yml** - Local override that enables the ML runtime
-- **compose.prod.yml** - Production ComfyUI-first stack
+- **compose.prod.yml** - Production-oriented core stack
 - **compose.prod.diffusers.yml** - Production override for local Diffusers runtime
 
 ### 🔧 Services
-- Backend (FastAPI)
-- Generation Worker (Background task processor)
-- Frontend (Nginx)
-- PostgreSQL database
-- Redis cache
-- Nginx reverse proxy
+- API (`api`)
+- Generation Worker (`generation_worker`)
+- PostgreSQL
+- Redis
+- Nginx
 
 ## Documentation Sections
 
-- [Getting Started](./getting-started.md) - Quick start with Docker
-- [Compose Configurations](./compose/) - Docker Compose details
-- [Dockerfile](./dockerfile.md) - Dockerfile explanation
-- [Nginx](./nginx.md) - Nginx configuration
-- [Redis](./redis.md) - Redis in Docker
-- [PostgreSQL](./postgres.md) - PostgreSQL in Docker
-- [Volumes](./volumes.md) - Volume management
-- [Networking](./networking.md) - Docker networking
-- [Troubleshooting](./troubleshooting.md) - Common Docker issues
+| Topic | Status |
+|------|--------|
+| Getting Started page | 🚧 Coming soon |
+| Compose deep-dive pages | 🚧 Coming soon |
+| Dockerfile deep-dive | 🚧 Coming soon |
+| Nginx deep-dive | 🚧 Coming soon |
+| Redis deep-dive | 🚧 Coming soon |
+| PostgreSQL deep-dive | 🚧 Coming soon |
+| Volumes / networking deep-dive | 🚧 Coming soon |
+| [Troubleshooting](../troubleshooting/README.md) | ✅ Available |
+
+This README is the canonical Docker overview for now.
 
 ## Quick Start
 
-### Local ComfyUI-first Development
+### Local Core Stack
 ```bash
-docker compose -f docker/compose.local.yml up
+docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d --build
 ```
 
-This starts all services including the generation worker.
-
-### Local Diffusers Development
+### Local Diffusers Stack
 ```bash
-docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up
+docker compose --env-file docker/.env.docker -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up -d --build
 ```
 
-This adds the local ML runtime on top of the default stack.
-
-### Production ComfyUI-first
+### Production Core Stack
 ```bash
-docker compose -f docker/compose.prod.yml up -d
+docker compose --env-file docker/.env.prod -f docker/compose.prod.yml up -d --build
 ```
 
-This starts all services including the generation worker in detached mode.
-
-### Production Diffusers
+### Production Diffusers Stack
 ```bash
-docker compose -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d
+docker compose --env-file docker/.env.prod -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d --build
 ```
 
-### Worker Service
+## Worker Service
 
-The `generation_worker` service processes image generation tasks from the queue. It:
-- Consumes tasks from Redis queue
-- Processes generation via providers
-- Saves results to database
-- Updates task status
+The `generation_worker` service processes generation tasks separately from the API:
 
-See [Queue and Workers Documentation](../backend/queue-and-workers.md) for details.
+- consumes queued tasks
+- executes generation through the selected provider
+- stores artifacts and updates lifecycle state
 
-See [Getting Started](./getting-started.md) for details.
+See [Queue and Workers](../backend/queue-and-workers.md) for details.
 
 ## Requirements
 
 - Docker 20.10+
 - Docker Compose 2.0+
-- NVIDIA Docker (only for local Diffusers GPU runtime)
-- 8GB+ RAM (16GB+ recommended)
-- 20GB+ disk space
+- NVIDIA Docker only if you need local GPU Diffusers runtime
+- enough RAM/disk for your chosen runtime and models
 
+## Important Notes
+
+- Build `frontend/dist` before relying on bundled static frontend delivery.
+- Use `docker/.env.docker.example` and verification env files as templates, not as proof that every variable is an app setting.
+- A public `/metrics` endpoint is not wired into the app by default.

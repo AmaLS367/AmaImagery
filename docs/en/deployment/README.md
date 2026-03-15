@@ -2,69 +2,59 @@
 
 ## Overview
 
-Comprehensive deployment guides for running AI Image Generator in production environments, including cloud deployment, environment configuration, and maintenance procedures.
+Deployment guidance for running **AmaImagery** in environments that match the current repository.
 
 ## Deployment Options
 
 ### 🐳 Docker Deployment (Recommended)
-- Easiest to deploy and maintain
-- Consistent across environments
-- Built-in orchestration with Docker Compose
-- See [Docker Documentation](../docker/README.md)
+- current primary deployment path
+- matches the repository compose files
+- easiest way to keep API, worker, database, Redis, and nginx aligned
 
-### ☁️ Cloud Deployment
-- AWS, GCP, Azure support
-- Kubernetes configurations
-- Auto-scaling capabilities
-- Managed services integration
+### ☁️ Cloud / Managed Infrastructure
+- possible, but not documented as turnkey in the repo yet
+- operator responsibility for translating the Docker/runtime contract
 
 ### 🖥️ Bare Metal
-- Maximum performance
-- Direct GPU access
-- Custom optimization
-- Manual dependency management
+- possible for advanced operators
+- especially relevant when local GPU/Diffusers work is needed
 
 ## Documentation Sections
 
-- [Requirements](./requirements.md) - System requirements
-- [Environment](./environment/) - Environment setup
-  - [Environment Variables](./environment/environment-variables.md)
-  - [Secrets Management](./environment/secrets-management.md)
-  - [Configuration](./environment/configuration.md)
-- [Production](./production/) - Production deployment
-  - [Checklist](./production/checklist.md)
-  - [Security](./production/security.md)
-  - [SSL Certificates](./production/ssl-certificates.md)
-  - [Monitoring](./production/monitoring.md)
-  - [Scaling](./production/scaling.md)
-- [Cloud](./cloud/) - Cloud-specific guides
-  - [AWS](./cloud/aws.md)
-  - [GCP](./cloud/gcp.md)
-  - [Azure](./cloud/azure.md)
-  - [DigitalOcean](./cloud/digitalocean.md)
-- [Maintenance](./maintenance.md) - Ongoing maintenance
-- [Provider Rollout](./provider-rollout.md) - Diffusers and ComfyUI verification profiles and rollout policy
+| Topic | Status |
+|------|--------|
+| Requirements page | 🚧 Coming soon |
+| Environment deep-dive | 🚧 Coming soon |
+| Production checklist page | 🚧 Coming soon |
+| TLS / SSL page | 🚧 Coming soon |
+| Monitoring page | 🚧 Coming soon |
+| Scaling page | 🚧 Coming soon |
+| Cloud guides | 🚧 Coming soon |
+| Maintenance playbook | 🚧 Coming soon |
+| [Provider Rollout](./provider-rollout.md) | ✅ Available |
 
-## Quick Start
+For now, this README is the canonical deployment overview.
 
-### Production Deployment Checklist
+## Current Production Checklist
 
-1. ✅ Review [System Requirements](./requirements.md)
-2. ✅ Configure [Environment Variables](./environment/environment-variables.md)
-3. ✅ Set up [SSL Certificates](./production/ssl-certificates.md)
-4. ✅ Configure [Security](./production/security.md)
-5. ✅ Set up [Monitoring](./production/monitoring.md)
-6. ✅ Deploy using [Docker](../docker/compose/production-setup.md)
-7. ✅ Verify with smoke tests
-8. ✅ Set up [Backup](../operations/backup-restore.md)
+1. ✅ Prepare a real production env file
+2. ✅ Set a strong `SECRET_KEY`
+3. ✅ Use PostgreSQL
+4. ✅ Configure Redis if Redis-backed queueing is enabled
+5. ✅ Build `frontend/dist`
+6. ✅ Start API and `generation_worker`
+7. ✅ Verify `/api/v1/health` and `/api/v1/healthz`
+8. ✅ Run a smoke generation and confirm history/status stay aligned
 
 ## Minimum Requirements
 
-- **CPU:** 4 cores (8+ recommended)
-- **RAM:** 16GB (32GB+ recommended)
-- **GPU:** NVIDIA GPU with 6GB+ VRAM
-- **Storage:** 50GB+ SSD
-- **OS:** Linux (Ubuntu 20.04+)
-- **Docker:** 20.10+
-- **CUDA:** 11.8+ with NVIDIA drivers
+- enough CPU/RAM for API + worker + database + provider runtime
+- Docker / Docker Compose if using the documented deployment path
+- GPU only when your chosen provider/runtime actually needs local GPU execution
+- disk space for outputs, logs, and optional local model assets
 
+## Important Notes
+
+- The repository does not currently document a public `/metrics` endpoint as live by default.
+- The worker is not optional if you want the documented async generation lifecycle.
+- Provider rollout between `comfyui` and `diffusers` is handled through env/config and compose overrides.

@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Полное руководство для разработчиков по настройке, разработке и внесению вклада в проект AI Image Generator.
+Практическое руководство по настройке, разработке и внесению вклада в **AmaImagery** в его текущем состоянии.
 
 ## Начало работы
 
@@ -10,8 +10,8 @@
 - Python 3.11+
 - Node.js 18+
 - Git
-- Docker (опционально, но рекомендуется)
-- NVIDIA GPU с CUDA 11.8+ (для локальной разработки)
+- Docker (опционально, но удобно для full-stack local runs)
+- NVIDIA GPU нужен только если вы хотите локально работать с Diffusers на GPU
 
 ### Быстрая настройка
 
@@ -21,114 +21,113 @@ git clone https://github.com/AmaLS367/AmaImagery
 cd AmaImagery
 ```
 
-2. **Настроить бэкенд**
+2. **Настроить backend**
 ```bash
 python -m venv .venv
-.venv\Scripts\activate  # Linux: source .venv/bin/activate
-pip install -r requirements.txt
+.venv\Scripts\activate  # Linux/macOS: source .venv/bin/activate
+pip install -e ".[dev]"
+# ML-зависимости нужны только для локального Diffusers runtime
+pip install -e ".[ml]"
 ```
 
-3. **Настроить фронтенд**
+3. **Настроить frontend**
 ```bash
 cd frontend
-npm install
+npm ci
+cd ..
 ```
 
 4. **Настроить окружение**
 ```bash
 cp .env.example .env
-# Отредактируйте .env с вашими настройками
+# Отредактируйте .env под своё окружение
 ```
 
 5. **Запустить миграции**
 ```bash
-python -m alembic upgrade head
+alembic upgrade head
 ```
 
-6. **Запустить dev серверы**
+6. **Запустить процессы разработки**
 ```bash
-# Терминал 1 - Бэкенд
-python run_dev.py
+# Терминал 1 - Backend API
+python run.py
 
-# Терминал 2 - Фронтенд
+# Терминал 2 - Generation worker
+python -m app.entrypoints.generation_worker
+
+# Терминал 3 - Frontend
 cd frontend
 npm run dev
 ```
 
 ## Разделы документации
 
-- [Начало работы](./getting-started.md) - Детальное руководство по установке
-- [Настройка](./setup/) - Установка под конкретные платформы
-  - [Windows](./setup/windows.md)
-  - [Linux](./setup/linux.md)
-  - [macOS](./setup/macos.md)
-- [Структура проекта](./project-structure.md) - Обзор кодовой базы
-- [Стандарты кодирования](./coding-standards.md) - Стиль кода и соглашения
-- [Git workflow](./git-workflow.md) - Ветвление и коммиты
-- [Отладка](./debugging.md) - Техники отладки
-- [Contributing](../../../CONTRIBUTING.md) - Как внести вклад
-- [Code review](./code-review.md) - Процесс ревью кода
+| Тема | Статус |
+|------|--------|
+| Deep-dive по Getting Started | 🚧 Coming soon |
+| Platform-specific setup pages | 🚧 Coming soon |
+| Детальный разбор структуры проекта | 🚧 Coming soon |
+| Отдельная страница coding standards | 🚧 Coming soon |
+| Отдельная страница git workflow | 🚧 Coming soon |
+| Отдельная страница debugging | 🚧 Coming soon |
+| Отдельная страница code review | 🚧 Coming soon |
+| [Contributing](../../../CONTRIBUTING.md) | ✅ Доступно |
+
+Пока эти leaf pages не заполнены, именно эта README остаётся канонической точкой входа для разработки.
 
 ## Инструменты разработки
 
 ### Качество кода
-- **Линтинг:** ruff, eslint
-- **Форматирование:** black, prettier
+- **Линтинг:** ruff
+- **Форматирование:** repo-specific workflow, при необходимости black для Python
 - **Проверка типов:** mypy, TypeScript
-- **Тестирование:** pytest, vitest
+- **Тестирование:** pytest, frontend typecheck/build, Playwright-based frontend tests из дерева тестов
 
-### Настройка IDE
-- VSCode (рекомендуется)
+### IDE Setup
+- VSCode
 - PyCharm
-- Рекомендуемые расширения/плагины
+- Любой редактор, в котором удобно вести Python + TypeScript
 
 ## Структура проекта
 
 ```
 amaimagery/
-├── app/              # Бэкенд приложение
-│   ├── api/         # API роуты
-│   ├── core/        # Основной функционал
-│   ├── services/    # Бизнес-логика
-│   └── ...
-├── frontend/         # React фронтенд
-│   ├── src/
-│   └── ...
-├── tests/           # Бэкенд тесты
-├── migrations/      # Миграции БД
-├── models/          # ML модели
-├── docker/          # Docker конфиги
-└── scripts/         # Утилитарные скрипты
+├── app/              # Backend application
+├── frontend/         # React frontend
+├── tests/            # Backend и integration tests
+├── migrations/       # Alembic migrations
+├── models/           # Local model assets и metadata
+├── docker/           # Docker configs и env templates
+└── scripts/          # Utility scripts
 ```
-
-См. [Структура проекта](./project-structure.md) для подробностей.
 
 ## Частые задачи
 
 ### Запуск тестов
 ```bash
-pytest tests/
-cd frontend_tests && npm test
+pytest -q
+python -m ruff check app tests
+python -m mypy app
+
+cd frontend
+npm run typecheck
+npm run build
 ```
 
 ### Создание миграций
 ```bash
-alembic revision --autogenerate -m "описание"
+alembic revision -m "описание"
 alembic upgrade head
 ```
 
-### Сборка для Production
+### Локальный запуск через Docker
 ```bash
-# Бэкенд
-docker build -t amaimagery-backend .
-
-# Фронтенд
-cd frontend && npm run build
+docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d --build
 ```
 
 ## Получение помощи
 
-- Проверьте [Устранение неполадок](../troubleshooting/README.md)
-- Просмотрите существующие issues
-- Спросите в discussions
-
+- Смотрите [Troubleshooting](../troubleshooting/README.md)
+- Проверяйте существующие issues и discussions
+- Используйте [Reference](../reference/README.md) как текущий контракт
