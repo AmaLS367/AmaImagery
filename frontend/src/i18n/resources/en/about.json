@@ -1,39 +1,46 @@
 {
   "hero": {
-    "subtitle": "Interface for image generation. Fast. Predictable. Controllable."
+    "title": "AmaImagery is a professional image generation platform built for creators.",
+    "summary": "Generate, browse history, and fine-tune your settings — all in one seamless experience designed for serious creative work.",
+    "pill1": "Creator-focused",
+    "pill2": "Full control",
+    "pill3": "Premium experience"
   },
-  "features": {
-    "title": "What you get",
-    "cards": {
-      "control": {
-        "title": "Precise control",
-        "text": "Generation parameters, presets, repeatability. Quick re-run from history."
-      },
-      "stable": {
-        "title": "Stable operation",
-        "text": "Requests are executed sequentially. No hangs or surprises."
-      },
-      "guide": {
-        "title": "Clear guide",
-        "text": "Short rules: reference, composition, light, details. Examples and quick tips."
-      }
+  "principles": {
+    "title": "Why the system exists",
+    "description": "The interface is designed so prompt work, queue behavior, history fidelity, and interface controls all feel like parts of the same product instead of separate experiments.",
+    "unified": {
+      "title": "One product contract",
+      "text": "Generation, history, settings, and recovery work together as one unified experience rather than separate disconnected tools."
+    },
+    "clarity": {
+      "title": "Operational clarity",
+      "text": "Queue visibility, retries, saved metadata, and explicit states make the tool readable when real runs are happening."
+    },
+    "premium": {
+      "title": "Premium interface",
+      "text": "Editorial surfaces and serious controls coexist so the product feels creator-grade without hiding the mechanics."
     }
   },
-  "how": {
-    "title": "How it works",
-    "steps": [
-      {
-        "title": "Write a prompt",
-        "text": "Keep it short. Add style and lighting. Use a reference if needed."
-      },
-      {
-        "title": "Run generation",
-        "text": "Watch the status. Don’t flood the queue with duplicates."
-      },
-      {
-        "title": "Review and repeat",
-        "text": "Save good parameters as a preset. Re‑run from history in one click."
-      }
-    ]
+  "workflow": {
+    "title": "How the flow works",
+    "description": "Each major screen owns a different job, but the product experience stays consistent from first prompt to saved result.",
+    "compose": {
+      "title": "Compose with intent",
+      "text": "Write a focused prompt, add reference guidance when needed, and keep negative constraints explicit."
+    },
+    "runtime": {
+      "title": "Read the process",
+      "text": "Queue status, engine progress, and recoverable errors stay visible while the generation is active."
+    },
+    "reuse": {
+      "title": "Reuse what works",
+      "text": "Saved history, metadata filters, and interface presets make it easier to repeat strong results without losing context."
+    }
+  },
+  "actions": {
+    "guide": "Open Prompt Guide",
+    "history": "View History",
+    "settings": "Control the app"
   }
 }

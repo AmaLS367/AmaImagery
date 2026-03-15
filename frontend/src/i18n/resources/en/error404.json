@@ -1,25 +1,28 @@
 {
-  "code": "404",
   "title": "Page not found",
-  "lead": "The page you’re looking for doesn’t exist or was moved.",
-  "hint": "Check the URL or use the buttons below.",
+  "subtitle": "The page you're looking for doesn't exist or may have been moved. Use the links below to get back on track.",
   "actions": {
-    "home": "Go home",
-    "faq": "Open FAQ",
-    "back": "Go back",
-    "retry": "Retry"
+    "home": "Go to homepage",
+    "generate": "Open Generate",
+    "back": "Go back"
   },
-  "search": {
-    "placeholder": "Search…"
-  },
-  "quick": {
-    "title": "Quick links",
-    "open": "Open",
-    "items": {
-      "generator": { "title": "Generator", "desc": "Create images with full control." },
-      "guide":     { "title": "Prompt guide", "desc": "Short rules and examples." },
-      "faq":       { "title": "FAQ", "desc": "Most common answers." },
-      "about":     { "title": "About AmaImagery", "desc": "What this project is and how it works." }
-    }
+  "links": {
+    "generate": {
+      "title": "Generate",
+      "desc": "Return to the main workspace for prompt composition and system feedback."
+    },
+    "history": {
+      "title": "History",
+      "desc": "Inspect saved generations, metadata filters, and archive records."
+    },
+    "guide": {
+      "title": "Prompt Guide",
+      "desc": "Review the guidance for prompt structure and correction habits."
+    },
+    "faq": {
+      "title": "FAQ",
+      "desc": "Open the answers for process, history, and account questions."
+    },
+    "open": "Open route"
   }
 }
