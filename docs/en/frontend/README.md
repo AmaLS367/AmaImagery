@@ -2,7 +2,7 @@
 
 ## Overview
 
-The frontend is a React application built with TypeScript and Vite. Its current UI surface is focused on generation, history, settings, auth, and informational product pages.
+The frontend is a React application built with TypeScript and Vite. The frontend covers generation, history, settings, auth, and informational product pages.
 
 ## Key Features
 
@@ -14,7 +14,7 @@ The frontend is a React application built with TypeScript and Vite. Its current 
 
 ### 🌐 Internationalization
 - i18next-based multi-language support
-- currently active: English and Russian
+- English and Russian
 - additional languages planned
 
 ### 🔄 State Management
@@ -26,11 +26,11 @@ The frontend is a React application built with TypeScript and Vite. Its current 
 - auth flows
 - generation submission and polling
 - history/settings integration
-- error handling in the current app shell
+- error handling
 
-## Current Route Surface
+## Route Surface
 
-Current routes include:
+Routes:
 
 - `/`
 - `/generate`

@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Практическое руководство по настройке, разработке и внесению вклада в **AmaImagery** в его текущем состоянии.
+Практическое руководство по настройке, разработке и внесению вклада в **AmaImagery**.
 
 ## Начало работы
 
@@ -74,8 +74,6 @@ npm run dev
 | Отдельная страница code review | 🚧 Coming soon |
 | [Contributing](../../../CONTRIBUTING.md) | ✅ Доступно |
 
-Пока эти leaf pages не заполнены, именно эта README остаётся канонической точкой входа для разработки.
-
 ## Инструменты разработки
 
 ### Качество кода
@@ -130,4 +128,4 @@ docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d -
 
 - Смотрите [Troubleshooting](../troubleshooting/README.md)
 - Проверяйте существующие issues и discussions
-- Используйте [Reference](../reference/README.md) как текущий контракт
+- Используйте [Reference](../reference/README.md) для endpoint-ов, команд и env-переменных

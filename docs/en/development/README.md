@@ -2,7 +2,7 @@
 
 ## Overview
 
-Practical guide for setting up, developing, and contributing to **AmaImagery** as the repository exists today.
+Practical guide for setting up, developing, and contributing to **AmaImagery**.
 
 ## Getting Started
 
@@ -74,7 +74,6 @@ npm run dev
 | Code review page | 🚧 Coming soon |
 | [Contributing](../../../CONTRIBUTING.md) | ✅ Available |
 
-This README is the canonical development entrypoint until those leaf pages are filled in.
 
 ## Development Tools
 
@@ -130,4 +129,4 @@ docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d -
 
 - Check [Troubleshooting](../troubleshooting/README.md)
 - Review existing issues and discussions
-- Use [Reference](../reference/README.md) for the current contract
+- Use [Reference](../reference/README.md) for endpoints, commands, and env variables

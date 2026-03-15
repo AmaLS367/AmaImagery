@@ -198,22 +198,22 @@ Workers are automatically started with the `generation_worker` service in Docker
 
 **Production:**
 ```bash
-docker compose -f docker/compose.prod.yml up -d
+docker compose --env-file docker/.env.prod -f docker/compose.prod.yml up -d --build
 ```
 
 **Production with local Diffusers runtime:**
 ```bash
-docker compose -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d
+docker compose --env-file docker/.env.prod -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d --build
 ```
 
 **Local:**
 ```bash
-docker compose -f docker/compose.local.yml up -d
+docker compose --env-file docker/.env.docker -f docker/compose.local.yml up -d --build
 ```
 
 **Local with Diffusers runtime:**
 ```bash
-docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up -d
+docker compose --env-file docker/.env.docker -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up -d --build
 ```
 
 ### Scaling Workers
@@ -221,7 +221,7 @@ docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml
 To scale workers, increase the number of `generation_worker` service instances:
 
 ```bash
-docker compose -f docker/compose.prod.yml up -d --scale generation_worker=3
+docker compose --env-file docker/.env.prod -f docker/compose.prod.yml up -d --scale generation_worker=3
 ```
 
 ### Dependencies
@@ -239,7 +239,7 @@ Workers require:
 Worker logs are available via Docker:
 
 ```bash
-docker compose -f docker/compose.prod.yml logs -f generation_worker
+docker compose --env-file docker/.env.prod -f docker/compose.prod.yml logs -f generation_worker
 ```
 
 ### Task Metrics

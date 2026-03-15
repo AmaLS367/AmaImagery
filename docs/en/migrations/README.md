@@ -4,7 +4,7 @@
 
 Migration and schema-evolution notes for **AmaImagery**.
 
-## Current Migration Reality
+## Migration Status
 
 The repository currently uses Alembic and the active migration tree under `migrations/`.
 
@@ -33,9 +33,9 @@ Known revisions in the repo:
 ## For Developers
 
 - keep migration changes in the same PR as model/code changes
-- prefer documenting real revisions over aspirational migration guides
+- document schema changes in the same PR as the corresponding code and model changes
 
 ## For Operators
 
 - apply migrations before expecting API/worker parity after deploy
-- use PostgreSQL for the documented production path
+- use PostgreSQL for production

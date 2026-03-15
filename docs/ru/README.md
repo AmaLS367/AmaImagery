@@ -1,24 +1,22 @@
 # Документация AmaImagery (Русский)
 
-Добро пожаловать в документацию **AmaImagery**. Это руководство сохраняет визуальный стиль документации, но приводит тексты, ссылки и обещания в соответствие с текущим репозиторием.
+Добро пожаловать в документацию **AmaImagery**.
 
 ## 🎯 Что такое AmaImagery?
 
-AmaImagery — это self-hosted платформа генерации изображений, в которой сейчас реально есть:
+AmaImagery — это self-hosted платформа генерации изображений:
 
-- 🎨 **Генерация изображений** через текущий маршрут `/api/v1/images/generate`
+- 🎨 **Генерация изображений** через `/api/v1/images/generate`
 - 🔄 **Асинхронный lifecycle worker-а** с сохранением состояния задач
 - 🔌 **Абстракция provider-ов** для `comfyui` и `diffusers`
 - 🛡️ **Auth, admin и moderation surface** в backend
 - 🌐 **React + Vite фронтенд** со страницами генерации, истории, настроек и auth
 - 🐳 **Docker-сценарии развертывания** для local и production режимов
 
-Планируемые или ещё не опубликованные публично возможности вроде edit, upscale и resize остаются видимыми в roadmap/tutorial секциях, но больше не описываются как уже готовые public API.
-
 ## 📚 Разделы документации
 
 ### [🔧 Бэкенд](./backend/README.md)
-Текущая архитектура backend, реальные маршруты, providers, очереди, repositories, observability и admin/readiness.
+Архитектура backend, маршруты, providers, очереди, repositories, observability и admin/readiness.
 
 ### [🎨 Фронтенд](./frontend/README.md)
 Текущая структура React/Vite фронтенда, маршруты и точки интеграции.
@@ -60,7 +58,7 @@ Security posture, путь для disclosure и чувствительные run
 Текущие endpoints, команды, env-переменные и порты.
 
 ### [🎓 Учебные материалы](./tutorials/README.md)
-Guided material и planned tutorials. Часть пунктов там намеренно остаётся roadmap placeholder-ами.
+Guided material и planned tutorials.
 
 ## 🚀 Быстрый старт
 
@@ -94,11 +92,11 @@ Guided material и planned tutorials. Часть пунктов там наме�
                      └──────────────┘
 ```
 
-Текущая runtime-правда такая:
+Ключевые детали runtime:
 
 - PostgreSQL хранит lifecycle state генераций
 - Redis — это инфраструктура очереди и лимитов, а не главный источник истины о задаче
-- `comfyui` и `diffusers` — реальные provider modes
+- `comfyui` и `diffusers` — provider modes
 - admin pages живут под `/admin/*`
 
 ## 📦 Технологический стек
@@ -134,7 +132,6 @@ Guided material и planned tutorials. Часть пунктов там наме�
 
 - Начните с [Troubleshooting](./troubleshooting/README.md)
 - Смотрите section README для своей области
-- Используйте roadmap/tutorial страницы как план, а не как доказательство существования уже готового public API
 
 ## 📄 Лицензия
 

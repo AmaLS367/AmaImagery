@@ -2,7 +2,7 @@
 
 ## Overview
 
-The backend is built with **FastAPI** and Python. Its current public surface is centered on image generation, auth, user settings/history, moderation, file delivery, and admin/readiness flows.
+The backend is built with **FastAPI** and Python. The public surface covers image generation, auth, user settings/history, moderation, file delivery, and admin/readiness flows.
 
 ## Key Components
 

@@ -2,18 +2,18 @@
 
 ## Overview
 
-Deployment guidance for running **AmaImagery** in environments that match the current repository.
+Deployment guidance for running **AmaImagery**.
 
 ## Deployment Options
 
 ### 🐳 Docker Deployment (Recommended)
-- current primary deployment path
+- primary deployment path
 - matches the repository compose files
 - easiest way to keep API, worker, database, Redis, and nginx aligned
 
 ### ☁️ Cloud / Managed Infrastructure
-- possible, but not documented as turnkey in the repo yet
-- operator responsibility for translating the Docker/runtime contract
+- no turnkey cloud deployment guide is provided
+- operators are responsible for adapting the Docker/runtime contract to their infrastructure
 
 ### 🖥️ Bare Metal
 - possible for advanced operators
@@ -33,9 +33,7 @@ Deployment guidance for running **AmaImagery** in environments that match the cu
 | Maintenance playbook | 🚧 Coming soon |
 | [Provider Rollout](./provider-rollout.md) | ✅ Available |
 
-For now, this README is the canonical deployment overview.
-
-## Current Production Checklist
+## Production Checklist
 
 1. ✅ Prepare a real production env file
 2. ✅ Set a strong `SECRET_KEY`
@@ -49,12 +47,12 @@ For now, this README is the canonical deployment overview.
 ## Minimum Requirements
 
 - enough CPU/RAM for API + worker + database + provider runtime
-- Docker / Docker Compose if using the documented deployment path
+- Docker / Docker Compose for the Docker-based deployment
 - GPU only when your chosen provider/runtime actually needs local GPU execution
 - disk space for outputs, logs, and optional local model assets
 
 ## Important Notes
 
-- The repository does not currently document a public `/metrics` endpoint as live by default.
-- The worker is not optional if you want the documented async generation lifecycle.
+- A public `/metrics` endpoint is not mounted by default.
+- The worker is required for the async generation lifecycle.
 - Provider rollout between `comfyui` and `diffusers` is handled through env/config and compose overrides.

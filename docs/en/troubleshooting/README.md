@@ -14,8 +14,6 @@ Current issues, debugging paths, and operational notes for **AmaImagery**.
 | Memory issues page | 🚧 Coming soon |
 | Performance issues page | 🚧 Coming soon |
 
-This README is the current troubleshooting entrypoint.
-
 ## Common Issues
 
 ### Installation Problems

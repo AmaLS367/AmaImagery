@@ -15,7 +15,7 @@ Legal information, licensing, attribution, and model-asset obligations for **Ama
 - model weights and derivative materials may carry separate obligations
 - review `NOTICE.txt`, `ATTRIBUTIONS.md`, and the license files under `models/`
 
-## Current Legal Sources
+## Legal Sources
 
 - `LICENSE`
 - `COMMERCIAL_LICENSE.md`
@@ -41,7 +41,7 @@ Legal information, licensing, attribution, and model-asset obligations for **Ama
 
 - application code licensing and model licensing are not the same layer
 - using local weights does not automatically grant unrestricted redistribution rights
-- planned docs pages may expand compliance guidance later, but the files above are the current legal source of truth
+- planned docs pages may expand compliance guidance later; the files listed above are authoritative
 
 ## Legal Reminder
 

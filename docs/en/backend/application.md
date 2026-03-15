@@ -68,7 +68,7 @@ class MyUseCase:
             )
 ```
 
-## Current Use Cases
+## Use Cases
 
 ### GenerateImageUseCase
 

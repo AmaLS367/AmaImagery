@@ -4,8 +4,6 @@
 
 Step-by-step guides and future walkthroughs for **AmaImagery**.
 
-This section intentionally keeps roadmap/tutorial planning visible. Items marked below are not all implemented as standalone tutorial pages yet.
-
 ## Available Now
 
 ### 📚 Read First
