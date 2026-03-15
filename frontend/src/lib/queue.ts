@@ -19,19 +19,34 @@ export class RequestQueue {
   run<T>(fn: Task<T>): { promise: Promise<T>, abort: () => void } {
     const controller = new AbortController()
     const p = new Promise<T>((resolve, reject) => {
-  // If cancelPrev is enabled, abort existing queued tasks first,
-  // then push the new task. Previously abortAll() ran after pushing
-  // which aborted the newly added task as well.
-  if (this.cancelPrev) this.abortAll()
-  this.q.push({ fn, resolve, reject, controller })
-  this.pump()
+      // If cancelPrev is enabled, abort existing queued tasks first,
+      // then push the new task. Previously abortAll() ran after pushing
+      // which aborted the newly added task as well.
+      if (this.cancelPrev) this.abortAll()
+      this.q.push({ fn, resolve, reject, controller })
+      this.pump()
     })
-    return { promise: p, abort: () => controller.abort() }
+
+    return {
+      promise: p,
+      abort: () => {
+        controller.abort()
+        this.q = this.q.filter((item) => {
+          if (item.controller !== controller) return true
+          item.reject(new DOMException('Aborted', 'AbortError'))
+          return false
+        })
+      },
+    }
   }
 
   private pump() {
     while (this.active < this.max && this.q.length) {
       const item = this.q.shift()!
+      if (item.controller.signal.aborted) {
+        item.reject(new DOMException('Aborted', 'AbortError'))
+        continue
+      }
       this.active++
       item.fn(item.controller.signal).then(
         (v) => { this.active--; item.resolve(v); this.pump() },
@@ -41,7 +56,10 @@ export class RequestQueue {
   }
 
   abortAll() {
-    for (const it of this.q) it.controller.abort()
+    for (const it of this.q) {
+      it.controller.abort()
+      it.reject(new DOMException('Aborted', 'AbortError'))
+    }
     this.q = []
   }
 }
