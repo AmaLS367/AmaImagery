@@ -2,187 +2,73 @@
 
 ## Overview
 
-Step-by-step tutorials for common tasks and advanced features of the AI Image Generator.
+Step-by-step guides and future walkthroughs for **AmaImagery**.
 
-## Getting Started Tutorials
+This section intentionally keeps roadmap/tutorial planning visible. Items marked below are not all implemented as standalone tutorial pages yet.
 
-### [🎨 Basic Image Generation](./basic-generation.md)
-Learn how to generate your first image using the web interface and API.
+## Available Now
 
-**Topics:**
-- Writing effective prompts
-- Setting generation parameters
-- Understanding negative prompts
-- Saving and managing outputs
+### 📚 Read First
+- [Documentation Home](../README.md)
+- [Development](../development/README.md)
+- [Docker](../docker/README.md)
+- [Reference](../reference/README.md)
 
-### [📝 Advanced Prompting](./advanced-prompts.md)
-Master the art of prompt engineering for better results.
+## Planned Tutorials
 
-**Topics:**
-- Prompt structure and syntax
-- Emphasis and weighting
-- Style modifiers
-- Quality tags
-- Avoiding common mistakes
+### 🎨 Basic Image Generation
+**Status:** 🚧 Coming soon
 
-## Feature Tutorials
+Planned topics:
+- writing effective prompts
+- generation parameters
+- negative prompts
+- saving and managing outputs
 
-### [✏️ Image Editing Tutorial](./image-editing-tutorial.md)
-Learn to edit images with inpainting and img2img.
+### 📝 Advanced Prompting
+**Status:** 🚧 Coming soon
 
-**Topics:**
-- Using the inpainting tool
-- Mask creation techniques
-- Image-to-image transformation
-- Style transfer with IP-Adapter
+Planned topics:
+- prompt structure
+- style modifiers
+- quality tags
+- avoiding common mistakes
 
-### [🔍 Upscaling Guide](./upscaling-guide.md)
-Enhance image quality with AI upscaling.
+### ✏️ Image Editing Tutorial
+**Status:** 🚧 Coming soon / depends on public feature availability
 
-**Topics:**
-- When to use upscaling
-- Choosing upscale factors
-- Batch upscaling
-- Quality optimization
+### 🔍 Upscaling Guide
+**Status:** 🚧 Coming soon / depends on public feature availability
 
-## API Tutorials
+### 📡 API Usage
+**Status:** 🚧 Coming soon
 
-### [📡 API Usage](./api-usage.md)
-Complete guide to using the REST API.
+Planned focus:
+- authentication
+- generation requests
+- polling status
+- file download flow
 
-**Topics:**
-- Authentication
-- Making requests
-- Handling responses
-- Error handling
-- Rate limiting
-- Webhooks (if available)
+### 🔌 Custom Integration
+**Status:** 🚧 Coming soon
 
-**Example:**
-```python
-import requests
+### ⚡ Performance Optimization
+**Status:** 🚧 Coming soon
 
-# Login
-response = requests.post('http://localhost:8000/api/v1/auth/login', json={
-    'email': 'user@example.com',
-    'password': 'password'
-})
-token = response.json()['access_token']
+### 🐳 Docker Deployment Tutorial
+**Status:** 🚧 Coming soon
 
-# Generate image
-response = requests.post(
-    'http://localhost:8000/api/v1/images/generate',
-    headers={'Authorization': f'Bearer {token}'},
-    json={
-        'prompt': 'a beautiful sunset over mountains',
-        'negative_prompt': 'blurry, low quality',
-        'num_inference_steps': 30,
-        'guidance_scale': 7.5
-    }
-)
-
-image_url = response.json()['image_url']
-```
-
-### [🔌 Custom Integration](./custom-integration.md)
-Integrate the image generator into your application.
-
-**Topics:**
-- SDK/client libraries
-- Webhook integration
-- Custom UI integration
-- Batch processing
-- Error handling strategies
-
-## Advanced Tutorials
-
-### [🎛️ Model Fine-tuning](./model-finetuning.md)
-Fine-tune models for specific use cases.
-
-**Topics:**
-- Preparing training data
-- Fine-tuning process
-- Model evaluation
-- Deploying custom models
-
-### [⚡ Performance Optimization](./performance-optimization.md)
-Optimize for speed and quality.
-
-**Topics:**
-- GPU optimization
-- Memory management
-- Batch processing
-- Caching strategies
-- xformers configuration
-
-### [🐳 Docker Deployment](./docker-deployment.md)
-Deploy with Docker in production.
-
-**Topics:**
-- Building images
-- Docker Compose setup
-- Environment configuration
-- Scaling with Docker
-- Monitoring containers
-
-### [☁️ Cloud Deployment](./cloud-deployment.md)
-Deploy to cloud providers.
-
-**Topics:**
-- AWS deployment
-- GCP deployment
-- Azure deployment
-- Load balancing
-- Auto-scaling
-
-## Integration Tutorials
-
-### [🌐 Web Integration](./web-integration.md)
-Integrate into web applications.
-
-**Topics:**
-- JavaScript client
-- React components
-- Vue.js integration
-- Real-time updates
-- File uploads
-
-### [🤖 Bot Integration](./bot-integration.md)
-Create bots with image generation.
-
-**Topics:**
-- Discord bot
-- Telegram bot
-- Slack bot
-- API integration
-- Command handling
-
-## Best Practices
-
-### [✅ Prompt Engineering Best Practices](./prompt-best-practices.md)
-Write better prompts for better results.
-
-### [🔒 Security Best Practices](./security-best-practices.md)
-Secure your deployment.
-
-### [📊 Monitoring Best Practices](./monitoring-best-practices.md)
-Monitor and maintain your system.
+### ☁️ Cloud Deployment Tutorial
+**Status:** 🚧 Coming soon
 
 ## Video Tutorials
 
-Coming soon! Check back for video tutorials covering:
-- Installation walkthrough
-- Feature demonstrations
-- API usage examples
-- Troubleshooting common issues
+Coming soon:
+- installation walkthrough
+- feature demos
+- API flow walkthroughs
+- troubleshooting sessions
 
 ## Community Tutorials
 
-Have you created a tutorial? Submit a pull request to add it here!
-
-## Need Help?
-
-- Check [Documentation](../README.md)
-- See [Troubleshooting](../troubleshooting/README.md)
-- Ask in discussions
-
+Have you created a tutorial? Open a pull request and add it here.

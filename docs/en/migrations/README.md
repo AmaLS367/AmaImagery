@@ -2,39 +2,40 @@
 
 ## Overview
 
-Migration notes and refactoring documentation for the AI Image Generator project. This section tracks architectural changes, code improvements, and provides upgrade guides for developers and operators.
+Migration and schema-evolution notes for **AmaImagery**.
+
+## Current Migration Reality
+
+The repository currently uses Alembic and the active migration tree under `migrations/`.
+
+Known revisions in the repo:
+- `506057d97046_init`
+- `91c0d4413c57_generation_lifecycle_and_is_superuser`
+- `b4655aadfa03_security_indexes_and_checks`
 
 ## Key Topics
 
 ### 📋 Refactoring Notes
-- Detailed documentation of code refactoring efforts
-- Before/after code examples
-- Breaking changes and compatibility notes
+- schema-affecting refactors
+- DB lifecycle changes
+- auth/admin related schema changes
 
 ### 🔄 Migration Guides
-- Step-by-step upgrade instructions
-- Environment variable changes
-- Configuration updates
+- running `alembic upgrade head`
+- creating new revisions
+- keeping env/config aligned with DB expectations
 
 ### 🏗️ Architectural Changes
-- System architecture improvements
-- Design pattern changes
-- Infrastructure updates
+- queue lifecycle persistence
+- superuser/admin support
+- security indexes and checks
 
 ## For Developers
 
-Migration notes include:
-- Overview of changes
-- Detailed modification lists
-- Code migration examples
-- Breaking changes
-- Testing instructions
+- keep migration changes in the same PR as model/code changes
+- prefer documenting real revisions over aspirational migration guides
 
-## For DevOps
+## For Operators
 
-Each migration note covers:
-- Environment variable changes
-- Deployment configuration updates
-- Production validation requirements
-- Rollback procedures (if needed)
-
+- apply migrations before expecting API/worker parity after deploy
+- use PostgreSQL for the documented production path
