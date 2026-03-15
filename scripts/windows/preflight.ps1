@@ -1,10 +1,14 @@
+param(
+  [ValidateSet('local', 'prod', 'cpu')]
+  [string]$Mode = 'local'
+)
 $ErrorActionPreference='Stop'
 
 Write-Host "[preflight] tools"
 & docker --version | Out-Null
 & docker compose version | Out-Null
 
-if ($Profile -ne 'cpu') {
+if ($Mode -ne 'cpu') {
   if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
     Write-Host "[preflight] GPU OK:"; & nvidia-smi -L
   } else {
@@ -13,8 +17,17 @@ if ($Profile -ne 'cpu') {
 }
 
 Write-Host "[preflight] env files"
-if (-not (Test-Path docker/.env.local)) { Copy-Item docker/.env.local.example docker/.env.local }
-if (-not (Test-Path docker/.env.prod))  { Copy-Item docker/.env.prod.example  docker/.env.prod }
+switch ($Mode) {
+  'local' {
+    if (-not (Test-Path docker/.env.docker)) { Copy-Item docker/.env.docker.example docker/.env.docker }
+  }
+  'cpu' {
+    if (-not (Test-Path docker/.env.docker)) { Copy-Item docker/.env.docker.example docker/.env.docker }
+  }
+  'prod' {
+    if (-not (Test-Path docker/.env.prod)) { Copy-Item docker/.env.prod.example docker/.env.prod }
+  }
+}
 
 Write-Host "[preflight] frontend dist"
 $hasRoot = Test-Path frontend/dist
