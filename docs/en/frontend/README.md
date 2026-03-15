@@ -2,54 +2,77 @@
 
 ## Overview
 
-The frontend is a modern React application built with TypeScript and Vite. It provides an intuitive user interface for image generation, editing, and management with support for multiple languages.
+The frontend is a React application built with TypeScript and Vite. Its current UI surface is focused on generation, history, settings, auth, and informational product pages.
 
 ## Key Features
 
 ### 🎨 User Interface
-- Modern, responsive design
-- Tailwind CSS for styling
-- Dark/light mode support
-- Accessible components
+- responsive product UI
+- Tailwind CSS styling
+- light/dark theme support
+- accessible UI primitives
 
 ### 🌐 Internationalization
-- Multi-language support (i18next)
-- Currently supporting English and Russian
-- Easy to add new languages
+- i18next-based multi-language support
+- currently active: English and Russian
+- additional languages planned
 
 ### 🔄 State Management
 - React Context API
-- Custom hooks for state logic
-- Optimized re-rendering
+- custom hooks
+- route-based page composition
 
 ### 📡 API Integration
-- Type-safe API client
-- Error handling
-- Request/response interceptors
-- Authentication management
+- auth flows
+- generation submission and polling
+- history/settings integration
+- error handling in the current app shell
+
+## Current Route Surface
+
+Current routes include:
+
+- `/`
+- `/generate`
+- `/history`
+- `/settings`
+- `/login`
+- `/register`
+- `/forgot-password`
+- `/reset-password`
+- `/about`
+- `/faq`
+- `/prompt-guide`
+- `/privacy`
+- `/404`
+
+Legacy redirects:
+- `/gen`
+- `/guide`
+- `/reset`
 
 ## Documentation Sections
 
-- [Architecture](./architecture.md) - Frontend architecture
-- [Setup](./setup.md) - Installation and setup
-- [Components](./components/) - UI components documentation
-- [Pages](./pages/) - Page components and routing
-- [State Management](./state-management.md) - State management patterns
-- [API Integration](./api-integration.md) - Backend API integration
-- [i18n](./i18n/) - Internationalization guide
-- [Styling](./styling.md) - Styling with Tailwind CSS
-- [Build & Deploy](./build-deploy.md) - Building and deployment
-- [Testing](./testing.md) - Frontend testing
+| Topic | Status |
+|------|--------|
+| Architecture page | 🚧 Coming soon |
+| Setup page | 🚧 Coming soon |
+| Components deep-dive | 🚧 Coming soon |
+| Pages deep-dive | 🚧 Coming soon |
+| State management deep-dive | 🚧 Coming soon |
+| API integration deep-dive | 🚧 Coming soon |
+| i18n deep-dive | 🚧 Coming soon |
+| Styling guide | 🚧 Coming soon |
+| Build & deploy guide | 🚧 Coming soon |
+| Frontend testing guide | 🚧 Coming soon |
 
 ## Quick Start
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
-
-See [Setup Guide](./setup.md) for details.
 
 ## Technology Stack
 
@@ -58,6 +81,4 @@ See [Setup Guide](./setup.md) for details.
 - **Build Tool:** Vite
 - **Styling:** Tailwind CSS
 - **i18n:** i18next
-- **HTTP Client:** fetch API
 - **Routing:** React Router
-

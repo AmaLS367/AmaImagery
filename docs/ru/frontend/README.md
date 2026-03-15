@@ -2,54 +2,77 @@
 
 ## Обзор
 
-Фронтенд — это современное React приложение построенное на TypeScript и Vite. Предоставляет интуитивный пользовательский интерфейс для генерации, редактирования и управления изображениями с поддержкой нескольких языков.
+Фронтенд — это React-приложение на TypeScript и Vite. Его текущая UI-поверхность сосредоточена на генерации, истории, настройках, auth и информационных product pages.
 
 ## Ключевые возможности
 
 ### 🎨 Пользовательский интерфейс
-- Современный, адаптивный дизайн
-- Tailwind CSS для стилизации
-- Поддержка темной/светлой темы
-- Доступные компоненты
+- адаптивный product UI
+- стилизация на Tailwind CSS
+- поддержка light/dark theme
+- доступные UI primitives
 
 ### 🌐 Интернационализация
-- Поддержка нескольких языков (i18next)
-- В настоящее время поддерживаются английский и русский
-- Легко добавлять новые языки
+- multi-language support на i18next
+- сейчас активны English и Russian
+- дополнительные языки запланированы
 
 ### 🔄 Управление состоянием
 - React Context API
-- Кастомные хуки для логики состояния
-- Оптимизированный ре-рендеринг
+- кастомные хуки
+- route-based composition страниц
 
 ### 📡 Интеграция с API
-- Типобезопасный API клиент
-- Обработка ошибок
-- Перехватчики запросов/ответов
-- Управление аутентификацией
+- auth flows
+- отправка generation и polling статуса
+- интеграция history/settings
+- обработка ошибок в текущем app shell
+
+## Текущая Route Surface
+
+Текущие маршруты включают:
+
+- `/`
+- `/generate`
+- `/history`
+- `/settings`
+- `/login`
+- `/register`
+- `/forgot-password`
+- `/reset-password`
+- `/about`
+- `/faq`
+- `/prompt-guide`
+- `/privacy`
+- `/404`
+
+Legacy redirects:
+- `/gen`
+- `/guide`
+- `/reset`
 
 ## Разделы документации
 
-- [Архитектура](./architecture.md) - Архитектура фронтенда
-- [Установка](./setup.md) - Установка и настройка
-- [Компоненты](./components/) - Документация UI компонентов
-- [Страницы](./pages/) - Компоненты страниц и роутинг
-- [Управление состоянием](./state-management.md) - Паттерны управления состоянием
-- [Интеграция с API](./api-integration.md) - Интеграция с бэкенд API
-- [i18n](./i18n/) - Руководство по интернационализации
-- [Стилизация](./styling.md) - Стилизация с Tailwind CSS
-- [Сборка и развертывание](./build-deploy.md) - Сборка и развертывание
-- [Тестирование](./testing.md) - Тестирование фронтенда
+| Тема | Статус |
+|------|--------|
+| Architecture page | 🚧 Coming soon |
+| Setup page | 🚧 Coming soon |
+| Components deep-dive | 🚧 Coming soon |
+| Pages deep-dive | 🚧 Coming soon |
+| State management deep-dive | 🚧 Coming soon |
+| API integration deep-dive | 🚧 Coming soon |
+| i18n deep-dive | 🚧 Coming soon |
+| Styling guide | 🚧 Coming soon |
+| Build & deploy guide | 🚧 Coming soon |
+| Frontend testing guide | 🚧 Coming soon |
 
 ## Быстрый старт
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
-
-См. [Руководство по установке](./setup.md) для подробностей.
 
 ## Технологический стек
 
@@ -58,6 +81,4 @@ npm run dev
 - **Инструмент сборки:** Vite
 - **Стилизация:** Tailwind CSS
 - **i18n:** i18next
-- **HTTP клиент:** fetch API
 - **Роутинг:** React Router
-
