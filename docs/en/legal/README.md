@@ -2,122 +2,47 @@
 
 ## Overview
 
-Legal information, licenses, attributions, and usage restrictions for the AI Image Generator project.
+Legal information, licensing, attribution, and model-asset obligations for **AmaImagery**.
 
 ## License Summary
 
-The AI Image Generator project uses multiple licenses:
-
 ### Application Code
-- **Open-source license:** AGPL-3.0-only
-- **Commercial licensing:** Contact amalsdev367@gmail.com
-- **Components:** Backend, Frontend, Scripts
+- repository root `LICENSE`
+- open-source path under `AGPL-3.0-only`
+- separate commercial licensing path described in `COMMERCIAL_LICENSE.md`
 
-### ML Models
+### Model / Asset Layer
+- model weights and derivative materials may carry separate obligations
+- review `NOTICE.txt`, `ATTRIBUTIONS.md`, and the license files under `models/`
 
-#### Stable Diffusion v1.5
-- **License:** CreativeML Open RAIL-M
-- **Source:** RunwayML / Stability AI
-- **File:** `models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt`
+## Current Legal Sources
 
-#### AmaFusion V1
-- **License:** CreativeML Open RAIL-M
-- **Base Model:** Stable Diffusion v1.5
-- **File:** `models/AmaFusion_V1/MODEL_CARD.md`
-
-#### DreamShaper v6
-- **License:** CreativeML Open RAIL-M
-- **Source:** Lykon
-- **File:** `models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt`
-
-#### VAE (sd-vae-ft-mse)
-- **License:** MIT
-- **Source:** Stability AI
-- **File:** `models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt`
+- `LICENSE`
+- `COMMERCIAL_LICENSE.md`
+- `NOTICE.txt`
+- `ATTRIBUTIONS.md`
+- `models/AmaFusion_V1/MODEL_CARD.md`
+- `models/AmaFusion_V1/DATA_SOURCES.md`
+- `models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt`
+- `models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt`
+- `models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt`
 
 ## Documentation Sections
 
-- [Licenses](./licenses.md) - Complete license texts
-- [Model Licenses](./model-licenses.md) - ML model licenses
-- [Data Sources](./data-sources.md) - Training data sources
-- [Attributions](./attributions.md) - Attribution requirements
-- [Usage Restrictions](./usage-restrictions.md) - Use restrictions
+| Topic | Status |
+|------|--------|
+| Full license breakdown page | 🚧 Coming soon |
+| Model-license deep-dive | 🚧 Coming soon |
+| Data-source deep-dive | 🚧 Coming soon |
+| Attribution deep-dive | 🚧 Coming soon |
+| Usage restrictions deep-dive | 🚧 Coming soon |
 
-## OpenRAIL-M License
+## Practical Notes
 
-The CreativeML Open RAIL-M license includes use-based restrictions. Key points:
+- application code licensing and model licensing are not the same layer
+- using local weights does not automatically grant unrestricted redistribution rights
+- planned docs pages may expand compliance guidance later, but the files above are the current legal source of truth
 
-### ✅ You CAN:
-- Use for commercial purposes
-- Modify and distribute
-- Create derivative works
-- Host as a service
+## Legal Reminder
 
-### ⚠️ You MUST:
-- Include license notice
-- State changes made
-- Provide attribution
-- Apply same license to derivatives
-
-### ❌ You CANNOT use for:
-- Illegal activities
-- Harassment or abuse
-- Generating false information
-- Automated decision-making affecting legal rights
-- Other prohibited uses (see full license)
-
-## Attribution Requirements
-
-When distributing or providing as a service, include:
-
-1. **License Notice:**
-   - Link to CreativeML Open RAIL-M
-   - Include `OpenRAIL-M.txt`
-
-2. **Model Attribution:**
-   - Original model creators
-   - Model modifications
-   - Training data sources
-
-3. **Documentation:**
-   - Keep `MODEL_CARD.md` with weights
-   - Include `DATA_SOURCES.md`
-
-## Compliance Checklist
-
-### For Developers
-- ✅ Read all license files
-- ✅ Understand restrictions
-- ✅ Follow attribution requirements
-- ✅ Review `ATTRIBUTIONS.md`
-
-### For Distributors
-- ✅ Include all license files
-- ✅ Provide clear attribution
-- ✅ Link to source documentation
-- ✅ State any modifications
-
-### For Service Providers
-- ✅ Display license notice to users
-- ✅ Implement content policy
-- ✅ Monitor for prohibited uses
-- ✅ Maintain audit logs
-
-## Data Sources
-
-See `models/AmaFusion_V1/DATA_SOURCES.md` for:
-- Training datasets used
-- Dataset licenses
-- Attribution strings
-- Evidence files
-
-## Questions?
-
-For legal questions or licensing inquiries, consult the following:
-- Full license texts in `models/AmaFusion_V1/LICENSES/`
-- Project `ATTRIBUTIONS.md`
-- Project `NOTICE.txt`
-- Repository `COMMERCIAL_LICENSE.md`
-
-**Note:** This documentation is for informational purposes only and does not constitute legal advice. Consult with a legal professional for specific questions.
-
+This documentation is informational. For actual legal decisions, review the source files and use professional legal advice where needed.

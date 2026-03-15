@@ -2,84 +2,54 @@
 
 ## Обзор
 
-Комплексная документация по безопасности включающая аутентификацию, авторизацию, валидацию ввода, фильтрацию контента и лучшие практики безопасности.
+Security notes для текущего runtime **AmaImagery**: auth, file delivery, rate limiting, moderation и operational safeguards.
 
 ## Функции безопасности
 
 ### 🔐 Аутентификация
-- JWT аутентификация
-- Безопасное хэширование паролей (bcrypt)
-- Механизм обновления токенов
-- Управление сеансами
+- JWT-based auth flows
+- хэширование паролей
+- refresh token flow
+- session/cookie related config
 
 ### 🛡️ Авторизация
-- Ролевой контроль доступа (RBAC)
-- Разрешения на уровне ресурсов
-- Защита API endpoints
-- Управление квотами пользователей
+- защита authenticated routes
+- superuser-only доступ к admin pages
 
 ### 🚦 Rate Limiting
-- Лимиты на пользователя
-- IP-based rate limiting
-- Счетчики на базе Redis
-- Настраиваемые пороги
+- ограничения на пользователя и IP
+- Redis-backed режим при включённом Redis
 
 ### ✅ Валидация ввода
-- Валидация схем Pydantic
-- Лимиты размера запросов
-- Валидация типов файлов
-- Предотвращение SQL инъекций
+- Pydantic validation
+- лимиты на размер запросов
+- валидация файлов на delivery side
 
 ### 🔍 Фильтрация контента
-- Обнаружение NSFW контента
-- Система проверки промптов
-- Фильтрация негативных токенов
-- Проверка орфографии и предложения
+- NSFW rules
+- prompt hygiene
+- пользовательские NSFW preferences
 
-### 🌐 Сетевая безопасность
-- Net guard (изоляция сети)
-- Конфигурация CORS
-- Middleware доверенных хостов
-- Заголовки безопасности
+### 🌐 Сетевая / Runtime безопасность
+- настройки network guard
+- host/origin related config
+- security headers и cookie settings
 
 ## Разделы документации
 
-- [Аутентификация](./authentication.md) - Детали системы аутентификации
-- [Авторизация](./authorization.md) - Контроль доступа
-- [Rate Limiting](./rate-limiting.md) - Реализация rate limiting
-- [Валидация ввода](./input-validation.md) - Стратегии валидации
-- [Фильтрация контента](./content-filtering.md) - Модерация контента
-- [Сетевая безопасность](./network-security.md) - Защита сети
-- [Защита данных](./data-protection.md) - Безопасность данных
-- [Лучшие практики безопасности](./security-best-practices.md) - Руководства
-
-## Заголовки безопасности
-
-Приложение реализует заголовки безопасности:
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: no-referrer`
-- `Strict-Transport-Security` (когда HSTS включен)
-
-## Чеклист безопасности
-
-### Разработка
-- ✅ Используйте переменные окружения для секретов
-- ✅ Никогда не коммитьте credentials
-- ✅ Валидируйте все входные данные
-- ✅ Используйте prepared statements
-- ✅ Включайте middleware безопасности
-
-### Production
-- ✅ Включите HTTPS/TLS
-- ✅ Настройте HSTS
-- ✅ Установите безопасную CORS политику
-- ✅ Включите rate limiting
-- ✅ Мониторьте логи безопасности
-- ✅ Обновляйте зависимости
-- ✅ Регулярные аудиты безопасности
+| Тема | Статус |
+|------|--------|
+| Authentication deep-dive | 🚧 Coming soon |
+| Authorization deep-dive | 🚧 Coming soon |
+| Rate limiting deep-dive | 🚧 Coming soon |
+| Input validation deep-dive | 🚧 Coming soon |
+| Content filtering deep-dive | 🚧 Coming soon |
+| Network security deep-dive | 🚧 Coming soon |
+| Data protection deep-dive | 🚧 Coming soon |
+| Security best practices page | 🚧 Coming soon |
 
 ## Сообщение о проблемах безопасности
 
-Если вы обнаружили уязвимость безопасности, пожалуйста, напишите на amalsdev367@gmail.com. Не создавайте публичные issues для проблем безопасности.
+Если вы нашли уязвимость, пишите на `amalsdev367@gmail.com`. Не открывайте публичный issue для непочиненной security-проблемы.
 
+Смотрите корневой [SECURITY.md](../../../SECURITY.md) для актуальной disclosure policy.

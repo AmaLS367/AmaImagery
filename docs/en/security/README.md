@@ -2,86 +2,54 @@
 
 ## Overview
 
-Comprehensive security documentation covering authentication, authorization, input validation, content filtering, and security best practices.
+Security notes for the current **AmaImagery** runtime: auth, file delivery, rate limiting, moderation, and operational safeguards.
 
 ## Security Features
 
 ### 🔐 Authentication
-- JWT-based authentication
-- Secure password hashing (bcrypt)
-- Token refresh mechanism
-- Session management
+- JWT-based auth flows
+- password hashing
+- refresh token flow
+- session/cookie related config
 
 ### 🛡️ Authorization
-- Role-based access control (RBAC)
-- Resource-level permissions
-- API endpoint protection
-- User quota management
+- authenticated route protection
+- superuser-only admin access
 
 ### 🚦 Rate Limiting
-- Per-user rate limits
-- IP-based rate limiting
-- Redis-backed counters
-- Configurable thresholds
+- per-user and per-IP controls
+- Redis-backed where enabled
 
 ### ✅ Input Validation
-- Pydantic schema validation
-- Request size limits
-- File type validation
-- SQL injection prevention
+- Pydantic validation
+- request size limits
+- file validation on the delivery side
 
 ### 🔍 Content Filtering
-- NSFW content detection
-- Prompt hygiene system
-- Negative token filtering
-- Spell checking and suggestions
+- NSFW rules
+- prompt hygiene
+- user NSFW preferences
 
-### 🌐 Network Security
-- Net guard (network isolation)
-- CORS configuration
-- Trusted host middleware
-- Security headers
+### 🌐 Network / Runtime Safety
+- network guard options
+- host/origin related config
+- security headers and cookie settings
 
 ## Documentation Sections
 
-- [Authentication](./authentication.md) - Auth system details
-- [Authorization](./authorization.md) - Access control
-- [Rate Limiting](./rate-limiting.md) - Rate limiting implementation
-- [Input Validation](./input-validation.md) - Validation strategies
-- [Content Filtering](./content-filtering.md) - Content moderation
-- [Network Security](./network-security.md) - Network protection
-- [Data Protection](./data-protection.md) - Data security
-- [Security Best Practices](./security-best-practices.md) - Guidelines
-
-## Security Headers
-
-The application implements security headers:
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: no-referrer`
-- `Strict-Transport-Security` (when HSTS enabled)
-
-## Security Checklist
-
-### Development
-- ✅ Use environment variables for secrets
-- ✅ Never commit credentials
-- ✅ Validate all inputs
-- ✅ Use prepared statements
-- ✅ Enable security middleware
-
-### Production
-- ✅ Enable HTTPS/TLS
-- ✅ Configure HSTS
-- ✅ Set secure CORS policy
-- ✅ Enable rate limiting
-- ✅ Monitor security logs
-- ✅ Keep dependencies updated
-- ✅ Regular security audits
+| Topic | Status |
+|------|--------|
+| Authentication deep-dive | 🚧 Coming soon |
+| Authorization deep-dive | 🚧 Coming soon |
+| Rate limiting deep-dive | 🚧 Coming soon |
+| Input validation deep-dive | 🚧 Coming soon |
+| Content filtering deep-dive | 🚧 Coming soon |
+| Network security deep-dive | 🚧 Coming soon |
+| Data protection deep-dive | 🚧 Coming soon |
+| Security best practices page | 🚧 Coming soon |
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability, please email amalsdev367@gmail.com. Do not open public issues for security problems.
+If you discover a security vulnerability, email `amalsdev367@gmail.com`. Do not open a public issue for an unpatched security problem.
 
 See the repository-level [SECURITY.md](../../../SECURITY.md) for the current disclosure policy.
-
