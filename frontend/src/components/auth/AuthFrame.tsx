@@ -40,8 +40,8 @@ export function AuthFrame({
           glass={settings.componentStyle === 'glass' || settings.glass}
           className={cn(
             "overflow-hidden rounded-[48px] border-border shadow-glow",
-            settings.visualMode === 'editorial' && "rounded-[36px]",
-            settings.visualMode === 'cinematic' && "shadow-[0_36px_120px_-36px_rgba(0,0,0,0.55)]",
+            settings.visualMode === 'editorial' && "rounded-[36px] border-[hsl(28_60%_62%_/_0.14)]",
+            settings.visualMode === 'cinematic' && "border-[hsl(24_100%_60%_/_0.18)] bg-black/50 shadow-[0_36px_120px_-36px_rgba(0,0,0,0.55)]",
           )}
         >
           {/* Header */}
@@ -51,7 +51,11 @@ export function AuthFrame({
                 <ShieldCheck className="h-3 w-3" />
                 {eyebrow}
               </div>
-              <h1 className="font-display text-4xl font-bold tracking-tight text-foreground dark:text-white sm:text-5xl leading-tight">
+              <h1 className={cn(
+                "font-display text-4xl font-bold tracking-tight text-foreground dark:text-white sm:text-5xl leading-tight",
+                settings.visualMode === 'editorial' && "font-serif font-semibold",
+                settings.visualMode === 'cinematic' && "uppercase tracking-[0.02em]",
+              )}>
                 {title}
               </h1>
             </div>

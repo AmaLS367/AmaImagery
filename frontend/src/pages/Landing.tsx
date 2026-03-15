@@ -22,6 +22,7 @@ import { useState } from 'react'
 import { Button } from '../components/ui/button'
 import { appRoutes } from '../lib/routes'
 import { cn } from '../lib/utils'
+import { useSettings } from '../providers/SettingsProvider'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -128,14 +129,24 @@ function FAQItem({ question, answer, isOpen, onClick }: { question: string, answ
 
 export default function Landing() {
   const { t } = useTranslation(['landing', 'common'])
+  const { settings } = useSettings()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className={cn(
+      "relative min-h-screen overflow-hidden bg-background",
+      "landing-mode-shell",
+      settings.visualMode === 'editorial' && "bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.08),transparent_32%)]",
+      settings.visualMode === 'cinematic' && "bg-black text-white",
+    )}>
       <GridBackground />
 
       {/* Hero Section */}
-      <section className="page-shell relative z-10 pt-16 pb-20 xl:pt-24 xl:pb-28">
+      <section className={cn(
+        "page-shell relative z-10 pt-16 pb-20 xl:pt-24 xl:pb-28",
+        settings.visualMode === 'editorial' && "pt-20 xl:pt-28",
+        settings.visualMode === 'cinematic' && "pt-12 pb-16 xl:pt-20",
+      )}>
         <div className="grid gap-12 xl:grid-cols-[1.1fr_450px] xl:items-center">
           <motion.div 
             variants={containerVariants}
@@ -148,7 +159,11 @@ export default function Landing() {
                  <Sparkles className="h-3 w-3" />
                  Generation Studio v1.0
               </div>
-              <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-tighter text-foreground dark:text-white sm:text-7xl xl:text-[5.8rem]">
+              <h1 className={cn(
+                "font-display text-5xl font-bold leading-[0.95] tracking-tighter text-foreground dark:text-white sm:text-7xl xl:text-[5.8rem]",
+                settings.visualMode === 'editorial' && "font-serif font-semibold",
+                settings.visualMode === 'cinematic' && "uppercase tracking-[0.02em]",
+              )}>
                 {t('landing:hero.title').split(' ').map((word, i) => (
                   <span key={i} className={cn(i > 3 ? "text-primary" : "")}>{word} </span>
                 ))}

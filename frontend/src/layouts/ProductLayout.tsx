@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 
 import { Footbar } from '../components/Footbar'
 import { Topbar } from '../components/Topbar'
+import { cn } from '../lib/utils'
 import { useSettings } from '../providers/SettingsProvider'
 
 type ProductLayoutProps = {
@@ -41,7 +42,10 @@ export function ProductLayout({ theme, toggleTheme }: ProductLayoutProps) {
 
   return (
     <div
-      className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden relative selection:bg-primary selection:text-primary-foreground"
+      className={cn(
+        "min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden relative selection:bg-primary selection:text-primary-foreground",
+        settings.visualMode === 'cinematic' && "bg-black",
+      )}
       data-shell={settings.shellPreset}
       data-mode={settings.visualMode}
     >

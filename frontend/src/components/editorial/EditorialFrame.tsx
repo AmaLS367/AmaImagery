@@ -18,12 +18,18 @@ export function EditorialFrame({ eyebrow, title, summary, pills = [], children }
   const { settings } = useSettings()
 
   return (
-    <section className="page-shell space-y-12 py-12 xl:py-20">
+    <section className={cn(
+      "page-shell space-y-12 py-12 xl:py-20",
+      settings.visualMode === 'cinematic' && "py-10 xl:py-16",
+    )}>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="runtime-editorial-hero space-y-8"
+        className={cn(
+          "runtime-editorial-hero space-y-8",
+          settings.visualMode === 'cinematic' && "mode-hero-panel p-8 md:p-12 rounded-[40px]",
+        )}
       >
         <div className="runtime-editorial-copy space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
@@ -32,7 +38,11 @@ export function EditorialFrame({ eyebrow, title, summary, pills = [], children }
           </div>
           
           <div className="space-y-4">
-            <h1 className="font-display text-4xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[1.1]">
+            <h1 className={cn(
+              "font-display text-4xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[1.1]",
+              settings.visualMode === 'editorial' && "font-serif font-semibold",
+              settings.visualMode === 'cinematic' && "uppercase tracking-[0.02em]",
+            )}>
               {title}
             </h1>
             <p className={cn(

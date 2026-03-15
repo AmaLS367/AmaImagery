@@ -57,8 +57,9 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
         <div className={cn(
           "runtime-topbar-shell flex items-center justify-between gap-4 px-6 py-3 transition-all duration-300",
           settings.visualMode === 'cinematic' && "rounded-[30px]",
-          settings.visualMode === 'editorial' && "rounded-[24px]",
+          settings.visualMode === 'editorial' && "rounded-[24px] border-[hsl(28_60%_62%_/_0.2)]",
           settings.visualMode === 'dashboard' && "rounded-[34px]",
+          settings.visualMode === 'cinematic' && "bg-black/70 border-[hsl(24_100%_60%_/_0.18)] shadow-[0_22px_80px_-36px_rgba(0,0,0,0.8)]",
           !isScrolled && "bg-transparent border-transparent shadow-none backdrop-blur-0"
         )}>
           <div className="flex min-w-0 items-center gap-10">
@@ -68,7 +69,11 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
                 <div className="h-4 w-4 rounded-full bg-primary shadow-[0_0_20px_theme(colors.primary.DEFAULT)] transition-transform group-hover:scale-110" />
               </div>
               <div className="flex min-w-0 flex-col">
-                <span className="truncate font-display text-xl font-bold leading-none tracking-tight text-foreground">{t('appName')}</span>
+                <span className={cn(
+                  "truncate font-display text-xl font-bold leading-none tracking-tight text-foreground",
+                  settings.visualMode === 'editorial' && "font-serif font-semibold",
+                  settings.visualMode === 'cinematic' && "tracking-[0.02em]"
+                )}>{t('appName')}</span>
                 <span className="hidden text-[10px] font-black uppercase tracking-[0.3em] text-primary md:inline">{t('appSubtitle')}</span>
               </div>
             </NavLink>
