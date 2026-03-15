@@ -1,117 +1,214 @@
 import { useMemo, useState } from 'react'
-import '../styles/faq.css'
-import { useTranslation } from 'react-i18next'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, ChevronRight, Plus, Minus } from 'lucide-react'
 
-type QA = { q: string; a: string; cat: string }
+import { EditorialFrame } from '../components/editorial/EditorialFrame'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { SurfacePanel } from '../components/ui/foundation'
+import { cn } from '../lib/utils'
 
-const CATEGORIES = [
-  { slug: 'start', name: 'Начало' },
-  { slug: 'quality', name: 'Качество' },
-  { slug: 'speed', name: 'Скорость' },
-  { slug: 'history', name: 'История' },
-  { slug: 'files', name: 'Файлы' },
-  { slug: 'errors', name: 'Ошибки' },
-  { slug: 'other', name: 'Разное' },
+type Category = 'getting-started' | 'quality' | 'runtime' | 'history' | 'account'
+
+const categories: { id: Category; label: string }[] = [
+  { id: 'getting-started', label: 'Getting started' },
+  { id: 'quality', label: 'Quality' },
+  { id: 'runtime', label: 'Runtime' },
+  { id: 'history', label: 'History' },
+  { id: 'account', label: 'Account' },
 ]
 
-const DATA: QA[] = [
-  { cat: 'start', q: 'С чего начать?', a: 'Откройте «Гайд по промптам», возьмите базовый пример и запустите генерацию. Для первого запуска не усложняйте запрос.' },
-  { cat: 'start', q: 'Как быстро понять, что работает?', a: 'Делайте 2–3 коротких варианта запроса, меняя только один фактор: стиль, освещение или композицию.' },
-  { cat: 'quality', q: 'Как повысить качество изображения?', a: 'Добавьте референс, пропишите освещение и композицию. Увеличивайте размер кадра только при реальной необходимости.' },
-  { cat: 'quality', q: 'Нужно ли писать длинные описания?', a: 'Нет. Четкий стиль + сцена + свет работают лучше длинных полотен.' },
-  { cat: 'quality', q: 'Результат меняется при повторах — почему?', a: 'В генерации есть доля случайности. Чтобы приблизить повтор, используйте те же параметры и формулировки.' },
-  { cat: 'speed', q: 'Почему генерация идёт долго?', a: 'Из‑за очереди запросов и ограничений на стороне прокси. Подождите завершения или уменьшите размер кадра.' },
-  { cat: 'speed', q: 'Как ускорить работу?', a: 'Снижайте размер кадра, избегайте бесконечных повторов, не запускайте десятки одинаковых задач подряд.' },
-  { cat: 'history', q: 'Где найти прошлые результаты?', a: 'Во вкладке «История». Там же можно запустить повтор и немного скорректировать параметры.' },
-  { cat: 'history', q: 'Как быстро повторить удачную картинку?', a: 'Откройте её в «Истории» и нажмите повтор. Меняйте на минимуме только нужные поля.' },
-  { cat: 'files', q: 'Как скачать итог?', a: 'Откройте карточку результата в «Истории» и жмите кнопку скачивания.' },
-  { cat: 'files', q: 'Где хранятся мои картинки?', a: 'В «Истории» вашего интерфейса. Локальный путь/срок хранения зависит от вашей сборки.' },
-  { cat: 'errors', q: 'Пишет «слишком много запросов» (429)', a: 'Вы уткнулись в ограничение частоты. Подождите несколько секунд и повторите. Серии кликов подряд только ухудшают ситуацию.' },
-  { cat: 'errors', q: 'Ошибка сети или пустой ответ', a: 'Проверьте интернет/ВПН. Если повторяется — напишите в поддержку и уточните время и шаги.' },
-  { cat: 'other', q: 'Можно ли использовать на телефоне?', a: 'Да. Интерфейс адаптивный, но на слабых устройствах большие кадры считаются медленнее.' },
-  { cat: 'other', q: 'Где смотреть новости и изменения?', a: 'Загляните сюда позже — раздел дополняется. При срочном вопросе — напишите в поддержку.' },
+const items: { category: Category; question: string; answer: string }[] = [
+  {
+    category: 'getting-started',
+    question: 'What should I do before the first run?',
+    answer: 'Start with a focused prompt, keep the subject and lighting explicit, and avoid stacking too many stylistic requests at once.',
+  },
+  {
+    category: 'getting-started',
+    question: 'When should I use a reference image?',
+    answer: 'Add one when pose, framing, or lighting needs to stay anchored. It is usually better than over-describing those constraints in text.',
+  },
+  {
+    category: 'quality',
+    question: 'How do I improve output quality?',
+    answer: 'Raise steps carefully, keep the scene readable, and use negative guidance for distortion or clutter instead of padding the prompt with unrelated adjectives.',
+  },
+  {
+    category: 'quality',
+    question: 'Why do similar prompts still vary?',
+    answer: 'The seed, model behavior, and runtime conditions can all shift the result. Save strong outputs to history and reuse their settings when you want consistency.',
+  },
+  {
+    category: 'runtime',
+    question: 'What does queued mean?',
+    answer: 'Your request has been accepted but is still waiting for an available worker. The generate page keeps that state visible until the provider begins rendering.',
+  },
+  {
+    category: 'runtime',
+    question: 'What should I do after an error state?',
+    answer: 'Retry with the same settings if the prompt is still valid, or reduce size and CFG if the provider is failing under load.',
+  },
+  {
+    category: 'history',
+    question: 'Can I search past generations?',
+    answer: 'Yes. History supports prompt search, ratio filters, CFG bands, and a metadata table for scanning steps, seed, and timestamps.',
+  },
+  {
+    category: 'history',
+    question: 'How long are results kept?',
+    answer: 'The visible archive depth follows your history limit setting, which can be adjusted from the settings control center.',
+  },
+  {
+    category: 'account',
+    question: 'Why are login and recovery on different pages?',
+    answer: 'The auth flow stays explicit so sign-in, recovery, and reset can each have their own states without collapsing into a single mixed-purpose screen.',
+  },
+  {
+    category: 'account',
+    question: 'Where can I change shell behavior?',
+    answer: 'Open Settings to control theme, accent, notifications, queue behavior, safety defaults, presets, density, and visual mode.',
+  },
 ]
+
+function FAQItem({ question, answer, isOpen, onClick }: { question: string, answer: string, isOpen: boolean, onClick: () => void }) {
+  return (
+    <div className={cn(
+      "overflow-hidden rounded-3xl border transition-all duration-300",
+      isOpen ? "border-primary/40 bg-white shadow-glow dark:bg-white/10" : "border-border bg-card/50 hover:border-primary/20 dark:border-white/5"
+    )}>
+      <button
+        onClick={onClick}
+        className="flex w-full items-center justify-between p-6 text-left"
+      >
+        <span className={cn(
+          "text-xl font-bold tracking-tight transition-colors",
+          isOpen ? "text-primary" : "text-foreground dark:text-white"
+        )}>
+          {question}
+        </span>
+        <div className={cn(
+          "flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-300",
+          isOpen ? "border-primary bg-primary text-primary-foreground rotate-90" : "border-border text-foreground/40 dark:border-white/20 dark:text-white"
+        )}>
+          {isOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="px-6 pb-6 pt-0">
+              <div className="h-px w-full bg-border mb-4 dark:bg-white/10" />
+              <p className="text-base leading-relaxed text-foreground/60 dark:text-white/70 font-medium">
+                {answer}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function FAQ() {
   const [query, setQuery] = useState('')
-  const [active, setActive] = useState<string>('start')
-  const { t } = useTranslation()
+  const [active, setActive] = useState<Category>('getting-started')
+  const [openQuestion, setOpenQuestion] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return DATA.filter(item => {
-      const byCat = item.cat === active
-      if (!q) return byCat
-      const t = (item.q + ' ' + item.a).toLowerCase()
-      return byCat && t.includes(q)
+    const normalized = query.trim().toLowerCase()
+    return items.filter((item) => {
+      const matchesCategory = item.category === active
+      if (!normalized) return matchesCategory
+      return matchesCategory && `${item.question} ${item.answer}`.toLowerCase().includes(normalized)
     })
   }, [query, active])
 
   return (
-    <main className="faq">
-      {/* Hero */}
-      <section className="faq__hero">
-        <div className="faq__container">
-          <span className="faq__badge">{t('nav.faq')}</span>
-          <h1 className="faq__title">{t('nav.faq')}</h1>
-          <p className="faq__subtitle">Короткие решения типовых задач. Пройдитесь по вкладкам — нужное найдёте быстрее.</p>
-
-          <div className="faq__search">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск по вопросам"
-              className="faq__searchInput"
-              aria-label="Поиск по FAQ"
+    <EditorialFrame
+      eyebrow="FAQ"
+      title="Production answers for the product, not placeholder text."
+      summary="The FAQ stays concise and searchable, with categories that reflect the actual workflow: getting started, quality, runtime, history, and account handling."
+      pills={['Searchable', 'Category-based', 'English-first']}
+    >
+      <div className="grid gap-12 xl:grid-cols-[320px_1fr] items-start">
+        <SurfacePanel className="p-6 space-y-8 sticky top-24">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+            <Input 
+              value={query} 
+              onChange={(e) => setQuery(e.target.value)} 
+              placeholder="Search the FAQ" 
+              className="pl-10 h-12 rounded-full border-border bg-secondary/50"
             />
-            <button
-              className="faq__searchBtn"
-              onClick={() => window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'guide' }))}
-            >
-              {t('actions.guide')}
-            </button>
           </div>
-
-          <div className="faq__tabs" role="tablist" aria-label="Категории вопросов">
-            {CATEGORIES.map(cat => (
+          
+          <div className="space-y-1">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-3 mb-4">Categories</h4>
+            {categories.map((category) => (
               <button
-                key={cat.slug}
-                role="tab"
-                aria-selected={active === cat.slug}
-                className={['faq__tab', active === cat.slug ? 'is-active' : ''].join(' ')}
-                onClick={() => setActive(cat.slug)}
+                key={category.id}
+                onClick={() => {
+                  setActive(category.id)
+                  setOpenQuestion(null)
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-full px-4 py-3 text-sm font-bold transition-all",
+                  active === category.id 
+                    ? "bg-primary text-primary-foreground shadow-glow" 
+                    : "text-foreground/60 hover:bg-black/5 dark:text-white/60 dark:hover:bg-white/5"
+                )}
               >
-                {cat.name}
+                {category.label}
+                {active === category.id && <ChevronRight className="h-4 w-4" />}
               </button>
             ))}
           </div>
-        </div>
-      </section>
+        </SurfacePanel>
 
-      {/* List */}
-      <section className="faq__section">
-        <div className="faq__container">
-          <div className="faq__list">
-            {filtered.map((item, i) => (
-              <details key={i} className="faq__item">
-                <summary><span className="faq__q">{item.q}</span></summary>
-                <div className="faq__a">{item.a}</div>
-              </details>
+        <div className="space-y-4 min-h-[400px]">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((item) => (
+              <motion.div
+                key={item.question}
+                layout
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <FAQItem 
+                  question={item.question}
+                  answer={item.answer}
+                  isOpen={openQuestion === item.question}
+                  onClick={() => setOpenQuestion(openQuestion === item.question ? null : item.question)}
+                />
+              </motion.div>
             ))}
-            {!filtered.length && (
-              <div className="faq__empty">Пусто. Попробуйте другую вкладку или измените запрос.</div>
-            )}
-          </div>
+          </AnimatePresence>
+          
+          {!filtered.length && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-20 text-center space-y-4"
+            >
+              <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center dark:bg-white/5">
+                <Search className="h-8 w-8 text-foreground/20" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-foreground dark:text-white">No results found</p>
+                <p className="text-sm text-foreground/40 dark:text-white/40">Try adjusting your search query or category.</p>
+              </div>
+            </motion.div>
+          )}
         </div>
-      </section>
-
-      {/* Contact */}
-      <section className="faq__section faq__section--muted">
-        <div className="faq__container faq__contact">
-          <div className="faq__contactText">Не нашли ответ?</div>
-          <a className="faq__btn" href="mailto:support@amaimagery.local">Написать в поддержку</a>
-        </div>
-      </section>
-    </main>
+      </div>
+    </EditorialFrame>
   )
 }

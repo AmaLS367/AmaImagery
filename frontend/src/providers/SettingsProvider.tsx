@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { Settings, loadSettings, saveSettings, applySettingsToDOM } from '../lib/settings'
-import { configureApiHeaders } from '../lib/api'
 
 type Ctx = {
   settings: Settings
@@ -16,15 +15,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     saveSettings(settings)
     applySettingsToDOM(settings)
-    // прокинем заголовки в API
-    configureApiHeaders(() => {
-      const h: Record<string, string> = {}
-      for (const kv of settings.headers) {
-        const k = (kv.key || '').trim()
-        if (k) h[k] = kv.value ?? ''
-      }
-      return h
-    })
   }, [settings])
 
   const ctx = useMemo<Ctx>(() => ({

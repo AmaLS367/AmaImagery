@@ -24,9 +24,6 @@ export type HistoryItem = {
   ipScale: number
   path: string
   ts: number
-  tags: string[]
-  pinned: boolean
-  nsfw: boolean
   exp?: number
   sig?: string
 }
@@ -62,28 +59,4 @@ export function addHistory(item: HistoryItem) {
   if (idx >= 0) items.splice(idx, 1)
   items.unshift(item)
   saveHistory(items.slice(0, 500))
-}
-
-export function updateHistory(path: string, patch: Partial<HistoryItem>) {
-  const items = getHistory()
-  const i = items.findIndex(x => x.path === path)
-  if (i < 0) return
-  items[i] = { ...items[i], ...patch }
-  saveHistory(items)
-}
-
-export function togglePin(path: string) {
-  const items = getHistory()
-  const i = items.findIndex(x => x.path === path)
-  if (i < 0) return
-  items[i].pinned = !items[i].pinned
-  saveHistory(items)
-}
-
-export function setTags(path: string, tags: string[]) {
-  updateHistory(path, { tags })
-}
-
-export function setNSFW(path: string, nsfw: boolean) {
-  updateHistory(path, { nsfw })
 }

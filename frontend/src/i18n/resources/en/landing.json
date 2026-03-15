@@ -1,0 +1,56 @@
+{
+  "hero": {
+    "title": "The future of image generation, refined.",
+    "subtitle1": "AmaImagery is a high-performance workspace designed for precision. We’ve removed the noise to give you absolute control over your creative pipeline.",
+    "subtitle2": "Fast. Private. Professional. Built for the modern creator.",
+    "cta_generate": "Launch Studio",
+    "cta_login": "Sign In",
+    "cta_register": "Get Started"
+  },
+  "capabilities": {
+    "control": {
+      "title": "Surgical Precision",
+      "text": "Control every parameter of the generation process with an interface that responds to your intent in real-time."
+    },
+    "history": {
+      "title": "Persistent Context",
+      "text": "Your creative flow is never lost. Every run, prompt, and seed is archived with professional-grade metadata."
+    },
+    "settings": {
+      "title": "Adaptive Shell",
+      "text": "The interface shifts to match your workflow. From minimalist focus to deep technical control."
+    }
+  },
+  "features": {
+    "title": "The professional standard for AI-driven visuals.",
+    "subtitle": "Stop fighting the UI. AmaImagery provides a stable, predictable foundation for serious visual exploration and production.",
+    "workflow": {
+      "title": "Unified Workspace",
+      "text": "A cohesive environment where prompt engineering and runtime feedback live in perfect harmony."
+    },
+    "history": {
+      "title": "Deep Archive",
+      "text": "Search, filter, and reconstruct past results. Your history is a powerful library of your creative evolution."
+    },
+    "predictable": {
+      "title": "Zero Guesswork",
+      "text": "Real-time queue monitoring and deterministic outputs mean you spend less time waiting and more time creating."
+    }
+  },
+  "faq": {
+    "title": "System FAQ",
+    "subtitle": "Common questions about the AmaImagery studio architecture.",
+    "full": "Documentation",
+    "q1": "How does AmaImagery ensure consistency?",
+    "a1": "By anchoring generations to precise seeds and metadata, the system allows for pixel-perfect reproduction of previous results.",
+    "q2": "Can I customize the interface density?",
+    "a2": "Yes. The system supports multiple visual modes, from 'Editorial' for clean focus to 'Dashboard' for data-heavy workflows.",
+    "q3": "Is my data handled securely?",
+    "a3": "AmaImagery is built with privacy-first principles. Your prompts and history are yours alone, stored in a secure, isolated environment."
+  },
+  "bottom_cta": {
+    "title": "Step into the Studio.",
+    "subtitle": "Experience the most refined image generation interface ever built.",
+    "button": "Start Generating"
+  }
+}

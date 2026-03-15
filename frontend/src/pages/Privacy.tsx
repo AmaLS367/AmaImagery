@@ -1,194 +1,76 @@
-import '../styles/privacy.css'
-import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+import { EditorialFrame } from '../components/editorial/EditorialFrame'
+import { SurfacePanel, SectionHeading } from '../components/ui/foundation'
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0 }
+}
+
+const sections = [
+  {
+    title: 'What we collect',
+    body: 'AmaImagery stores account identifiers, authentication state, generation prompts, runtime metadata, shell settings, and the resulting media records required to operate the product.',
+  },
+  {
+    title: 'Why we collect it',
+    body: 'The data is used to authenticate users, deliver generation results, preserve searchable history, apply shell preferences, support moderation defaults, and investigate service issues when something fails.',
+  },
+  {
+    title: 'Retention and visibility',
+    body: 'History depth follows the configured archive limit. Settings remain attached to the account so shell behavior, notification rules, and safety defaults are preserved between sessions.',
+  },
+  {
+    title: 'Operational security',
+    body: 'We apply access controls, scoped credentials, and environment-level protections appropriate for a creator tool that handles prompts, generated assets, and account recovery flows.',
+  },
+  {
+    title: 'Your controls',
+    body: 'You can change shell preferences, notification behavior, history depth, safety defaults, and language from Settings. Account recovery remains available through the dedicated auth routes.',
+  },
+  {
+    title: 'Contact',
+    body: 'Questions about privacy or data handling can be sent to privacy@amaimagery.com.',
+  },
+]
 
 export default function Privacy() {
-
-  const { t } = useTranslation()
-
   return (
-    <main className="pp">
-      {/* Hero */}
-      <section className="pp__hero">
-        <div className="pp__container">
-          <span className="pp__badge">{t('privacy:hero.badge')}</span>
-          <h1 className="pp__title">{t('nav.privacy')}</h1>
-          <p className="pp__subtitle">{t('privacy:hero.subtitle')}</p>
-
-          <div className="pp__meta">
-            <div className="pp__updated">{t('privacy:meta.dateLabel')} [YYYY‑MM‑DD]</div>
-            <div className="pp__entity">{t('privacy:meta.ownerLabel')} {t('privacy:meta.owner')}</div>
-          </div>
-
-          <div className="pp__cta">
-            <button
-              className="pp__btn"
-              onClick={() => window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'faq' }))}
-            >
-              {t('nav.faq')}
-            </button>
-            <button
-              className="pp__btn"
-              onClick={() => window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'guide' }))}
-            >
-              {t('actions.guide')}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Contents */}
-      <section className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s1.title').replace('1. ','')}</h2>
-          <ol className="pp__toc">
-            <li><a href="#pp1">{t('privacy:s1.title')}</a></li>
-            <li><a href="#pp2">{t('privacy:s2.title')}</a></li>
-            <li><a href="#pp3">{t('privacy:s3.title')}</a></li>
-            <li><a href="#pp4">{t('privacy:s4.title')}</a></li>
-            <li><a href="#pp5">{t('privacy:s5.title')}</a></li>
-            <li><a href="#pp6">{t('privacy:s6.title')}</a></li>
-            <li><a href="#pp7">{t('privacy:s7.title')}</a></li>
-            <li><a href="#pp8">{t('privacy:s8.title')}</a></li>
-            <li><a href="#pp9">{t('privacy:s9.title')}</a></li>
-            <li><a href="#pp10">{t('privacy:s10.title')}</a></li>
-            <li><a href="#pp11">{t('privacy:s11.title')}</a></li>
-            <li><a href="#pp12">{t('privacy:s12.title')}</a></li>
-          </ol>
-        </div>
-      </section>
-
-      <section id="pp1" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s1.title')}</h2>
-          <ul className="pp__list">
-            <li><b>{t('privacy:s1.account_label')}</b> {t('privacy:s1.account_text')}</li>
-            <li><b>{t('privacy:s1.work_label')}</b> {t('privacy:s1.work_text')}</li>
-            <li><b>{t('privacy:s1.tech_label')}</b> {t('privacy:s1.tech_text')}</li>
-            <li><b>{t('privacy:s1.storage_label')}</b> {t('privacy:s1.storage_text')}</li>
-            <li><b>{t('privacy:s1.support_label')}</b> {t('privacy:s1.support_text')}</li>
-            <li><b>{t('privacy:s1.payments_label')}</b> {t('privacy:s1.payments_text')}</li>
-          </ul>
-        </div>
-      </section>
-
-      <section id="pp2" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s2.title')}</h2>
-          <ul className="pp__list">
-            <li>{t('privacy:s2.service')}</li>
-            <li>{t('privacy:s2.security')}</li>
-            <li>{t('privacy:s2.improve')}</li>
-            <li>{t('privacy:s2.support')}</li>
-            <li>{t('privacy:s2.legal')}</li>
-          </ul>
-        </div>
-      </section>
-
-      <section id="pp3" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s3.title')}</h2>
-          <p className="pp__p">{t('privacy:s3.euNote')}</p>
-          <ul className="pp__list">
-            <li>{t('privacy:s3.contract')}</li>
-            <li>{t('privacy:s3.legitimate')}</li>
-            <li>{t('privacy:s3.consent')}</li>
-            <li>{t('privacy:s3.obligation')}</li>
-          </ul>
-        </div>
-      </section>
-
-      <section id="pp4" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s4.title')}</h2>
-          <ul className="pp__list">
-            <li>{t('privacy:s4.hosting')}</li>
-            <li>{t('privacy:s4.mail')}</li>
-            <li>{t('privacy:s4.analytics')}</li>
-            <li>{t('privacy:s4.payments')}</li>
-          </ul>
-            <p className="pp__p">{t('privacy:s4.note')}</p>
-        </div>
-      </section>
-
-      <section id="pp5" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s5.title')}</h2>
-          <ul className="pp__list">
-            <li>{t('privacy:s5.account')}</li>
-            <li>{t('privacy:s5.history')}</li>
-            <li>{t('privacy:s5.logs')}</li>
-            <li>{t('privacy:s5.support')}</li>
-            <li>{t('privacy:s5.backups')}</li>
-          </ul>
-        </div>
-      </section>
-
-      <section id="pp6" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s6.title')}</h2>
-          <ul className="pp__list">
-            <li>{t('privacy:s6.list1')}</li>
-            <li>{t('privacy:s6.list2')}</li>
-            <li>{t('privacy:s6.list3')}</li>
-            <li>{t('privacy:s6.list4')}</li>
-          </ul>
-          <p className="pp__p">{t('privacy:s6.contactIntro')} <a className="pp__link" href="mailto:[privacy@домен]">[privacy@домен]</a>.</p>
-        </div>
-      </section>
-
-      <section id="pp7" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s7.title')}</h2>
-          <ul className="pp__list">
-            <li>{t('privacy:s7.enc')}</li>
-            <li>{t('privacy:s7.access')}</li>
-            <li>{t('privacy:s7.updates')}</li>
-          </ul>
-          <p className="pp__p">{t('privacy:s7.note')}</p>
-        </div>
-      </section>
-
-      <section id="pp8" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s8.title')}</h2>
-          <p className="pp__p">{t('privacy:s8.text')}</p>
-        </div>
-      </section>
-
-      <section id="pp9" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s9.title')}</h2>
-          <p className="pp__p">{t('privacy:s9.text')}</p>
-        </div>
-      </section>
-
-      <section id="pp10" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s10.title')}</h2>
-          <ul className="pp__list">
-            <li>{t('privacy:s10.strict')}</li>
-            <li>{t('privacy:s10.optional')}</li>
-          </ul>
-        </div>
-      </section>
-
-      <section id="pp11" className="pp__section">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s11.title')}</h2>
-          <p className="pp__p">{t('privacy:s11.text')}</p>
-        </div>
-      </section>
-
-      <section id="pp12" className="pp__section pp__section--muted">
-        <div className="pp__container">
-          <h2 className="pp__h2">{t('privacy:s12.title')}</h2>
-          <ul className="pp__list">
-            <li>{t('privacy:s12.company')}</li>
-            <li>{t('privacy:s12.emailLabel')} <a className="pp__link" href="mailto:[privacy@домен]">{t('privacy:s12.emailValue')}</a></li>
-            <li>{t('privacy:s12.dpo')}</li>
-          </ul>
-        </div>
-      </section>
-    </main>
+    <EditorialFrame
+      eyebrow="Privacy Policy"
+      title="How we handle your data with professional care."
+      summary="Learn about the data AmaImagery collects, why it's needed, and the controls available to you."
+      pills={['Last updated March 14, 2026', 'Operational data only', 'Account controls']}
+    >
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+      >
+        {sections.map((section) => (
+          <motion.div key={section.title} variants={item}>
+            <SurfacePanel className="h-full p-8 space-y-4 hover:border-primary/30 transition-colors">
+              <h3 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">
+                {section.title}
+              </h3>
+              <p className="text-base text-foreground/60 dark:text-white/60 leading-relaxed">
+                {section.body}
+              </p>
+            </SurfacePanel>
+          </motion.div>
+        ))}
+      </motion.div>
+    </EditorialFrame>
   )
 }
