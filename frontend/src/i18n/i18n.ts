@@ -27,6 +27,10 @@ import en_error404 from './resources/en/error404.json'
 import ru_error404 from './resources/ru/error404.json'
 import en_navtop from './resources/en/navtop.json'
 import ru_navtop from './resources/ru/navtop.json'
+import en_landing from './resources/en/landing.json'
+import ru_landing from './resources/ru/landing.json'
+import en_faq from './resources/en/faq.json'
+import ru_faq from './resources/ru/faq.json'
 
 function detectLang(): string {
   try {
@@ -48,18 +52,18 @@ void i18n
     resources: {
       en: { common: en_common, errors: en_errors, generate: en_generate, settings: en_settings, history: en_history, about: en_about,
             privacy: en_privacy, promptGuide: en_promptGuide, login: en_login, register: en_register, reset: en_reset, error404: en_error404,
-            navtop: en_navtop,
+            navtop: en_navtop, landing: en_landing, faq: en_faq,
        },
       ru: { common: ru_common, errors: ru_errors, generate: ru_generate, settings: ru_settings, history: ru_history, about: ru_about,
             privacy: ru_privacy, promptGuide: ru_promptGuide, login: ru_login, register: ru_register, reset: ru_reset, error404: ru_error404,
-            navtop: ru_navtop
+            navtop: ru_navtop, landing: ru_landing, faq: ru_faq,
        },
     },
     lng: detectLang(),
     fallbackLng: 'en',
     ns: ['common', 'errors', 'generate', 'settings', 
-        'history', 'about', 'privacy', 'promtGuide',
-        'login', 'register', 'reset', 'error404', 'navtop'
+        'history', 'about', 'privacy', 'promptGuide',
+        'login', 'register', 'reset', 'error404', 'navtop', 'landing', 'faq'
       ],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
