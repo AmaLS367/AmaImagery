@@ -28,7 +28,7 @@ test('history filters work against mocked backend data', async ({ page }) => {
             prompt: { prompt: 'Portrait alpha' },
             params: { width: 1024, height: 1024, guidance_scale: 7, steps: 28 },
             created_at: '2026-03-01T12:00:00.000Z',
-            provider_name: 'AmaFusion',
+            provider_name: 'diffusers',
           },
           {
             id: 'two',
@@ -37,7 +37,7 @@ test('history filters work against mocked backend data', async ({ page }) => {
             prompt: { prompt: 'Landscape beta' },
             params: { width: 1024, height: 576, guidance_scale: 9, steps: 30 },
             created_at: '2026-03-02T12:00:00.000Z',
-            provider_name: 'AmaFusion',
+            provider_name: 'diffusers',
           },
         ],
       }),

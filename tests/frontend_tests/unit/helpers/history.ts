@@ -31,7 +31,7 @@ export function makeGenerationItem(overrides: Partial<GenerationItem> = {}): Gen
     prompt: { prompt: 'Studio portrait' },
     params: { width: 1024, height: 1024, guidance_scale: 7, steps: 28 },
     created_at: new Date('2026-03-01T12:00:00.000Z').toISOString(),
-    provider_name: 'AmaFusion',
+    provider_name: 'diffusers',
     ...overrides,
   }
 }
