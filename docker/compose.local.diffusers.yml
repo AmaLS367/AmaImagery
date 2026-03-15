@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime-ml
+    environment:
+      RUN_IN_DOCKER: "1"
+      PROVIDERS_ENABLED: ${PROVIDERS_ENABLED:-diffusers}
+      PROVIDERS_DEFAULT_NAME: ${PROVIDERS_DEFAULT_NAME:-diffusers}
+      HF_HUB_DISABLE_TELEMETRY: ${HF_HUB_DISABLE_TELEMETRY:-1}
+    volumes:
+      - ../app:/app/app
+      - ../outputs:/app/outputs
+      - ../logs:/app/logs
+      - ../frontend/dist:/app/static:ro
+      - hf_cache:/app/models/.cache/huggingface
+
+  generation_worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime-ml
+    environment:
+      RUN_IN_DOCKER: "1"
+      PROVIDERS_ENABLED: ${PROVIDERS_ENABLED:-diffusers}
+      PROVIDERS_DEFAULT_NAME: ${PROVIDERS_DEFAULT_NAME:-diffusers}
+      HF_HUB_DISABLE_TELEMETRY: ${HF_HUB_DISABLE_TELEMETRY:-1}
+    volumes:
+      - ../app:/app/app
+      - ../outputs:/app/outputs
+      - ../logs:/app/logs
+      - hf_cache:/app/models/.cache/huggingface
+
+volumes:
+  hf_cache:

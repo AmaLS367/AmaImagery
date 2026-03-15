@@ -52,13 +52,11 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: runtime-core
     env_file:
       - ./.env.prod
     environment:
       RUN_IN_DOCKER: "1"
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
-      HF_HUB_DISABLE_TELEMETRY: "1"
       REFRESH_COOKIE_SECURE: "1"
     expose:
       - "8000"
@@ -66,7 +64,6 @@ services:
       - outputs:/app/outputs
       - logs:/app/logs
       - ../frontend/dist:/app/static:ro
-      - ./models:/models:ro
     depends_on:
       - redis
       - postgres
@@ -82,11 +79,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
     networks:
       - backend
 
@@ -99,18 +91,15 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: runtime-core
     env_file:
       - ./.env.prod
     environment:
       RUN_IN_DOCKER: "1"
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
-      HF_HUB_DISABLE_TELEMETRY: "1"
     command: ["python", "-m", "app.entrypoints.generation_worker"]
     volumes:
       - outputs:/app/outputs
       - logs:/app/logs
-      - ./models:/models:ro
     depends_on:
       - redis
       - postgres
@@ -121,11 +110,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
     networks:
       - backend
 

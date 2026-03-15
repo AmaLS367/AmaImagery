@@ -32,8 +32,11 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: runtime-core
     env_file:
       - .env.docker
+    environment:
+      RUN_IN_DOCKER: "1"
     ports:
       - "8000:8000"
     volumes:
@@ -41,7 +44,8 @@ services:
       - ../outputs:/app/outputs
       - ../logs:/app/logs
       - ../frontend/dist:/app/static:ro
-      - hf_cache:/root/.cache/huggingface
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       redis:
         condition: service_healthy
@@ -53,16 +57,22 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: runtime-core
     env_file:
       - .env.docker
+    environment:
+      RUN_IN_DOCKER: "1"
     volumes:
       - ../app:/app/app
       - ../outputs:/app/outputs
       - ../logs:/app/logs
-      - hf_cache:/root/.cache/huggingface
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      api:
-        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     command: ["python", "-m", "app.entrypoints.generation_worker"]
 
   nginx:
@@ -77,4 +87,3 @@ services:
 
 volumes:
   pgdata:
-  hf_cache:

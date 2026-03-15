@@ -2,19 +2,20 @@
 
 ## Overview
 
-The application is fully containerized with Docker and Docker Compose, supporting multiple deployment scenarios: local development, CPU-only, and production with GPU.
+The application is fully containerized with Docker and Docker Compose, with an explicit split between lightweight ComfyUI orchestration and local Diffusers ML runtime.
 
 ## Key Features
 
-### 🐳 Multi-Stage Builds
-- Optimized Dockerfile for production
-- Separate development and production images
-- Layer caching for faster builds
+### 🐳 Runtime Targets
+- `runtime-core` for API and ComfyUI orchestration without local ML dependencies
+- `runtime-ml` for local Diffusers workers and API instances that must boot Diffusers
+- Layer caching for faster rebuilds
 
 ### 🎯 Multiple Compose Configurations
-- **compose.local.yml** - Local development
-- **compose.cpu.yml** - CPU-only deployment
-- **compose.prod.yml** - Production with GPU
+- **compose.local.yml** - Local ComfyUI-first stack without local Diffusers runtime
+- **compose.local.diffusers.yml** - Local override that enables the ML runtime
+- **compose.prod.yml** - Production ComfyUI-first stack
+- **compose.prod.diffusers.yml** - Production override for local Diffusers runtime
 
 ### 🔧 Services
 - Backend (FastAPI)
@@ -38,19 +39,31 @@ The application is fully containerized with Docker and Docker Compose, supportin
 
 ## Quick Start
 
-### Local Development
+### Local ComfyUI-first Development
 ```bash
 docker compose -f docker/compose.local.yml up
 ```
 
 This starts all services including the generation worker.
 
-### Production
+### Local Diffusers Development
+```bash
+docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up
+```
+
+This adds the local ML runtime on top of the default stack.
+
+### Production ComfyUI-first
 ```bash
 docker compose -f docker/compose.prod.yml up -d
 ```
 
 This starts all services including the generation worker in detached mode.
+
+### Production Diffusers
+```bash
+docker compose -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d
+```
 
 ### Worker Service
 
@@ -68,7 +81,7 @@ See [Getting Started](./getting-started.md) for details.
 
 - Docker 20.10+
 - Docker Compose 2.0+
-- NVIDIA Docker (for GPU support)
+- NVIDIA Docker (only for local Diffusers GPU runtime)
 - 8GB+ RAM (16GB+ recommended)
 - 20GB+ disk space
 

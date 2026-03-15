@@ -93,6 +93,7 @@ generation_worker:
   build:
     context: ..
     dockerfile: Dockerfile
+    target: runtime-core
   command: ["python", "-m", "app.entrypoints.generation_worker"]
   depends_on: [redis, postgres]
 ```
@@ -108,8 +109,8 @@ python -m app.entrypoints.generation_worker
 Workers require:
 - Redis connection (`REDIS_URL`)
 - Database connection (`DATABASE_URL`)
-- Access to model files (same as API)
-- GPU access (if using GPU providers)
+- Access to the selected provider runtime
+- GPU access only when using the `runtime-ml` / Diffusers deployment mode
 
 ## API Endpoints
 
@@ -200,9 +201,19 @@ Workers are automatically started with the `generation_worker` service in Docker
 docker compose -f docker/compose.prod.yml up -d
 ```
 
+**Production with local Diffusers runtime:**
+```bash
+docker compose -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d
+```
+
 **Local:**
 ```bash
 docker compose -f docker/compose.local.yml up -d
+```
+
+**Local with Diffusers runtime:**
+```bash
+docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up -d
 ```
 
 ### Scaling Workers
@@ -218,8 +229,8 @@ docker compose -f docker/compose.prod.yml up -d --scale generation_worker=3
 Workers require:
 - **Redis** - For task queue and status storage
 - **PostgreSQL** - For saving generation metadata
-- **Model files** - Same volume mounts as API service
-- **GPU** - If using GPU-based providers
+- **ComfyUI connectivity** - For `runtime-core` / ComfyUI-only deployments
+- **Model files and GPU** - Only for `runtime-ml` / Diffusers deployments
 
 ## Monitoring
 
