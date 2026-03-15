@@ -10,6 +10,7 @@ import { Input } from '../components/ui/input'
 import { MetaPill, SurfacePanel } from '../components/ui/foundation'
 import { EditorialFrame } from '../components/editorial/EditorialFrame'
 import { cn } from '../lib/utils'
+import { useSettings } from '../providers/SettingsProvider'
 
 type RatioKey = 'any' | '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '4:5'
 type CfgKey = 'any' | 'lt6' | '6-8' | 'gt8'
@@ -70,6 +71,7 @@ function formatTimestamp(value: string) {
 }
 
 export default function History() {
+  const { settings } = useSettings()
   const [items, setItems] = useState<GenerationItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -117,11 +119,13 @@ export default function History() {
   return (
     <EditorialFrame
       eyebrow="History"
-      title="A deep archive of your creative evolution."
-      summary="Search by prompt, filter by metadata, and reconstruct past results with pixel-perfect fidelity."
+      title={settings.visualMode === 'cinematic' ? 'A runtime archive with every decision still visible.' : 'A deep archive of your creative evolution.'}
+      summary={settings.visualMode === 'editorial'
+        ? 'Search by prompt, ratio, and CFG while the archive stays spacious, readable, and metadata-rich.'
+        : 'Search by prompt, filter by metadata, and reconstruct past results with pixel-perfect fidelity.'}
       pills={[`${items.length} Generations`, 'Searchable', 'Metadata-rich']}
     >
-      <div className="grid gap-12 xl:grid-cols-[1fr_380px] items-start">
+      <div className="history-mode-shell grid gap-12 xl:grid-cols-[1fr_380px] items-start">
         <div className="space-y-10">
           {/* Controls */}
           <SurfacePanel className="p-6 flex flex-wrap items-center gap-4">

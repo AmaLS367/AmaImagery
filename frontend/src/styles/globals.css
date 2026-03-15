@@ -183,6 +183,10 @@ html[data-visual-mode='editorial'] {
   --hero-copy-width: 52rem;
   --hero-summary-width: 32rem;
   --hero-text-align: center;
+  --surface-radius: 30px;
+  --topbar-bg: hsl(35 54% 96% / 0.82);
+  --footer-bg: hsl(35 42% 94% / 0.7);
+  --button-glow: 0 18px 42px -22px hsl(24 84% 56% / 0.32);
 }
 
 html.dark[data-visual-mode='editorial'] {
@@ -190,6 +194,8 @@ html.dark[data-visual-mode='editorial'] {
   --layout-spot-1: hsl(25 60% 54% / 0.12);
   --layout-spot-2: hsl(var(--primary) / 0.12);
   --layout-spot-3: hsl(0 0% 100% / 0.02);
+  --topbar-bg: hsl(22 24% 11% / 0.82);
+  --footer-bg: hsl(20 22% 10% / 0.72);
 }
 
 html[data-visual-mode='cinematic'] {
@@ -206,6 +212,8 @@ html[data-visual-mode='cinematic'] {
   --hero-copy-width: 60rem;
   --hero-summary-width: 34rem;
   --hero-text-align: center;
+  --surface-radius: 36px;
+  --button-glow: 0 26px 64px -26px hsl(24 90% 55% / 0.45);
 }
 
 @layer base {
@@ -244,6 +252,24 @@ html[data-visual-mode='cinematic'] {
   h6 {
     font-family: 'Space Grotesk', 'Manrope', system-ui, sans-serif;
     letter-spacing: -0.04em;
+  }
+
+  html[data-visual-mode='editorial'] body {
+    font-family: 'Manrope', Georgia, serif;
+  }
+
+  html[data-visual-mode='editorial'] h1,
+  html[data-visual-mode='editorial'] h2,
+  html[data-visual-mode='editorial'] h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: -0.05em;
+  }
+
+  html[data-visual-mode='cinematic'] h1,
+  html[data-visual-mode='cinematic'] h2,
+  html[data-visual-mode='cinematic'] h3 {
+    letter-spacing: -0.06em;
+    text-transform: uppercase;
   }
 
   a {
@@ -405,6 +431,24 @@ html[data-visual-mode='cinematic'] {
   .runtime-editorial-summary {
     max-width: min(100%, var(--hero-summary-width));
   }
+
+  .mode-hero-panel {
+    border: 1px solid hsl(var(--border) / 0.6);
+    border-radius: calc(var(--surface-radius) + 6px);
+    background:
+      linear-gradient(180deg, hsl(var(--primary) / 0.06), transparent 35%),
+      hsl(var(--card) / 0.76);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.12),
+      var(--surface-shadow);
+    backdrop-filter: blur(max(14px, var(--surface-blur)));
+  }
+
+  .mode-hero-panel--editorial {
+    background:
+      linear-gradient(180deg, hsl(28 88% 56% / 0.08), transparent 40%),
+      hsl(var(--card) / 0.65);
+  }
 }
 
 html[data-density='compact'] .ui-button-size-default {
@@ -468,4 +512,19 @@ html,
 body,
 #root {
   overflow-x: hidden;
+}
+
+html[data-visual-mode='dashboard'] [data-page-id='landing'] .landing-mode-shell,
+html[data-visual-mode='dashboard'] [data-page-id='history'] .history-mode-shell {
+  gap: 2rem;
+}
+
+html[data-visual-mode='editorial'] [data-page-id='landing'] .landing-mode-shell,
+html[data-visual-mode='editorial'] [data-page-id='history'] .history-mode-shell {
+  gap: 3rem;
+}
+
+html[data-visual-mode='cinematic'] [data-page-id='landing'] .landing-mode-shell,
+html[data-visual-mode='cinematic'] [data-page-id='history'] .history-mode-shell {
+  gap: 2.5rem;
 }

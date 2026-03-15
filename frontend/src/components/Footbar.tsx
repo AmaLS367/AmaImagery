@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Zap, Cpu, Fingerprint, ArrowRight } from 'lucide-react'
 
 import { appRoutes } from '../lib/routes'
+import { useSettings } from '../providers/SettingsProvider'
 
 type Props = { className?: string }
 
@@ -34,9 +35,15 @@ const footerColumns = [
 
 export const Footbar = memo(function Footbar({ className }: Props) {
   const { t } = useTranslation()
+  const { settings } = useSettings()
 
   return (
-    <footer className={cn("runtime-footer-shell w-full pt-20 pb-10", className)}>
+    <footer className={cn(
+      "runtime-footer-shell w-full pt-20 pb-10",
+      settings.visualMode === 'editorial' ? "border-t-[hsl(28_60%_62%_/_0.16)]" : undefined,
+      settings.visualMode === 'cinematic' ? "bg-black/70" : undefined,
+      className,
+    )}>
       <div className="page-shell">
         <div className="grid gap-12 lg:grid-cols-[1fr_repeat(3,auto)] lg:gap-24">
           <div className="space-y-8 max-w-sm">
