@@ -6,18 +6,14 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-load_dotenv("docker/.env.local", override=False)
-
 os.environ["SECRET_KEY"] = "test_secret_key"
 os.environ["MODEL_ID"] = "mock"
 os.environ["DEVICE"] = "cpu"
-os.environ["UI_MOUNT_ENABLED"] = "false"
 os.environ["NSFW_ALLOW"] = "false"
 os.environ["ALLOWED_HOSTS"] = '["localhost","127.0.0.1","testserver"]'
 os.environ["LIMITS_ENABLED"] = "true"
