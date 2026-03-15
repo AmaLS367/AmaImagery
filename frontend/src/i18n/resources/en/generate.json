@@ -1,6 +1,10 @@
 {
   "title": "Compose",
   "subtitle": "Write your prompt, add negative guidance, and attach a reference image before generating.",
+  "hero": {
+    "title": "Inference workspace without missing controls",
+    "description": "Every visual mode keeps the full generation surface: prompt, negatives, dimensions, sampling, reference guidance, status, and result actions."
+  },
   "prompt": "Prompt",
   "prompt_placeholder": "Fashion portrait in editorial midnight studio, precise eyes, quiet confidence, polished chrome accents.",
   "neg": "Negative prompt",
@@ -9,6 +13,10 @@
   "style_options": {
     "realistic": "Editorial",
     "anime": "Illustration"
+  },
+  "style_cards": {
+    "realistic": "Photographic detail, skin texture, cinematic light, and creator-grade polish.",
+    "anime": "Illustrated edges, stylized shading, vibrant color separation, and graphic clarity."
   },
   "ref": {
     "title": "Reference upload",
@@ -44,6 +52,15 @@
     "density": "Component density",
     "visual_mode": "Visual mode",
     "reset": "Reset advanced controls"
+  },
+  "sections": {
+    "style_description": "Choose the rendering bias before launch.",
+    "dimensions": "Dimensions",
+    "dimensions_description": "Keep the requested frame inside runtime-safe bounds and ratio-friendly values.",
+    "sampling_description": "Tune sampling and guidance without drifting outside backend-safe runtime limits.",
+    "reference_hint": "Reference guidance affects composition, pose, and light but does not replace the prompt.",
+    "run_title": "Run controls",
+    "run_description": "Launch, cancel, or retry the current setup without losing any inputs."
   },
   "result": {
     "title": "Result",

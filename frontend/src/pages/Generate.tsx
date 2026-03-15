@@ -1,23 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowUpRight,
-  CheckCircle2,
+  Activity,
+  Box,
   Clock3,
+  Cpu,
   Download,
+  Eye,
+  Film,
+  History as HistoryIcon,
   ImageUp,
+  Layers,
   Loader2,
   RefreshCw,
   RotateCcw,
   Sparkles,
-  TriangleAlert,
-  Settings2,
-  Zap,
-  Maximize2,
   Trash2,
-  Layers
+  TriangleAlert,
+  Upload,
+  WandSparkles,
+  Zap,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '../components/ui/button'
@@ -25,12 +29,13 @@ import { MetaPill, SurfacePanel } from '../components/ui/foundation'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
-import { appRoutes } from '../lib/routes'
 import { toAssetUrl, type GeneratePayload, type TaskStatusResp } from '../lib/api'
-import { loadForm, saveForm } from '../lib/storage'
+import { clampToConstraint, generationConstraints } from '../lib/generationConstraints'
+import { appRoutes } from '../lib/routes'
+import { loadForm, saveForm, type FormState } from '../lib/storage'
 import { cn } from '../lib/utils'
-import { useSettings } from '../providers/SettingsProvider'
 import { useJobs } from '../providers/JobProvider'
+import { useSettings } from '../providers/SettingsProvider'
 
 const ACTIVE_KEY = 'amaimagery.activeJobId'
 
@@ -39,25 +44,159 @@ const styleOptions = [
   { value: 'anime', labelKey: 'generate:style_options.anime' },
 ] as const
 
+type GenerateFormState = FormState
+type SectionTone = 'dashboard' | 'editorial' | 'cinematic'
+
 function buildGeneratedImageUrl(result: TaskStatusResp): string | null {
-  if (result.image_url) {
-    return toAssetUrl(result.image_url)
-  }
+  if (result.image_url) return toAssetUrl(result.image_url)
 
   const filename = result.image_filename || String(result.image_path || '').split(/[\\/]/).pop() || ''
-  if (!filename) {
-    return null
-  }
+  if (!filename) return null
 
   const query = new URLSearchParams({ path: filename })
-  if (typeof result.exp === 'number') {
-    query.set('exp', String(result.exp))
-  }
-  if (typeof result.sig === 'string' && result.sig.length > 0) {
-    query.set('sig', result.sig)
-  }
-
+  if (typeof result.exp === 'number') query.set('exp', String(result.exp))
+  if (typeof result.sig === 'string' && result.sig.length > 0) query.set('sig', result.sig)
   return toAssetUrl(`/api/v1/file?${query.toString()}`)
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result || '')
+      const index = result.indexOf(',')
+      resolve(index >= 0 ? result.slice(index + 1) : result)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function deriveInitialForm(saved: Partial<FormState> | null, defaults: Partial<FormState>): GenerateFormState {
+  return {
+    prompt: saved?.prompt ?? '',
+    neg: saved?.neg ?? '',
+    steps: clampToConstraint('steps', saved?.steps ?? defaults.steps ?? generationConstraints.steps.default),
+    guidance: clampToConstraint('guidance', saved?.guidance ?? defaults.guidance ?? generationConstraints.guidance.default),
+    width: clampToConstraint('width', saved?.width ?? defaults.width ?? generationConstraints.width.default),
+    height: clampToConstraint('height', saved?.height ?? defaults.height ?? generationConstraints.height.default),
+    seed: saved?.seed ?? defaults.seed ?? null,
+    ipScale: clampToConstraint('ipScale', saved?.ipScale ?? defaults.ipScale ?? generationConstraints.ipScale.default),
+    style: saved?.style ?? defaults.style ?? 'realistic',
+  }
+}
+
+function sectionToneClasses(tone: SectionTone) {
+  if (tone === 'editorial') return 'border-foreground/10 bg-card/40'
+  if (tone === 'cinematic') return 'border-white/10 bg-white/5 text-white backdrop-blur-2xl'
+  return 'border-border/50 bg-card/75'
+}
+
+function SectionCard({
+  tone,
+  title,
+  description,
+  action,
+  children,
+  className,
+}: {
+  tone: SectionTone
+  title: string
+  description?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <SurfacePanel className={cn('p-6 md:p-8 space-y-6', sectionToneClasses(tone), className)}>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <h3 className={cn(
+            'font-black uppercase tracking-[0.2em] text-xs',
+            tone === 'editorial' ? 'font-serif normal-case tracking-normal text-3xl font-light' : '',
+            tone === 'cinematic' ? 'text-primary text-[10px] tracking-[0.35em]' : 'text-primary',
+          )}>
+            {title}
+          </h3>
+          {description ? (
+            <p className={cn('max-w-2xl text-sm leading-relaxed', tone === 'cinematic' ? 'text-white/60' : 'text-foreground/60')}>
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </SurfacePanel>
+  )
+}
+
+function NumericField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  tone,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+  min: number
+  max: number
+  step: number
+  tone: SectionTone
+}) {
+  return (
+    <label className="space-y-2">
+      <span className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+        {label}
+      </span>
+      <Input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className={cn('h-11 rounded-2xl border font-semibold', tone === 'cinematic' ? 'border-white/10 bg-white/5 text-white' : 'border-border bg-secondary/30')}
+      />
+    </label>
+  )
+}
+
+function StatusMessage({
+  tone,
+  title,
+  description,
+  state,
+}: {
+  tone: SectionTone
+  title: string
+  description: string
+  state: 'idle' | 'queued' | 'running' | 'completed' | 'error'
+}) {
+  const palette =
+    state === 'error'
+      ? 'border-danger/20 bg-danger/5 text-danger'
+      : state === 'completed'
+        ? 'border-success/20 bg-success/5 text-success'
+        : state === 'idle'
+          ? tone === 'cinematic'
+            ? 'border-white/10 bg-white/5 text-white/70'
+            : 'border-border/50 bg-secondary/20 text-foreground/70'
+          : 'border-primary/20 bg-primary/5 text-primary'
+
+  return (
+    <div className={cn('rounded-3xl border p-5 space-y-3', palette)}>
+      <div className="flex items-center gap-3">
+        {state === 'error' ? <TriangleAlert className="h-5 w-5" /> : state === 'completed' ? <Sparkles className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
+        <div className="font-bold tracking-tight">{title}</div>
+      </div>
+      <p className={cn('text-sm leading-relaxed', state === 'idle' ? '' : 'opacity-90')}>{description}</p>
+    </div>
+  )
 }
 
 export default function Generate() {
@@ -65,23 +204,41 @@ export default function Generate() {
   const { settings } = useSettings()
   const { jobs, start, cancel, get } = useJobs()
 
-  const [prompt, setPrompt] = useState(loadForm()?.prompt ?? '')
-  const [neg, setNeg] = useState(loadForm()?.neg ?? '')
-  const [steps, setSteps] = useState(loadForm()?.steps ?? 28)
-  const [guidance, setGuidance] = useState(loadForm()?.guidance ?? 7.5)
-  const [width, setWidth] = useState(loadForm()?.width ?? 896)
-  const [height, setHeight] = useState(loadForm()?.height ?? 1152)
-  const [seed, setSeed] = useState<number | null>(loadForm()?.seed ?? null)
-  const [ipScale, setIpScale] = useState(loadForm()?.ipScale ?? 0.65)
-  const [style, setStyle] = useState<'realistic' | 'anime'>(loadForm()?.style ?? 'realistic')
+  const defaultPreset = useMemo(
+    () => settings.presets.find((preset) => preset.id === settings.defaultPresetId) ?? settings.presets[0] ?? null,
+    [settings.defaultPresetId, settings.presets],
+  )
 
+  const initialForm = useMemo(
+    () =>
+      deriveInitialForm(loadForm(), defaultPreset
+        ? {
+            steps: defaultPreset.steps,
+            guidance: defaultPreset.guidance,
+            width: defaultPreset.width,
+            height: defaultPreset.height,
+            seed: defaultPreset.seed,
+            ipScale: defaultPreset.ipScale,
+          }
+        : {}),
+    [defaultPreset],
+  )
+
+  const [prompt, setPrompt] = useState(initialForm.prompt)
+  const [neg, setNeg] = useState(initialForm.neg)
+  const [steps, setSteps] = useState(initialForm.steps)
+  const [guidance, setGuidance] = useState(initialForm.guidance)
+  const [width, setWidth] = useState(initialForm.width)
+  const [height, setHeight] = useState(initialForm.height)
+  const [seed, setSeed] = useState<number | null>(initialForm.seed)
+  const [ipScale, setIpScale] = useState(initialForm.ipScale)
+  const [style, setStyle] = useState<'realistic' | 'anime'>(initialForm.style)
   const [error, setError] = useState<string | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
   const [refPreview, setRefPreview] = useState<string | null>(null)
 
   const refBase64 = useRef<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-
   const [activeId, setActiveId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(ACTIVE_KEY)
@@ -97,7 +254,16 @@ export default function Generate() {
 
   const queuePosition = activeId ? orderedRuntimeJobs.findIndex((job) => job.id === activeId) + 1 : 0
   const busy = activeJob?.status === 'running' || activeJob?.status === 'queued'
-  const stage = busy ? activeJob.status : error ? 'error' : imgUrl ? 'completed' : 'idle'
+  const stage: 'idle' | 'queued' | 'running' | 'completed' | 'error' =
+    busy && activeJob
+      ? activeJob.status === 'queued'
+        ? 'queued'
+        : 'running'
+      : error
+        ? 'error'
+        : imgUrl
+          ? 'completed'
+          : 'idle'
   const styleLabel = t(styleOptions.find((option) => option.value === style)?.labelKey ?? 'generate:style_options.realistic')
 
   useEffect(() => {
@@ -108,15 +274,9 @@ export default function Generate() {
     if (!activeJob) return
 
     if (activeJob.status === 'completed' && activeJob.result) {
-      const result = activeJob.result
-      const nextImgUrl = buildGeneratedImageUrl(result)
-
-      if (nextImgUrl) {
-        setImgUrl(nextImgUrl)
-      } else {
-        setError(t('generate:errors.no_artifact'))
-      }
-
+      const nextImgUrl = buildGeneratedImageUrl(activeJob.result)
+      if (nextImgUrl) setImgUrl(nextImgUrl)
+      else setError(t('generate:errors.no_artifact'))
       try {
         localStorage.removeItem(ACTIVE_KEY)
       } catch {
@@ -136,6 +296,32 @@ export default function Generate() {
     }
   }, [activeJob, t])
 
+  function applyPreset(presetId: string) {
+    const preset = settings.presets.find((item) => item.id === presetId)
+    if (!preset) return
+
+    setSteps(clampToConstraint('steps', preset.steps))
+    setGuidance(clampToConstraint('guidance', preset.guidance))
+    setWidth(clampToConstraint('width', preset.width))
+    setHeight(clampToConstraint('height', preset.height))
+    setSeed(preset.seed)
+    setIpScale(clampToConstraint('ipScale', preset.ipScale))
+    setNeg(preset.neg)
+  }
+
+  function resetToDefaults() {
+    if (defaultPreset) {
+      applyPreset(defaultPreset.id)
+      return
+    }
+    setSteps(generationConstraints.steps.default)
+    setGuidance(generationConstraints.guidance.default)
+    setWidth(generationConstraints.width.default)
+    setHeight(generationConstraints.height.default)
+    setSeed(null)
+    setIpScale(generationConstraints.ipScale.default)
+  }
+
   async function onFilePicked(file: File) {
     if (!file.type.startsWith('image/')) {
       setError(t('generate:ref.error_type'))
@@ -145,15 +331,22 @@ export default function Generate() {
       setError(t('generate:ref.error_size'))
       return
     }
+
     setError(null)
     setRefPreview(URL.createObjectURL(file))
     refBase64.current = await fileToBase64(file)
   }
 
-  function onDrop(event: React.DragEvent) {
+  function clearReference() {
+    if (refPreview?.startsWith('blob:')) URL.revokeObjectURL(refPreview)
+    setRefPreview(null)
+    refBase64.current = null
+  }
+
+  const onDrop = (event: React.DragEvent) => {
     event.preventDefault()
     const file = event.dataTransfer.files?.[0]
-    if (file) onFilePicked(file)
+    if (file) void onFilePicked(file)
   }
 
   async function runGeneration() {
@@ -163,25 +356,19 @@ export default function Generate() {
     }
 
     setError(null)
-
-    const banlist = (settings.banlist || '')
-      .split(/,|\n/)
-      .map((item) => item.trim())
-      .filter(Boolean)
-
+    const banlist = (settings.banlist || '').split(/,|\n/).map((item) => item.trim()).filter(Boolean)
     const payload: GeneratePayload = {
       prompt: prompt.trim(),
       negative_prompt: [neg, ...banlist].filter(Boolean).join(', ') || null,
-      steps,
-      guidance_scale: guidance,
-      width,
-      height,
+      steps: clampToConstraint('steps', steps),
+      guidance_scale: clampToConstraint('guidance', guidance),
+      width: clampToConstraint('width', width),
+      height: clampToConstraint('height', height),
       seed: seed ?? null,
       ref_image_b64: refBase64.current,
-      ip_scale: ipScale,
+      ip_scale: clampToConstraint('ipScale', ipScale),
       style,
     }
-
     const id = start(payload)
     try {
       localStorage.setItem(ACTIVE_KEY, id)
@@ -191,488 +378,511 @@ export default function Generate() {
     setActiveId(id)
   }
 
-  function seedRandom() {
-    setSeed(Math.floor(Math.random() * 2_147_483_647))
-  }
-
-  function retryCurrentSettings() {
+  const retryCurrentSettings = () => {
     setError(null)
-    runGeneration()
+    void runGeneration()
   }
 
-  return (
-    <section className="page-shell py-12 xl:py-20 space-y-10">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-         <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-              <Sparkles className="h-3 w-3" />
-              Creation Studio
-            </div>
-            <h1 className="font-display text-4xl font-bold tracking-tight text-foreground dark:text-white sm:text-6xl leading-tight">
-              {t('generate:title')}
-            </h1>
-         </div>
-         <div className="flex gap-3">
-            <Button asChild variant="outline" className="rounded-full font-bold border-border">
-              <Link to={appRoutes.promptGuide}>
-                <Layers className="mr-2 h-4 w-4" />
-                {t('common:actions.guide')}
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="rounded-full font-bold border-border">
-              <Link to={appRoutes.history}>
-                <Clock3 className="mr-2 h-4 w-4" />
-                Archive
-              </Link>
-            </Button>
-         </div>
-      </div>
+  const seedRandom = () => setSeed(Math.floor(Math.random() * 2_147_483_647))
 
-      <div className="grid gap-12 xl:grid-cols-[1fr_420px] items-start">
-        <div className="space-y-10">
-          <SurfacePanel className="p-10 space-y-10">
-            <div className="space-y-6">
-              <Label htmlFor="prompt" className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:prompt')}</Label>
-              <Textarea
-                id="prompt"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                placeholder={t('generate:prompt_placeholder')}
-                className="min-h-[160px] resize-none text-xl font-medium border-border bg-secondary/30 dark:bg-white/5 dark:border-white/10 rounded-[32px] p-8 focus:border-primary/50 transition-all placeholder:text-foreground/20 dark:placeholder:text-white/10"
-              />
-            </div>
+  const statusTitle =
+    stage === 'queued'
+      ? t('generate:status.queued.title', { position: queuePosition || 1 })
+      : stage === 'running'
+        ? t('generate:status.running.title')
+        : stage === 'completed'
+          ? t('generate:status.completed.title')
+          : stage === 'error'
+            ? t('generate:status.error.title')
+            : t('generate:status.idle.title')
 
-            <div className="space-y-6">
-              <Label htmlFor="neg" className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:neg')}</Label>
-              <Textarea
-                id="neg"
-                value={neg}
-                onChange={(event) => setNeg(event.target.value)}
-                placeholder={t('generate:neg_placeholder')}
-                className="min-h-[100px] resize-none text-base border-border bg-secondary/30 dark:bg-white/5 dark:border-white/10 rounded-[24px] p-6 focus:border-primary/50 transition-all placeholder:text-foreground/20 dark:placeholder:text-white/10"
-              />
-            </div>
+  const statusDescription =
+    stage === 'queued'
+      ? t('generate:status.queued.desc1')
+      : stage === 'running'
+        ? t('generate:status.running.desc')
+        : stage === 'completed'
+          ? t('generate:status.completed.desc')
+          : stage === 'error'
+            ? error || t('generate:status.error.desc')
+            : t('generate:status.idle.desc')
 
-            <div className="grid gap-10 sm:grid-cols-2 pt-4">
-              <div className="space-y-6">
-                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:style')}</Label>
-                <div className="flex gap-3">
-                  {styleOptions.map((option) => (
-                    <Button
-                      key={option.value}
-                      type="button"
-                      variant={style === option.value ? 'default' : 'outline'}
-                      className={cn(
-                        "flex-1 h-12 rounded-xl font-bold border-border transition-all",
-                        style === option.value && "shadow-glow"
-                      )}
-                      onClick={() => setStyle(option.value)}
-                    >
-                      {t(option.labelKey)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                 <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{t('generate:ref.title')}</Label>
-                 <div
-                  onDrop={onDrop}
-                  onDragOver={(event) => event.preventDefault()}
-                  className={cn(
-                    'relative overflow-hidden rounded-[24px] border-2 border-dashed border-border/60 transition-all hover:border-primary/40 bg-secondary/30 dark:bg-white/5 dark:border-white/10',
-                    refPreview ? 'aspect-video border-solid border-primary/20 bg-primary/5' : 'p-4 min-h-[100px] flex items-center justify-center'
-                  )}
-                >
-                  {refPreview ? (
-                    <>
-                      <img src={refPreview} alt="Reference preview" className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity hover:opacity-100 flex items-center justify-center gap-2">
-                         <Button variant="secondary" size="sm" className="rounded-full font-bold" onClick={() => fileInputRef.current?.click()}>
-                          Replace
-                        </Button>
-                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full border border-danger/20 bg-danger/10 text-danger hover:bg-danger/15" onClick={() => { setRefPreview(null); refBase64.current = null; }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-3 text-center">
-                      <ImageUp className="h-6 w-6 text-foreground/20 dark:text-white/20" />
-                      <div className="space-y-1">
-                         <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 dark:text-white/40">{t('generate:ref.drop')}</p>
-                         <button className="text-xs font-bold text-primary hover:underline" onClick={() => fileInputRef.current?.click()}>
-                            {t('generate:ref.button')}
-                         </button>
-                      </div>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (event) => {
-                      const file = event.target.files?.[0]
-                      if (file) await onFilePicked(file)
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-6 border-t border-border pt-10 dark:border-white/10">
-              <Button 
-                onClick={runGeneration} 
-                disabled={busy} 
-                size="lg" 
-                className="h-16 px-12 text-lg font-bold rounded-full shadow-glow-lg group"
-              >
-                {busy ? (
-                  <>
-                    <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                    {t('generate:actions.working')}
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-3 h-6 w-6 fill-current" />
-                    {t('generate:actions.generate')}
-                  </>
-                )}
-              </Button>
-              {busy && activeId ? (
-                <Button variant="outline" size="lg" className="h-16 px-10 rounded-full font-bold border-border" onClick={() => cancel(activeId)}>
-                  {t('generate:actions.cancel')}
-                </Button>
-              ) : null}
-            </div>
-          </SurfacePanel>
-
-          <SurfacePanel className="overflow-hidden p-0">
-            <div className="border-b border-border p-8 flex items-center justify-between dark:border-white/10">
-              <div className="flex items-center gap-3">
-                 <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <Monitor className="h-4 w-4" />
-                 </div>
-                 <h2 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">{t('generate:result.title')}</h2>
-              </div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={stage}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                >
-                  <MetaPill className={cn(
-                    "font-bold",
-                    stage === 'completed' ? 'border-success/20 bg-success/5 text-success' : 
-                    stage === 'error' ? 'border-danger/20 bg-danger/5 text-danger' : 
-                    busy ? 'border-primary/20 bg-primary/5 text-primary' : ''
-                  )}>
-                     {t(`generate:result.status.${stage}`)}
-                  </MetaPill>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-            
-            <div className="p-10">
-              <div className="relative aspect-square sm:aspect-[16/10] w-full overflow-hidden rounded-[40px] border border-border bg-secondary shadow-inner dark:bg-black/20 dark:border-white/5">
-                <AnimatePresence mode="wait">
-                  {imgUrl ? (
-                    <motion.img 
-                      key={imgUrl}
-                      initial={{ opacity: 0, scale: 1.05 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      src={imgUrl} 
-                      alt="Generated result" 
-                      className="h-full w-full object-contain" 
-                    />
-                  ) : (
-                    <motion.div 
-                      key="placeholder"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="relative flex h-full items-center justify-center p-8 text-center"
-                    >
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(13,148,255,0.12),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.08),transparent_40%)]" />
-                      <div className="relative space-y-6">
-                        <div className="mx-auto w-24 h-24 rounded-[32px] bg-secondary/50 flex items-center justify-center dark:bg-white/5 shadow-sm">
-                           <Sparkles className="h-10 w-10 text-primary/40" />
-                        </div>
-                        <div className="space-y-2">
-                          <div className="font-display text-3xl font-bold tracking-tight text-foreground/80 dark:text-white/80">
-                            {t('generate:result.ready_title')}
-                          </div>
-                          <p className="mx-auto max-w-sm text-base leading-relaxed text-foreground/40 dark:text-white/40 font-medium">
-                            {t('generate:result.ready_desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {busy ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/40 backdrop-blur-3xl dark:bg-black/40">
-                    <div className="flex flex-col items-center gap-6 rounded-[48px] border border-white/10 bg-white/5 p-12 text-white shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] dark:bg-white/5">
-                      <div className="relative h-20 w-24">
-                        <div className="absolute inset-0 flex justify-center gap-1.5 items-end h-full">
-                           {[0, 1, 2, 3].map(i => (
-                             <motion.div 
-                                key={i}
-                                animate={{ height: ['20%', '100%', '20%'] }}
-                                transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
-                                className="w-3 rounded-full bg-primary shadow-glow"
-                             />
-                           ))}
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-center">
-                        <div className="text-2xl font-black uppercase tracking-tighter">{t(`generate:result.status.${stage}`)}</div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">
-                          {t(`generate:result.stage.${stage}`)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {imgUrl && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-wrap gap-4 mt-8"
-                >
-                  <Button asChild size="lg" variant="secondary" className="h-14 px-8 rounded-full font-bold shadow-sm">
-                    <a href={imgUrl} target="_blank" rel="noreferrer">
-                      <Maximize2 className="mr-2 h-5 w-5" />
-                      {t('generate:actions.open')}
-                    </a>
-                  </Button>
-                  <Button asChild size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold border-border">
-                    <a href={imgUrl} download>
-                      <Download className="mr-2 h-5 w-5" />
-                      {t('generate:actions.download')}
-                    </a>
-                  </Button>
-                  <Button asChild size="lg" variant="ghost" className="h-14 px-8 rounded-full font-bold ml-auto text-foreground/60">
-                    <Link to={appRoutes.history}>
-                      <Clock3 className="mr-2 h-5 w-5" />
-                      {t('generate:actions.history')}
-                    </Link>
-                  </Button>
-                </motion.div>
+  const promptSection = (tone: SectionTone) => (
+    <SectionCard
+      tone={tone}
+      title={t('generate:prompt')}
+      description={t('generate:subtitle')}
+      action={
+        <div className="flex flex-wrap gap-2">
+          {settings.presets.map((preset) => (
+            <button
+              key={preset.id}
+              onClick={() => applyPreset(preset.id)}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors',
+                tone === 'cinematic'
+                  ? 'border-white/10 bg-white/5 text-white/70 hover:border-primary/30 hover:text-primary'
+                  : 'border-border bg-secondary/20 text-foreground/60 hover:border-primary/20 hover:text-primary',
               )}
-            </div>
-          </SurfacePanel>
+            >
+              {preset.name}
+            </button>
+          ))}
         </div>
-
-        {/* Sidebar */}
-        <aside className="space-y-8 sticky top-24">
-           <SurfacePanel className="p-8 space-y-10">
-            <div className="flex items-center gap-3">
-               <Settings2 className="h-5 w-5 text-primary" />
-               <h3 className="font-display text-xl font-bold text-foreground dark:text-white">{t('generate:advanced.title')}</h3>
-            </div>
-
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                   <Label htmlFor="steps" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.steps')}</Label>
-                   <span className="text-xs font-bold text-primary">{steps}</span>
-                </div>
-                <Input 
-                  id="steps" 
-                  type="number" 
-                  min={1} 
-                  max={200} 
-                  value={steps} 
-                  onChange={(event) => setSteps(Number(event.target.value))} 
-                  className="h-12 rounded-xl border-border bg-secondary/50 font-bold"
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                   <Label htmlFor="guidance" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.cfg')}</Label>
-                   <span className="text-xs font-bold text-primary">{guidance.toFixed(1)}</span>
-                </div>
-                <Input
-                  id="guidance"
-                  type="number"
-                  min={0}
-                  max={30}
-                  step={0.5}
-                  value={guidance}
-                  onChange={(event) => setGuidance(Number(event.target.value))}
-                  className="h-12 rounded-xl border-border bg-secondary/50 font-bold"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <Label htmlFor="width" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.width')}</Label>
-                  <Input id="width" type="number" min={256} step={64} value={width} onChange={(event) => setWidth(Number(event.target.value))} className="h-12 rounded-xl border-border bg-secondary/50 font-bold" />
-                </div>
-                <div className="space-y-4">
-                  <Label htmlFor="height" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.height')}</Label>
-                  <Input id="height" type="number" min={256} step={64} value={height} onChange={(event) => setHeight(Number(event.target.value))} className="h-12 rounded-xl border-border bg-secondary/50 font-bold" />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <Label htmlFor="seed" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.seed')}</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="seed"
-                    type="number"
-                    value={seed ?? ''}
-                    onChange={(event) => setSeed(event.target.value === '' ? null : Number(event.target.value))}
-                    placeholder={t('generate:advanced.seed_auto')}
-                    className="h-12 rounded-xl border-border bg-secondary/50 font-bold flex-1"
-                  />
-                  <Button variant="secondary" size="icon" className="h-12 w-12 rounded-xl" onClick={seedRandom} title={t('generate:advanced.seed_random')}>
-                    <RotateCcw className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-6 pt-4 border-t border-border dark:border-white/5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="ipScale" className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40 dark:text-white/40">{t('generate:advanced.ip_scale')}</Label>
-                  <span className="text-xs font-bold text-primary">{ipScale.toFixed(2)}</span>
-                </div>
-                <input
-                  id="ipScale"
-                  type="range"
-                  min={0}
-                  max={1.5}
-                  step={0.05}
-                  value={ipScale}
-                  onChange={(event) => setIpScale(Number(event.target.value))}
-                  className="w-full h-1.5 bg-secondary dark:bg-white/10 rounded-full appearance-none cursor-pointer accent-primary"
-                />
-              </div>
-            </div>
-
-            <Button variant="ghost" size="sm" className="w-full h-10 rounded-full text-[10px] font-black uppercase tracking-widest text-foreground/40 hover:text-foreground" onClick={() => {
-              setSteps(28); setGuidance(7.5); setWidth(896); setHeight(1152); setSeed(null); setIpScale(0.65);
-            }}>
-              <RotateCcw className="mr-2 h-3.5 w-3.5" />
-              {t('generate:advanced.reset')}
-            </Button>
-          </SurfacePanel>
-
-          <AnimatePresence mode="wait">
-            {busy && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-              >
-                <SurfacePanel className="p-8 space-y-6 border-primary/20 bg-primary/5">
-                  <div className="flex items-center gap-3 text-primary">
-                    <div className="rounded-full bg-primary/10 p-2">
-                      <Clock3 className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-display text-xl font-bold tracking-tight">
-                      {stage === 'queued' 
-                        ? t('generate:status.queued.title', { position: queuePosition || 1 })
-                        : t('generate:status.running.title')}
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: stage === 'queued' ? '15%' : '70%' }}
-                        className="h-full bg-primary shadow-glow" 
-                      />
-                    </div>
-                    <p className="text-sm leading-relaxed text-foreground/60 dark:text-white/60 font-medium">
-                      {stage === 'queued' ? t('generate:status.queued.desc1') : t('generate:status.running.desc')}
-                    </p>
-                  </div>
-                </SurfacePanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {error && (
-            <SurfacePanel className="p-8 border-danger/20 bg-danger/5 space-y-6">
-              <div className="flex items-center gap-3 text-danger">
-                <div className="rounded-full bg-danger/10 p-2">
-                  <TriangleAlert className="h-5 w-5" />
-                </div>
-                <h3 className="font-display text-xl font-bold tracking-tight">{t('generate:status.error.title')}</h3>
-              </div>
-              <p className="text-sm leading-relaxed text-danger/80 font-medium">
-                {error || t('generate:status.error.desc')}
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button variant="secondary" onClick={retryCurrentSettings} className="w-full rounded-full font-bold">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  {t('generate:actions.retry')}
-                </Button>
-              </div>
-            </SurfacePanel>
-          )}
-
-          <SurfacePanel className="p-8 space-y-6">
-             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{t('generate:facts.title')}</div>
-             <div className="space-y-4">
-                <StatusRow label={t('generate:facts.style')} value={styleLabel} />
-                <StatusRow label={t('generate:facts.aspect')} value={`${width}×${height}`} />
-                <StatusRow label={t('generate:facts.seed')} value={seed ? String(seed) : t('generate:facts.idle')} />
-                <StatusRow label={t('generate:facts.queue')} value={busy ? `${queuePosition || 1} ${t('generate:facts.active')}` : t('generate:facts.idle')} />
-             </div>
-          </SurfacePanel>
-        </aside>
-      </div>
-    </section>
+      }
+    >
+      <Textarea
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+        placeholder={t('generate:prompt_placeholder')}
+        className={cn(
+          'min-h-[180px] resize-none rounded-[28px] border p-6 text-lg leading-relaxed',
+          tone === 'editorial' ? 'bg-secondary/10 text-xl font-light italic' : '',
+          tone === 'cinematic'
+            ? 'border-white/10 bg-black/30 text-white placeholder:text-white/20'
+            : 'border-border bg-secondary/20',
+        )}
+      />
+    </SectionCard>
   )
-}
 
-function StatusRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest border-b border-border pb-3 dark:border-white/5 last:border-0 last:pb-0">
-      <span className="text-foreground/40 dark:text-white/40">{label}</span>
-      <span className="text-foreground dark:text-white">{value}</span>
+  const negativeSection = (tone: SectionTone) => (
+    <SectionCard tone={tone} title={t('generate:neg')} description={t('generate:neg_placeholder')}>
+      <Textarea
+        value={neg}
+        onChange={(event) => setNeg(event.target.value)}
+        placeholder={t('generate:neg_placeholder')}
+        className={cn(
+          'min-h-[120px] resize-none rounded-[28px] border p-5 text-base',
+          tone === 'cinematic'
+            ? 'border-white/10 bg-black/30 text-white placeholder:text-white/20'
+            : 'border-border bg-secondary/20',
+        )}
+      />
+    </SectionCard>
+  )
+
+  const styleSection = (tone: SectionTone) => (
+    <SectionCard tone={tone} title={t('generate:style')} description={t('generate:sections.style_description')}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {styleOptions.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => setStyle(option.value)}
+            className={cn(
+              'rounded-[24px] border px-5 py-4 text-left transition-all',
+              style === option.value
+                ? 'border-primary bg-primary/10 text-primary shadow-glow-sm'
+                : tone === 'cinematic'
+                  ? 'border-white/10 bg-white/5 text-white/70 hover:border-primary/25'
+                  : 'border-border bg-secondary/20 text-foreground/70 hover:border-primary/20',
+            )}
+          >
+            <div className="text-[10px] font-black uppercase tracking-[0.25em]">
+              {t(option.labelKey)}
+            </div>
+            <div className={cn('mt-2 text-sm leading-relaxed', style === option.value ? '' : 'opacity-80')}>
+              {t(`generate:style_cards.${option.value}`)}
+            </div>
+          </button>
+        ))}
+      </div>
+    </SectionCard>
+  )
+
+  const dimensionsSection = (tone: SectionTone) => (
+    <SectionCard tone={tone} title={t('generate:sections.dimensions')} description={t('generate:sections.dimensions_description')}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <NumericField
+          label={t('generate:advanced.width')}
+          value={width}
+          onChange={(value) => setWidth(clampToConstraint('width', value))}
+          min={generationConstraints.width.min}
+          max={generationConstraints.width.max}
+          step={generationConstraints.width.step}
+          tone={tone}
+        />
+        <NumericField
+          label={t('generate:advanced.height')}
+          value={height}
+          onChange={(value) => setHeight(clampToConstraint('height', value))}
+          min={generationConstraints.height.min}
+          max={generationConstraints.height.max}
+          step={generationConstraints.height.step}
+          tone={tone}
+        />
+      </div>
+      <div className={cn(
+        'flex items-center gap-2 rounded-2xl px-4 py-3 text-sm',
+        tone === 'cinematic' ? 'bg-white/5 text-white/60' : 'bg-secondary/20 text-foreground/60',
+      )}>
+        <Box className="h-4 w-4 text-primary" />
+        <span>{width} × {height}</span>
+      </div>
+    </SectionCard>
+  )
+
+  const samplingSection = (tone: SectionTone) => (
+    <SectionCard
+      tone={tone}
+      title={t('generate:advanced.title')}
+      description={t('generate:sections.sampling_description')}
+      action={
+        <Button variant="ghost" size="sm" onClick={resetToDefaults} className="rounded-full">
+          <RotateCcw className="mr-2 h-4 w-4" />
+          {t('generate:advanced.reset')}
+        </Button>
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <NumericField
+          label={t('generate:advanced.steps')}
+          value={steps}
+          onChange={(value) => setSteps(clampToConstraint('steps', value))}
+          min={generationConstraints.steps.min}
+          max={generationConstraints.steps.max}
+          step={generationConstraints.steps.step}
+          tone={tone}
+        />
+        <NumericField
+          label={t('generate:advanced.cfg')}
+          value={guidance}
+          onChange={(value) => setGuidance(clampToConstraint('guidance', value))}
+          min={generationConstraints.guidance.min}
+          max={generationConstraints.guidance.max}
+          step={generationConstraints.guidance.step}
+          tone={tone}
+        />
+        <NumericField
+          label={t('generate:advanced.ip_scale')}
+          value={ipScale}
+          onChange={(value) => setIpScale(clampToConstraint('ipScale', value))}
+          min={generationConstraints.ipScale.min}
+          max={generationConstraints.ipScale.max}
+          step={generationConstraints.ipScale.step}
+          tone={tone}
+        />
+        <div className="space-y-2">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('generate:advanced.seed')}
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              value={seed ?? ''}
+              placeholder={t('generate:advanced.seed_auto')}
+              onChange={(event) => setSeed(event.target.value ? Number(event.target.value) : null)}
+              className={cn('h-11 rounded-2xl border font-semibold', tone === 'cinematic' ? 'border-white/10 bg-white/5 text-white' : 'border-border bg-secondary/30')}
+            />
+            <Button variant="secondary" size="icon" onClick={seedRandom} className="rounded-2xl">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  )
+
+  const referenceSection = (tone: SectionTone) => (
+    <SectionCard
+      tone={tone}
+      title={t('generate:ref.title')}
+      description={t('generate:ref.description')}
+      action={
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="rounded-full">
+            <Upload className="mr-2 h-4 w-4" />
+            {t('generate:ref.button')}
+          </Button>
+          {refPreview ? (
+            <Button variant="ghost" size="icon" onClick={clearReference} className="rounded-full">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      }
+    >
+      <div
+        onDrop={onDrop}
+        onDragOver={(event) => event.preventDefault()}
+        className={cn(
+          'relative overflow-hidden rounded-[28px] border-2 border-dashed p-4 transition-all',
+          refPreview ? 'min-h-[240px] border-primary/25' : 'min-h-[220px]',
+          tone === 'cinematic' ? 'border-white/10 bg-black/30' : 'border-border/70 bg-secondary/20',
+        )}
+      >
+        {refPreview ? (
+          <>
+            <img src={refPreview} alt={t('generate:ref.title')} className="h-full w-full rounded-[20px] object-cover" />
+            <div className="absolute inset-x-6 bottom-6 flex gap-3">
+              <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="rounded-full">
+                {t('generate:ref.button')}
+              </Button>
+              <Button variant="outline" onClick={clearReference} className="rounded-full">
+                {t('generate:ref.clear')}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-5 text-center">
+            <div className={cn(
+              'flex h-16 w-16 items-center justify-center rounded-3xl border',
+              tone === 'cinematic' ? 'border-white/10 bg-white/5 text-primary' : 'border-primary/20 bg-primary/10 text-primary',
+            )}>
+              <ImageUp className="h-7 w-7" />
+            </div>
+            <div className="space-y-2">
+              <p className={cn('text-sm font-semibold', tone === 'cinematic' ? 'text-white/70' : 'text-foreground/70')}>
+                {t('generate:ref.drop')}
+              </p>
+              <p className={cn('text-xs', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/45')}>
+                {t('generate:sections.reference_hint')}
+              </p>
+            </div>
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (event) => {
+            const file = event.target.files?.[0]
+            if (file) await onFilePicked(file)
+          }}
+        />
+      </div>
+    </SectionCard>
+  )
+
+  const resultSection = (tone: SectionTone) => (
+    <SectionCard tone={tone} title={t('generate:result.title')} description={t('generate:result.description')}>
+      <div className={cn(
+        'relative flex min-h-[360px] items-center justify-center overflow-hidden rounded-[32px] border',
+        tone === 'cinematic' ? 'border-white/10 bg-black/40' : 'border-border/50 bg-secondary/20',
+      )}>
+        <AnimatePresence mode="wait">
+          {imgUrl ? (
+            <motion.img
+              key={imgUrl}
+              initial={{ opacity: 0, scale: 1.02 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              src={imgUrl}
+              alt={t('generate:result.title')}
+              className="max-h-[70vh] max-w-full rounded-[24px] object-contain shadow-2xl"
+            />
+          ) : (
+            <motion.div key="placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4 text-center">
+              <div className={cn('mx-auto flex h-20 w-20 items-center justify-center rounded-full', tone === 'cinematic' ? 'bg-white/5 text-primary' : 'bg-primary/10 text-primary')}>
+                {tone === 'cinematic' ? <Film className="h-8 w-8" /> : <Eye className="h-8 w-8" />}
+              </div>
+              <div className="space-y-1">
+                <div className={cn('font-bold', tone === 'cinematic' ? 'text-white' : 'text-foreground')}>
+                  {t('generate:result.ready_title')}
+                </div>
+                <div className={cn('text-sm', tone === 'cinematic' ? 'text-white/50' : 'text-foreground/50')}>
+                  {t('generate:result.ready_desc')}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <MetaPill>{styleLabel}</MetaPill>
+        <MetaPill>{width}×{height}</MetaPill>
+        <MetaPill>{steps} {t('generate:advanced.steps')}</MetaPill>
+      </div>
+
+      {imgUrl ? (
+        <div className="flex flex-wrap gap-3">
+          <Button asChild size="lg" className="rounded-full">
+            <a href={imgUrl} download>
+              <Download className="mr-2 h-4 w-4" />
+              {t('generate:actions.download')}
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="lg" className="rounded-full">
+            <Link to={appRoutes.history}>
+              <HistoryIcon className="mr-2 h-4 w-4" />
+              {t('generate:actions.history')}
+            </Link>
+          </Button>
+        </div>
+      ) : null}
+    </SectionCard>
+  )
+
+  const statusSection = (tone: SectionTone) => (
+    <div className="space-y-4">
+      <StatusMessage tone={tone} title={statusTitle} description={statusDescription} state={stage} />
+      {busy ? (
+        <div className={cn('overflow-hidden rounded-full', tone === 'cinematic' ? 'bg-white/10' : 'bg-primary/10')}>
+          <motion.div initial={{ width: 0 }} animate={{ width: stage === 'queued' ? '18%' : '72%' }} className="h-2 bg-primary" />
+        </div>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { icon: Layers, label: t('generate:facts.aspect'), value: `${width}:${height}` },
+          { icon: Cpu, label: t('generate:facts.style'), value: styleLabel },
+          { icon: Clock3, label: t('generate:facts.queue'), value: busy ? `${queuePosition || 1}` : t('generate:facts.idle') },
+        ].map((fact) => (
+          <div key={fact.label} className={cn('rounded-3xl border p-4', tone === 'cinematic' ? 'border-white/10 bg-white/5 text-white' : 'border-border/50 bg-secondary/20')}>
+            <div className={cn('flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+              <fact.icon className="h-3.5 w-3.5 text-primary" />
+              {fact.label}
+            </div>
+            <div className="mt-3 text-sm font-bold">{fact.value}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
-}
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = String(reader.result || '')
-      const index = result.indexOf(',')
-      resolve(index >= 0 ? result.slice(index + 1) : result)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
+  const actionsSection = (tone: SectionTone) => (
+    <SectionCard tone={tone} title={t('generate:sections.run_title')} description={t('generate:sections.run_description')}>
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => void runGeneration()} disabled={busy} size="lg" className="rounded-full">
+          {busy ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              {t('generate:actions.working')}
+            </>
+          ) : (
+            <>
+              <WandSparkles className="mr-2 h-5 w-5" />
+              {t('generate:actions.generate')}
+            </>
+          )}
+        </Button>
+        {busy && activeId ? (
+          <Button variant="outline" size="lg" onClick={() => cancel(activeId)} className="rounded-full">
+            {t('generate:actions.cancel')}
+          </Button>
+        ) : null}
+        {error ? (
+          <Button variant="secondary" size="lg" onClick={retryCurrentSettings} className="rounded-full">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {t('generate:actions.retry')}
+          </Button>
+        ) : null}
+        <Button asChild variant="ghost" size="lg" className="rounded-full">
+          <Link to={appRoutes.promptGuide}>{t('common:actions.guide')}</Link>
+        </Button>
+      </div>
+    </SectionCard>
+  )
 
-function Monitor(props: React.SVGProps<SVGSVGElement>) {
+  const renderDashboard = () => (
+    <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr] items-start">
+      <div className="space-y-6">
+        {promptSection('dashboard')}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {negativeSection('dashboard')}
+          {styleSection('dashboard')}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {dimensionsSection('dashboard')}
+          {samplingSection('dashboard')}
+        </div>
+        {actionsSection('dashboard')}
+      </div>
+      <div className="space-y-6 xl:sticky xl:top-24">
+        {resultSection('dashboard')}
+        {referenceSection('dashboard')}
+        {statusSection('dashboard')}
+      </div>
+    </div>
+  )
+
+  const renderEditorial = () => (
+    <div className="mx-auto max-w-6xl space-y-10">
+      <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr] items-start">
+        <div className="space-y-8">
+          {promptSection('editorial')}
+          {negativeSection('editorial')}
+          <div className="grid gap-8 lg:grid-cols-2">
+            {styleSection('editorial')}
+            {dimensionsSection('editorial')}
+          </div>
+        </div>
+        <div className="space-y-8 xl:sticky xl:top-24">
+          {resultSection('editorial')}
+          {statusSection('editorial')}
+        </div>
+      </div>
+      <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+        {samplingSection('editorial')}
+        {referenceSection('editorial')}
+      </div>
+      {actionsSection('editorial')}
+    </div>
+  )
+
+  const renderCinematic = () => (
+    <div className="relative -mx-4 overflow-hidden rounded-[40px] border border-white/10 bg-black px-4 py-6 md:-mx-6 md:px-6 md:py-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_40%),radial-gradient(circle_at_bottom,rgba(249,115,22,0.12),transparent_35%)]" />
+      <div className="relative z-10 grid gap-6 xl:grid-cols-[1.1fr_0.9fr] items-start">
+        <div className="space-y-6">
+          {resultSection('cinematic')}
+          {promptSection('cinematic')}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {negativeSection('cinematic')}
+            {referenceSection('cinematic')}
+          </div>
+        </div>
+        <div className="space-y-6 xl:sticky xl:top-24">
+          {statusSection('cinematic')}
+          {styleSection('cinematic')}
+          {dimensionsSection('cinematic')}
+          {samplingSection('cinematic')}
+          {actionsSection('cinematic')}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="20" height="14" x="2" y="3" rx="2" />
-      <line x1="8" x2="16" y1="21" y2="21" />
-      <line x1="12" x2="12" y1="17" y2="21" />
-    </svg>
+    <section className={cn('page-shell transition-all duration-500', settings.visualMode === 'cinematic' ? 'py-4 md:py-6' : 'py-8 md:py-12 space-y-8')}>
+      {settings.visualMode !== 'cinematic' ? (
+        <SurfacePanel className={cn('mode-hero-panel p-6 md:p-8', settings.visualMode === 'editorial' && 'mode-hero-panel--editorial text-center')}>
+          <div className={cn('flex flex-col gap-6 md:flex-row md:items-end md:justify-between', settings.visualMode === 'editorial' && 'items-center')}>
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-primary">
+                <Zap className="h-3.5 w-3.5" />
+                {t('generate:title')}
+              </div>
+              <div className="space-y-2">
+                <h1 className={cn('font-black tracking-tight', settings.visualMode === 'editorial' ? 'font-serif text-5xl font-light italic md:text-7xl' : 'text-3xl md:text-5xl')}>
+                  {t('generate:hero.title')}
+                </h1>
+                <p className={cn('max-w-3xl text-base leading-relaxed', settings.visualMode === 'editorial' ? 'mx-auto text-lg' : 'text-foreground/60')}>
+                  {t('generate:hero.description')}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button asChild variant="outline" className="rounded-full">
+                <Link to={appRoutes.promptGuide}>{t('common:actions.guide')}</Link>
+              </Button>
+              <Button asChild variant="outline" className="rounded-full">
+                <Link to={appRoutes.history}>{t('generate:actions.history')}</Link>
+              </Button>
+            </div>
+          </div>
+        </SurfacePanel>
+      ) : null}
+
+      <motion.div key={settings.visualMode} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+        {settings.visualMode === 'dashboard'
+          ? renderDashboard()
+          : settings.visualMode === 'editorial'
+            ? renderEditorial()
+            : renderCinematic()}
+      </motion.div>
+    </section>
   )
 }
