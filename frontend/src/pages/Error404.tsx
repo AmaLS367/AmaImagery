@@ -1,73 +1,102 @@
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import '../styles/error404.css'
+import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { ArrowLeft, Home, Sparkles, Compass } from 'lucide-react'
+
+import { Button } from '../components/ui/button'
+import { SurfacePanel } from '../components/ui/foundation'
+import { appRoutes } from '../lib/routes'
+
+const quickLinks = [
+  {
+    title: 'Generate',
+    description: 'Return to the main workspace for prompt composition and runtime feedback.',
+    href: appRoutes.generate,
+  },
+  {
+    title: 'History',
+    description: 'Inspect saved generations, metadata filters, and runtime records.',
+    href: appRoutes.history,
+  },
+  {
+    title: 'Prompt Guide',
+    description: 'Review the editorial guidance for prompt structure and correction habits.',
+    href: appRoutes.promptGuide,
+  },
+  {
+    title: 'FAQ',
+    description: 'Open the product-facing answers for runtime, history, and account questions.',
+    href: appRoutes.faq,
+  },
+] as const
 
 export default function Error404() {
-  const { t } = useTranslation()
-
-  const quick = [
-    { href: '/',            k: 'generator' },
-    { href: '/guide',       k: 'guide'     },
-    { href: '/faq',         k: 'faq'       },
-    { href: '/about',       k: 'about'     },
-  ]
-
   return (
-    <div className="e404">
-      <section className="e404__hero">
-        <div className="e404__container">
-          <span className="e404__badge">{t('error404:code')}</span>
-
-          <div className="e404__code" aria-label={t('error404:code') as string}>
-            <span className="glitch" data-text={t('error404:code') as string}>
-              {t('error404:code')}
-            </span>
+    <section className="page-shell py-12 xl:py-24 space-y-12">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <SurfacePanel className="p-12 md:p-20 text-center space-y-10 relative overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1/2 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+          
+          <div className="space-y-6 relative z-10">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-black uppercase tracking-[0.3em] text-primary mx-auto">
+              <Sparkles className="h-3.5 w-3.5" />
+              Error 404
+            </div>
+            
+            <div className="space-y-4 max-w-4xl mx-auto">
+              <h1 className="font-display text-5xl md:text-8xl font-bold tracking-tight text-foreground dark:text-white leading-[0.9]">
+                This route is not part of the screen system.
+              </h1>
+              <p className="max-w-2xl mx-auto text-lg md:text-xl text-foreground/60 dark:text-white/60 font-medium leading-relaxed">
+                AmaImagery keeps page boundaries explicit. The URL you opened does not resolve to a valid product, auth, editorial, or visual-lab route.
+              </p>
+            </div>
           </div>
 
-          <h1 className="e404__title">{t('error404:title')}</h1>
-          <p className="e404__subtitle">{t('error404:lead')}</p>
-          <p className="e404__subtitle">{t('error404:hint')}</p>
-
-          <div className="e404__actions">
-            <a href="/" className="e404__btn e404__btn--primary">{t('error404:actions.home')}</a>
-            <a href="/faq" className="e404__btn">{t('error404:actions.faq')}</a>
-            <button type="button" className="e404__btn" onClick={() => history.back()}>
-              {t('error404:actions.back')}
-            </button>
-            <button type="button" className="e404__btn" onClick={() => window.location.reload()}>
-              {t('error404:actions.retry')}
-            </button>
+          <div className="flex flex-wrap justify-center gap-4 relative z-10">
+            <Button asChild size="lg" className="h-14 px-10 rounded-full font-bold shadow-glow">
+              <Link to={appRoutes.landing}>
+                <Home className="mr-2 h-5 w-5" />
+                Return Home
+              </Link>
+            </Button>
+            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full font-bold border-border" onClick={() => history.back()}>
+              <ArrowLeft className="mr-2 h-5 w-5" />
+              Go Back
+            </Button>
           </div>
+        </SurfacePanel>
+      </motion.div>
 
-          <div className="e404__search">
-            <input
-              className="e404__input"
-              placeholder={t('error404:search.placeholder') as string}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const q = (e.target as HTMLInputElement).value.trim()
-                  if (q) window.location.href = `/?q=${encodeURIComponent(q)}`
-                }
-              }}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="e404__section">
-        <div className="e404__container">
-          <h2 className="e404__section-title">{t('error404:quick.title')}</h2>
-          <div className="e404__grid">
-            {quick.map(({ href, k }) => (
-              <a key={k} href={href} className="e404__card">
-                <div className="e404__card-title">{t(`error404:quick.items.${k}.title`)}</div>
-                <div className="e404__card-desc">{t(`error404:quick.items.${k}.desc`)}</div>
-                <span className="e404__card-cta">{t('error404:quick.open')}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-    </div>
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        {quickLinks.map((link, i) => (
+          <motion.div
+            key={link.href}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 * (i + 1) }}
+          >
+            <SurfacePanel className="h-full p-8 space-y-6 flex flex-col hover:border-primary/30 transition-colors">
+              <div className="space-y-3 flex-1">
+                <div className="h-10 w-10 rounded-2xl bg-secondary flex items-center justify-center dark:bg-white/5">
+                   <Compass className="h-5 w-5 text-primary" />
+                </div>
+                <h2 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white">{link.title}</h2>
+                <p className="text-sm text-foreground/60 dark:text-white/60 font-medium leading-relaxed">{link.description}</p>
+              </div>
+              <Button asChild variant="ghost" className="w-full justify-between rounded-full font-bold hover:bg-primary/5 hover:text-primary group">
+                <Link to={link.href} className="flex items-center justify-between w-full">
+                  Open Route
+                  <Sparkles className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              </Button>
+            </SurfacePanel>
+          </motion.div>
+        ))}
+      </div>
+    </section>
   )
 }

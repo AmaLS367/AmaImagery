@@ -1,182 +1,186 @@
 import { useEffect, useState } from 'react'
+import { MoonStar, Sun, LogOut } from 'lucide-react'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MoonStar, Sun, LogIn, UserPlus, LogOut } from 'lucide-react'
-import { Button } from './ui/button'
-import { health } from '../lib/api'
 import { useTranslation } from 'react-i18next'
+
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { appRoutes } from '../lib/routes'
+import { useAuth } from '../providers/AuthProvider'
+import { useSettings } from '../providers/SettingsProvider'
+import { Button } from './ui/button'
+import { cn } from '../lib/utils'
 
 type Theme = 'light' | 'dark'
 
-function readAuthFlag(): boolean {
-  try {
-    const raw = localStorage.getItem('auth')
-    if (!raw) return false
-    const v = JSON.parse(raw)
-    return !!v?.loggedIn
-  } catch {
-    return false
-  }
-}
-
-function getToken(): string | null {
-  try {
-    const raw = localStorage.getItem('auth')
-    if (!raw) return null
-    const obj = JSON.parse(raw)
-    return obj?.user?.access_token || obj?.access_token || obj?.token || null
-  } catch { return null }
-}
+const productLinks = [
+  { href: appRoutes.generate, labelKey: 'navtop:gen' },
+  { href: appRoutes.history, labelKey: 'navtop:history' },
+  { href: appRoutes.settings, labelKey: 'navtop:settings' },
+] as const
 
 export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void }) {
-  const [ok, setOk] = useState<boolean | null>(null)
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => readAuthFlag())
-  const [loggingOut, setLoggingOut] = useState(false)
+  const navigate = useNavigate()
   const { t } = useTranslation()
+  const { status: authStatus, logout } = useAuth()
+  const { settings } = useSettings()
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
 
-  const POLL_SEC = Number(import.meta.env.VITE_HEALTH_POLL_SEC ?? '3600') || 3600
-  const POLL_MS = Math.max(10, POLL_SEC) * 1000  // защита от мусора
-
-  // Проверка здоровье по интервалу
   useEffect(() => {
-    let mounted = true
-    const ping = async () => {
-      try { const res = await health(); if (mounted) setOk(res) } catch { if (mounted) setOk(false) }
-    }
-    ping() 
-    const id = setInterval(() => {
-      if (document.visibilityState === 'visible') ping()
-    }, POLL_MS)
-    return () => { mounted = false; clearInterval(id) }
-  }, [POLL_MS])
-  
-
-  // Подписка на глобальные обновления авторизации
-  useEffect(() => {
-    const apply = () => setIsLoggedIn(readAuthFlag())
-    window.addEventListener('auth:update', apply)
-    // на случай F5 / первого рендера
-    apply()
-    return () => window.removeEventListener('auth:update', apply)
+    const handleScroll = () => setIsScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  const handleLogin = () => {
-    window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'login' }))
-  }
-
-  const handleRegister = () => {
-    window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'register' }))
-  }
 
   const handleLogout = async () => {
     if (loggingOut) return
     setLoggingOut(true)
+
     try {
-      const token = getToken()
-      await fetch('/api/v1/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      }).catch(() => {})
+      await logout()
     } finally {
-      try { localStorage.removeItem('auth') } catch {}
-      setIsLoggedIn(false)
-      window.dispatchEvent(new CustomEvent('auth:update'))
-      window.dispatchEvent(new CustomEvent('goto-tab', { detail: 'gen' }))
-    
-      setTimeout(() => {
-        window.location.reload() 
-      }, 200)
-    
+      navigate(appRoutes.generate, { replace: true })
       setLoggingOut(false)
     }
-  }  
+  }
+
+  const isLoggedIn = authStatus === 'authenticated'
+  const authReady = authStatus !== 'loading'
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
-      <div className="container flex h-14 items-center justify-between">
-        <div className="flex items-center gap-2 font-semibold">
-          <div className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_16px_theme(colors.primary.DEFAULT)]" />
-          {t('appName')}
-        </div>
+    <header className={cn(
+      "sticky top-0 z-50 w-full transition-all duration-300",
+      isScrolled ? "py-3" : "py-5"
+    )}>
+      <div className="page-shell">
+        <div className={cn(
+          "runtime-topbar-shell flex items-center justify-between gap-4 px-6 py-3 transition-all duration-300",
+          settings.visualMode === 'cinematic' && "rounded-[30px]",
+          settings.visualMode === 'editorial' && "rounded-[24px] border-[hsl(28_60%_62%_/_0.2)]",
+          settings.visualMode === 'dashboard' && "rounded-[34px]",
+          settings.visualMode === 'cinematic' && "bg-black/70 border-[hsl(24_100%_60%_/_0.18)] shadow-[0_22px_80px_-36px_rgba(0,0,0,0.8)]",
+          !isScrolled && "bg-transparent border-transparent shadow-none backdrop-blur-0"
+        )}>
+          <div className="flex min-w-0 items-center gap-10">
+            <NavLink to={appRoutes.landing} className="group flex min-w-0 items-center gap-3">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+                <div className="absolute inset-0 rounded-xl bg-primary/20 opacity-0 transition-opacity group-hover:opacity-100" />
+                <div className="h-4 w-4 rounded-full bg-primary shadow-[0_0_20px_theme(colors.primary.DEFAULT)] transition-transform group-hover:scale-110" />
+              </div>
+              <div className="flex min-w-0 flex-col">
+                <span className={cn(
+                  "truncate font-display text-xl font-bold leading-none tracking-tight text-foreground",
+                  settings.visualMode === 'editorial' && "font-serif font-semibold",
+                  settings.visualMode === 'cinematic' && "tracking-[0.02em]"
+                )}>{t('appName')}</span>
+                <span className="hidden text-[10px] font-black uppercase tracking-[0.3em] text-primary md:inline">{t('appSubtitle')}</span>
+              </div>
+            </NavLink>
 
-        <div className="flex items-center gap-3">
-          <AnimatePresence mode="wait">
-            {!isLoggedIn ? (
-              <motion.div
-                key="auth-buttons"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="flex items-center gap-2"
-              >
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2 }}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLogin}
-                    className="gap-2 hover:bg-accent/50 transition-all duration-200"
-                  >
-                    <LogIn className="h-4 w-4" />
+            <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+              {productLinks.map((link) => (
+                <NavLink
+                  key={link.href}
+                  to={link.href}
+                  className={({ isActive }) =>
+                    cn(
+                      'relative rounded-full px-5 py-2 text-sm font-bold tracking-tight transition-all duration-200',
+                      isActive
+                        ? 'text-primary'
+                        : 'text-foreground/60 hover:text-foreground hover:bg-black/5 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/5',
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {t(link.labelKey)}
+                      {isActive && (
+                        <motion.div 
+                          layoutId="nav-pill"
+                          className="absolute inset-0 -z-10 rounded-full bg-primary/10"
+                          transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="hidden h-8 w-px bg-border sm:block" />
+            
+            <AnimatePresence mode="wait">
+              {!authReady ? null : !isLoggedIn ? (
+                <motion.div
+                  key="auth-buttons"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex items-center gap-2"
+                >
+                  <Button variant="ghost" size="sm" onClick={() => navigate(appRoutes.login)} className="h-10 text-xs font-bold uppercase tracking-widest text-foreground/70 hover:text-foreground">
                     {t('nav.login')}
                   </Button>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2 }}>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleRegister}
-                    className="gap-2 shadow-md hover:shadow-lg transition-all duration-200 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-                  >
-                    <UserPlus className="h-4 w-4" />
+                  <Button size="sm" onClick={() => navigate(appRoutes.register)} className="h-10 rounded-full bg-foreground px-6 text-xs font-black uppercase tracking-widest text-background hover:bg-foreground/90">
                     {t('nav.register')}
                   </Button>
                 </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="user-menu"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="flex items-center gap-2"
-              >
-                <span className="text-sm text-muted-foreground">{t('nav.profile')}</span>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2 }}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  disabled={loggingOut}
-                  className="gap-2 hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
+              ) : (
+                <motion.div
+                  key="user-menu"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex items-center gap-2"
                 >
-                  <LogOut className="h-4 w-4" />
-                  {loggingOut ? t('nav.loggingOut') : t('nav.logout')}
-                </Button>
+                  <Button variant="ghost" size="sm" onClick={handleLogout} disabled={loggingOut} className="h-10 gap-2 rounded-full border border-border text-xs font-bold text-foreground hover:bg-black/5 dark:hover:bg-white/5">
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>{loggingOut ? t('nav.loggingOut') : t('nav.logout')}</span>
+                  </Button>
                 </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </AnimatePresence>
 
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2 }} className="ml-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-              className="hover:bg-accent/50 transition-all duration-200"
-            >
-              <motion.div key={theme} initial={{ rotate: 0, scale: 0.8 }} animate={{ rotate: 0, scale: 1 }} transition={{ duration: 0.3, ease: 'easeOut' }}>
+            <div className="flex items-center gap-1.5 rounded-full border border-border bg-secondary/50 p-1 backdrop-blur-md">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={toggleTheme} 
+                className="h-8 w-8 rounded-full text-foreground/70 hover:bg-black/5 hover:text-foreground dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+              >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
-              </motion.div>
-            </Button>
-          </motion.div>
-          <LanguageSwitcher compact />
+              </Button>
+              <div className="h-4 w-px bg-border" />
+              <LanguageSwitcher compact />
+            </div>
+          </div>
         </div>
+
+        {/* Mobile Navigation */}
+        <nav
+          className="mt-4 flex gap-2 overflow-x-auto pb-2 md:hidden no-scrollbar"
+          aria-label="Primary mobile"
+        >
+          {productLinks.map((link) => (
+            <NavLink
+              key={link.href}
+              to={link.href}
+              className={({ isActive }) =>
+                cn(
+                  'shrink-0 rounded-full border px-5 py-2 text-xs font-bold uppercase tracking-widest transition-all duration-200',
+                  isActive
+                    ? 'border-primary/40 bg-primary/10 text-primary shadow-glow'
+                    : 'border-border bg-secondary/50 text-foreground/60',
+                )
+              }
+            >
+              {t(link.labelKey)}
+            </NavLink>
+          ))}
+        </nav>
       </div>
     </header>
   )

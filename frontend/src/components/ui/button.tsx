@@ -2,16 +2,21 @@ import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '../../lib/utils'
-const buttonVariants = cva('inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ring-offset-background', {
+const buttonVariants = cva('runtime-button inline-flex items-center justify-center border border-transparent text-sm font-semibold tracking-[-0.02em] transition-[transform,colors,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ring-offset-background', {
   variants: {
     variant: {
-      default: 'bg-primary text-primary-foreground shadow hover:opacity-95',
-      secondary: 'bg-secondary text-secondary-foreground hover:opacity-90',
-      outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-      ghost: 'hover:bg-accent hover:text-accent-foreground',
-      link: 'underline-offset-4 hover:underline text-primary',
+      default: 'runtime-button-default hover:-translate-y-0.5 hover:brightness-105',
+      secondary: 'runtime-button-secondary hover:-translate-y-0.5 hover:brightness-105',
+      outline: 'runtime-button-outline text-foreground hover:border-primary/40',
+      ghost: 'runtime-button-ghost border-transparent bg-transparent text-foreground/75 hover:text-foreground',
+      link: 'border-transparent bg-transparent underline-offset-4 hover:underline text-primary',
     },
-    size: { default: 'h-10 px-4 py-2', sm: 'h-9 rounded-md px-3', lg: 'h-11 rounded-md px-8', icon: 'h-10 w-10' },
+    size: {
+      default: 'ui-button-size-default py-2.5',
+      sm: 'ui-button-size-sm px-4 text-xs',
+      lg: 'ui-button-size-lg text-base',
+      icon: 'ui-button-size-icon',
+    },
   },
   defaultVariants: { variant: 'default', size: 'default' },
 })

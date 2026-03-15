@@ -13,7 +13,6 @@ from app.core.logging import lg, sec
 from app.core.security import (
     check_family_current,
     clear_user_logged_out,
-    create_access_token,
     create_reset_token,
     decode_reset_token,
     hash_password,
@@ -121,14 +120,26 @@ async def register(payload: RegisterIn):
 
     lg("app").bind(scope="auth", action="register").info("auth.registered")
 
-    token, ttl = create_access_token(sub=user.id, extra={"username": username})
-    return RegisterOut(
+    sid = new_session_id()
+    pair = await issue_tokens_rotating(str(user.id), sid)
+    await clear_user_logged_out(str(user.id))
+
+    body = RegisterOut(
         id=str(user.id),
         email=email,
         username=username,
-        access_token=token,
-        expires_in=ttl,
-    )
+        access_token=pair["access"],
+        expires_in=settings.access_ttl_min * 60,
+    ).model_dump()
+
+    resp = JSONResponse(content=body, status_code=status.HTTP_201_CREATED)
+
+    _clear_refresh_cookie(resp)
+    _clear_access_cookie(resp)
+
+    _set_refresh_cookie(resp, pair["refresh"])
+    _set_access_cookie(resp, pair["access"])
+    return resp
 
 
 @router.get("/me", response_model=MeOut)
@@ -247,7 +258,7 @@ async def forgot_password(payload: ForgotIn) -> None:
         return
 
     token, ttl = create_reset_token(sub=str(user.id))
-    link = f"{settings.frontend_origin.rstrip('/')}/reset?token={token}"
+    link = f"{settings.frontend_origin.rstrip('/')}/reset-password?token={token}"
 
     subject = "Reset your password"
     text = f"Use this link to reset your password (valid {ttl} min): {link}"

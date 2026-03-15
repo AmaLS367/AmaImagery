@@ -43,7 +43,7 @@ dependencies = [
 
     # Auth & Security
     "bcrypt>=4.2.0",
-    "PyJWT>=2.9.0",
+    "PyJWT>=2.12.1",
     "passlib>=1.7.4",
 
     # HTTP & Networking

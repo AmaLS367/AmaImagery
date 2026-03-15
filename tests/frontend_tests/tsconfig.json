@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "types": ["vitest/globals", "node"],
@@ -13,6 +14,7 @@
     }
   },
   "include": [
-    "unit/**/*.ts"
+    "unit/**/*.ts",
+    "unit/**/*.tsx"
   ]
 }

@@ -1,15 +1,16 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { generateJSON, getTaskStatus, type GeneratePayload, type TaskResp, type TaskStatusResp } from '../lib/api'
+import { generateJSON, getTaskStatus, type BackendTaskStatus, type GeneratePayload, type TaskResp, type TaskStatusResp } from '../lib/api'
 import { RequestQueue } from '../lib/queue'
 import { addHistory, type HistoryItem } from '../lib/storage'
-import { guessNSFW } from '../lib/nsfw'
 import { useSettings } from './SettingsProvider' 
+import { useOptionalAuth } from './AuthProvider'
 
-export type JobStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
+export type JobStatus = BackendTaskStatus | 'error'
 export type Job = {
   id: string
   task_id?: string
   status: JobStatus
+  backendStatus?: BackendTaskStatus
   payload: GeneratePayload
   result?: TaskStatusResp
   error?: string
@@ -42,6 +43,7 @@ function beep() {
 
 export function JobProvider({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings()
+  const auth = useOptionalAuth()
   const [jobs, setJobs] = useState<Job[]>([])
   const abortMap = useRef<Map<string, () => void>>(new Map())
 
@@ -54,18 +56,20 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
   }, [settings.queue.maxParallel, settings.queue.cancelPrevious])
 
   const start = (payload: GeneratePayload) => {
+    const isAuthenticated = auth?.status === 'authenticated'
+
     if (settings.queue.cancelPrevious) {
       // отменяем старые задачи
       abortMap.current.forEach(fn => fn())
       abortMap.current.clear()
-      setJobs(prev => prev.map(j => j.status === 'running' || j.status === 'queued' ? { ...j, status: 'canceled' } : j))
+      setJobs(prev => prev.map(j => j.status === 'running' || j.status === 'queued' ? { ...j, status: 'canceled', backendStatus: 'canceled' } : j))
     }
 
     const id = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
       ? crypto.randomUUID()
       : `job_${Date.now()}_${Math.random().toString(36).slice(2)}`
 
-    const job: Job = { id, status: 'queued', payload, startedAt: Date.now() }
+    const job: Job = { id, status: 'queued', backendStatus: 'queued', payload, startedAt: Date.now() }
     setJobs(prev => [job, ...prev])
 
     const { promise, abort } = queueRef.current.run(async (signal) => {
@@ -74,20 +78,18 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
       const task_id = taskResp.task_id
 
       // Обновляем job с task_id
-      setJobs(prev => prev.map(j => j.id === id ? { ...j, task_id, status: 'running' } : j))
+      setJobs(prev => prev.map(j => j.id === id ? { ...j, task_id, status: 'running', backendStatus: 'running' } : j))
 
       // Polling статуса задачи
       const pollInterval = 2000 // 2 секунды
       const maxAttempts = 300 // максимум 10 минут (300 * 2 сек)
-      const queuedTimeout = 120000 // 2 минуты для статуса "queued" (если worker не запущен)
       let attempts = 0
-      let queuedStartTime: number | null = null
 
       while (attempts < maxAttempts && !signal.aborted) {
         await new Promise(resolve => setTimeout(resolve, pollInterval))
         
         if (signal.aborted) {
-          setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', finishedAt: Date.now() } : j))
+          setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', backendStatus: 'canceled', finishedAt: Date.now() } : j))
           return
         }
 
@@ -101,30 +103,29 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
             // Задача завершена успешно
             setJobs(prev => prev.map(j => j.id === id ? { 
               ...j, 
-              status: 'done', 
+              status: 'completed', 
+              backendStatus: 'completed',
               result: statusResp, 
               finishedAt: Date.now() 
             } : j))
 
-            // В историю
-            const hist: HistoryItem = {
-              prompt: payload.prompt,
-              neg: payload.negative_prompt || '',
-              steps: payload.steps,
-              guidance: payload.guidance_scale,
-              width: payload.width,
-              height: payload.height,
-              seed: payload.seed,
-              ipScale: payload.ip_scale ?? 0.6,
-              path: statusResp.image_path || '',
-              ts: Date.now(),
-              tags: [],
-              pinned: false,
-              nsfw: guessNSFW(payload.prompt, payload.negative_prompt || ''),
-              exp: statusResp.exp || undefined,
-              sig: statusResp.sig || undefined,
+            if (!isAuthenticated) {
+              const hist: HistoryItem = {
+                prompt: payload.prompt,
+                neg: payload.negative_prompt || '',
+                steps: payload.steps,
+                guidance: payload.guidance_scale,
+                width: payload.width,
+                height: payload.height,
+                seed: payload.seed,
+                ipScale: payload.ip_scale ?? 0.6,
+                path: statusResp.image_path || statusResp.image_filename || '',
+                ts: Date.now(),
+                exp: statusResp.exp || undefined,
+                sig: statusResp.sig || undefined,
+              }
+              addHistory(hist)
             }
-            addHistory(hist)
 
             // Уведомления/звук
             if (settings.notifyOnDone && 'Notification' in window) {
@@ -141,32 +142,32 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
             setJobs(prev => prev.map(j => j.id === id ? { 
               ...j, 
               status: 'error', 
+              backendStatus: 'failed',
+              result: statusResp,
               error: errorMsg, 
               finishedAt: Date.now() 
             } : j))
             return
-          } else if (statusResp.status === 'queued') {
-            // Отслеживаем время в статусе "queued"
-            if (queuedStartTime === null) {
-              queuedStartTime = Date.now()
-            } else if (Date.now() - queuedStartTime > queuedTimeout) {
-              // Задача слишком долго в очереди - вероятно worker не запущен
-              setJobs(prev => prev.map(j => j.id === id ? { 
-                ...j, 
-                status: 'error', 
-                error: 'Task stuck in queue. Worker may not be running.', 
-                finishedAt: Date.now() 
-              } : j))
-              return
-            }
-          } else if (statusResp.status === 'running') {
-            // Сбрасываем таймер, если задача начала выполняться
-            queuedStartTime = null
+          } else if (statusResp.status === 'canceled') {
+            setJobs(prev => prev.map(j => j.id === id ? {
+              ...j,
+              status: 'canceled',
+              backendStatus: 'canceled',
+              result: statusResp,
+              finishedAt: Date.now(),
+            } : j))
+            return
+          } else {
+            setJobs(prev => prev.map(j => j.id === id ? {
+              ...j,
+              status: statusResp.status,
+              backendStatus: statusResp.status,
+              result: statusResp,
+            } : j))
           }
-          // Продолжаем polling для статусов 'queued' и 'running'
         } catch (e: any) {
           if (e?.name === 'AbortError') {
-            setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', finishedAt: Date.now() } : j))
+            setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', backendStatus: 'canceled', finishedAt: Date.now() } : j))
             return
           }
           // Ошибка при получении статуса - продолжаем попытки
@@ -181,7 +182,7 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
         setJobs(prev => prev.map(j => j.id === id ? { 
           ...j, 
           status: 'error', 
-          error: 'Generation timeout', 
+          error: 'Generation status polling timed out',
           finishedAt: Date.now() 
         } : j))
       }
@@ -191,7 +192,7 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
 
     promise.catch((e: any) => {
       if (e?.name === 'AbortError') {
-        setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', finishedAt: Date.now() } : j))
+        setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', backendStatus: 'canceled', finishedAt: Date.now() } : j))
       } else {
         setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'error', error: e?.message || String(e), finishedAt: Date.now() } : j))
       }
