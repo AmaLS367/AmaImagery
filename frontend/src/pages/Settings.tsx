@@ -8,12 +8,9 @@ import {
   Palette,
   Settings as SettingsIcon,
   Shield,
-  Sparkles,
-  Trash2,
 } from 'lucide-react'
 
 import LanguageSwitcher from '../components/LanguageSwitcher'
-import { Button } from '../components/ui/button'
 import { MetaPill, SurfacePanel } from '../components/ui/foundation'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -153,37 +150,6 @@ export default function Settings() {
     }, 1000)
     return () => clearTimeout(timeout)
   }, [settings, hydrating, isAuthenticated])
-
-  const updatePreset = (presetId: string, patch: Partial<typeof settings.presets[number]>) => {
-    update('presets', settings.presets.map((preset) => (preset.id === presetId ? { ...preset, ...patch } : preset)))
-  }
-
-  const addPreset = () => {
-    const id = `preset-${Date.now()}`
-    update('presets', [
-      ...settings.presets,
-      {
-        id,
-        name: t('settings:presets.new_preset'),
-        steps: 28,
-        guidance: 7,
-        width: 896,
-        height: 1024,
-        seed: null,
-        ipScale: 0.6,
-        neg: '',
-      },
-    ])
-    update('defaultPresetId', id)
-  }
-
-  const removePreset = (presetId: string) => {
-    const next = settings.presets.filter((preset) => preset.id !== presetId)
-    update('presets', next)
-    if (settings.defaultPresetId === presetId) {
-      update('defaultPresetId', next[0]?.id ?? null)
-    }
-  }
 
   const appearanceSection = (
     <SettingsSection
@@ -476,77 +442,12 @@ export default function Settings() {
     </SettingsSection>
   )
 
-  const presetsSection = (
-    <SettingsSection
-      tone={tone}
-      title={t('settings:sections.presets.title')}
-      description={t('settings:sections.presets.description')}
-      action={
-        <Button variant="outline" size="sm" onClick={addPreset} className="rounded-full">
-          <Sparkles className="mr-2 h-4 w-4" />
-          {t('settings:presets.add')}
-        </Button>
-      }
-    >
-      <div className="space-y-5">
-        {settings.presets.map((preset) => (
-          <div key={preset.id} className={cn('rounded-[28px] border p-5 space-y-4', tone === 'cinematic' ? 'border-white/10 bg-black/25' : 'border-border/40 bg-secondary/10')}>
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <Input
-                value={preset.name}
-                onChange={(event) => updatePreset(preset.id, { name: event.target.value })}
-                className="max-w-sm rounded-2xl"
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={settings.defaultPresetId === preset.id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => update('defaultPresetId', preset.id)}
-                  className="rounded-full"
-                >
-                  {t('settings:presets.default')}
-                </Button>
-                {settings.presets.length > 1 ? (
-                  <Button variant="ghost" size="icon" onClick={() => removePreset(preset.id)} className="rounded-full">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Input value={preset.steps} type="number" onChange={(event) => updatePreset(preset.id, { steps: Number(event.target.value) })} />
-              <Input value={preset.guidance} type="number" step="0.5" onChange={(event) => updatePreset(preset.id, { guidance: Number(event.target.value) })} />
-              <Input value={preset.width} type="number" step="64" onChange={(event) => updatePreset(preset.id, { width: Number(event.target.value) })} />
-              <Input value={preset.height} type="number" step="64" onChange={(event) => updatePreset(preset.id, { height: Number(event.target.value) })} />
-              <Input value={preset.seed ?? ''} type="number" onChange={(event) => updatePreset(preset.id, { seed: event.target.value ? Number(event.target.value) : null })} />
-              <Input value={preset.ipScale} type="number" step="0.05" onChange={(event) => updatePreset(preset.id, { ipScale: Number(event.target.value) })} />
-            </div>
-
-            <Textarea
-              value={preset.neg}
-              onChange={(event) => updatePreset(preset.id, { neg: event.target.value })}
-              placeholder={t('settings:presets.neg_placeholder')}
-              className={cn(
-                'min-h-[110px] rounded-[24px] border p-4',
-                tone === 'cinematic'
-                  ? 'border-white/10 bg-black/30 text-white placeholder:text-white/20'
-                  : 'border-border bg-secondary/20',
-              )}
-            />
-          </div>
-        ))}
-      </div>
-    </SettingsSection>
-  )
-
   const sectionsMap = {
     appearance: appearanceSection,
     mode: modeSection,
     queue: queueSection,
     notifications: notificationsSection,
     safety: safetySection,
-    presets: presetsSection,
   }
 
   const orderedSections = localSettingsSections.map((section) => (

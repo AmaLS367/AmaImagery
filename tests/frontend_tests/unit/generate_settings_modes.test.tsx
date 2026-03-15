@@ -124,6 +124,5 @@ describe('Settings page visual modes', () => {
     expect(screen.getByText('Queue and archive')).toBeInTheDocument()
     expect(screen.getByText('Notifications')).toBeInTheDocument()
     expect(screen.getByText('Safety and prompt defaults')).toBeInTheDocument()
-    expect(screen.getByText('Default presets')).toBeInTheDocument()
   })
 })
