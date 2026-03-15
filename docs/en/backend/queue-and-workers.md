@@ -227,8 +227,8 @@ docker compose -f docker/compose.prod.yml up -d --scale generation_worker=3
 ### Dependencies
 
 Workers require:
-- **Redis** - For task queue and status storage
-- **PostgreSQL** - For saving generation metadata
+- **Redis** - For task transport
+- **PostgreSQL** - For lifecycle state, metadata, and artifact references
 - **ComfyUI connectivity** - For `runtime-core` / ComfyUI-only deployments
 - **Model files and GPU** - Only for `runtime-ml` / Diffusers deployments
 
@@ -246,7 +246,7 @@ docker compose -f docker/compose.prod.yml logs -f generation_worker
 
 Monitor task queue length and processing times:
 - Queue length: `LLEN tasks:queue` in Redis
-- Task status: Query `task:{id}` hash in Redis
+- Task status: Query the `generations` record through the status API or database
 - Worker health: Check worker process logs
 
 ## Troubleshooting

@@ -227,8 +227,8 @@ docker compose -f docker/compose.prod.yml up -d --scale generation_worker=3
 ### Зависимости
 
 Воркеры требуют:
-- **Redis** - Для очереди задач и хранения статусов
-- **PostgreSQL** - Для сохранения метаданных генерации
+- **Redis** - Для транспорта задач
+- **PostgreSQL** - Для lifecycle state, metadata и ссылок на артефакты
 - **Доступность ComfyUI** - Для `runtime-core` / ComfyUI-only деплоя
 - **Файлы моделей и GPU** - Только для `runtime-ml` / режима Diffusers
 
@@ -246,7 +246,7 @@ docker compose -f docker/compose.prod.yml logs -f generation_worker
 
 Мониторинг длины очереди и времени обработки:
 - Длина очереди: `LLEN tasks:queue` в Redis
-- Статус задачи: Запрос hash `task:{id}` в Redis
+- Статус задачи: через status API или напрямую по записи `generations` в базе
 - Здоровье воркера: Проверка логов процесса воркера
 
 ## Устранение неполадок

@@ -2,105 +2,89 @@
 
 ## Overview
 
-The backend is built with **FastAPI** and Python, providing a robust REST API for image generation, editing, and management. It includes ML inference pipeline, database management, authentication, and comprehensive monitoring.
+The backend is built with **FastAPI** and Python. Its current public surface is centered on image generation, auth, user settings/history, moderation, file delivery, and admin/readiness flows.
 
 ## Key Components
 
 ### 🔌 API Layer
-- RESTful API with FastAPI
-- JWT-based authentication
-- Rate limiting and request validation
-- Auto-generated OpenAPI documentation
+- FastAPI route tree under `/api/v1/*`
+- JWT-based auth flows
+- request validation and rate limiting
+- OpenAPI docs via the app docs route when enabled
 
-### 🧠 Inference Pipeline
-- Stable Diffusion 1.5 integration
-- Custom models (AmaFusion, DreamShaper)
-- IP-Adapter for image conditioning
-- Optimized CUDA inference
-
-### 🔌 Provider Layer
-- Provider abstraction for image generation
-- Pluggable provider architecture
-- Support for multiple generation backends
-- See [Provider Documentation](./providers.md) for details
+### 🧠 Provider Runtime
+- provider abstraction for image generation
+- support for `comfyui` and `diffusers`
+- provider readiness and failure tracking
+- see [Providers](./providers.md)
 
 ### 📦 Queue and Workers
-- Asynchronous task queue for image generation
-- Background workers for heavy processing
-- Task status tracking via Redis
-- See [Queue and Workers Documentation](./queue-and-workers.md) for details
+- asynchronous generation queue
+- separate worker process for heavy generation tasks
+- PostgreSQL as lifecycle source of truth
+- Redis as queue/rate-limit infrastructure when enabled
+- see [Queue and Workers](./queue-and-workers.md)
 
 ### 📋 Application Layer
-- Use cases for business scenario orchestration
-- Command/Result pattern for clear input/output
-- Separation of business logic from API handlers
-- See [Application Layer Documentation](./application.md) for details
+- use cases for business orchestration
+- command/result pattern around generation and status flows
+- see [Application Layer](./application.md)
 
 ### 🗄️ Data Layer
-- PostgreSQL database with async SQLAlchemy
+- PostgreSQL with async SQLAlchemy
 - Alembic migrations
-- Redis for caching and rate limiting
-- Repository pattern for data access abstraction
-- Unit of Work for transaction management
-- See [Repositories and Unit of Work Documentation](./repositories.md) for details
+- repository pattern + unit of work
+- see [Repositories and Unit of Work](./repositories.md)
 
 ### ⚡ Concurrency Model
-- Async ORM for non-blocking database operations
-- Task queue for heavy operations
-- Background workers for ML inference and processing
-- Event loop safety and performance optimization
-- See [Concurrency Model Documentation](./concurrency.md) for details
+- async ORM and async API handlers
+- worker-based execution for long-running generation
+- see [Concurrency Model](./concurrency.md)
 
 ### 🛡️ Security & Safety
-- Prompt hygiene system
-- NSFW content filtering
-- Input validation
-- Network security (net_guard)
+- prompt hygiene support
+- NSFW moderation routes
+- input validation and security middleware
 
-### 📊 Monitoring
-- Prometheus metrics
-- Structured logging
-- GPU monitoring
-- Performance tracking
-
-### 🔍 Observability
-- Structured error handling with domain exceptions
-- Comprehensive metrics for providers, queues, and workers
-- Feature flags for runtime configuration
-- Domain events for decoupled communication
-- See [Observability Documentation](./observability.md) for details
+### 📊 Observability
+- structured logging
+- domain events
+- feature flags
+- repo-side metrics modules
+- note: a public `/metrics` endpoint is not mounted by default
+- see [Observability](./observability.md)
 
 ## Documentation Sections
 
-- [Architecture](./architecture.md) - System architecture and design
-- [API Documentation](./api/overview.md) - Complete API reference
 - [Providers](./providers.md) - Provider abstraction layer
-- [Admin and Readiness](./admin-and-readiness.md) - Admin access, liveness, readiness, and lifecycle contract
+- [Admin and Readiness](./admin-and-readiness.md) - Admin access, liveness, readiness, lifecycle contract
 - [Queue and Workers](./queue-and-workers.md) - Task queue and worker architecture
-- [Application Layer](./application.md) - Use cases and business scenario orchestration
-- [Repositories and Unit of Work](./repositories.md) - Data access layer and transaction management
-- [Concurrency Model](./concurrency.md) - Async ORM and concurrency architecture
-- [Observability](./observability.md) - Error handling, metrics, feature flags, and domain events
-- [Core Modules](./core/) - Security, logging, errors, limits
-- [Services](./services/) - Business logic services
-- [Inference](./inference/) - ML inference pipeline
-- [Prompt Hygiene](./prompt-hygiene/) - Prompt validation system
-- [Database](./database/) - Database schema and models
-- [Middleware](./middleware/) - Request processing middleware
-- [Monitoring](./monitoring/) - Metrics and logging
-- [Configuration](./configuration.md) - Backend configuration
+- [Application Layer](./application.md) - Use cases and orchestration
+- [Repositories and Unit of Work](./repositories.md) - Data access and transactions
+- [Concurrency Model](./concurrency.md) - Async and worker execution model
+- [Observability](./observability.md) - Errors, events, metrics modules, feature flags
+
+### 🚧 Planned Deep-Dive Pages
+
+- Architecture page — Coming soon
+- API sub-tree docs — Coming soon
+- Core modules deep-dive — Coming soon
+- Services deep-dive — Coming soon
+- Inference deep-dive — Coming soon
+- Database deep-dive — Coming soon
+- Middleware deep-dive — Coming soon
+- Configuration deep-dive — Coming soon
 
 ## Quick Start
 
-See [Development Setup](../development/getting-started.md) for installation instructions.
+See [Development](../development/README.md) for installation and local run instructions.
 
 ## Technology Stack
 
-- **Framework:** FastAPI 0.116.1
+- **Framework:** FastAPI
 - **Python:** 3.11+
-- **ML:** PyTorch 2.2.2, Diffusers 0.29.2
-- **Database:** PostgreSQL, SQLAlchemy 2.0
-- **Cache:** Redis 5.0
-- **Auth:** JWT (PyJWT)
-- **Validation:** Pydantic 2.11
-
+- **Database:** PostgreSQL + SQLAlchemy
+- **Queue / limits:** Redis
+- **Migrations:** Alembic
+- **Auth:** JWT / cookies
+- **ML runtime:** provider-based `comfyui` or `diffusers`

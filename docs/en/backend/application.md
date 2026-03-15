@@ -113,12 +113,12 @@ else:
 **Purpose:** Retrieves status of a generation task.
 
 **Dependencies:**
-- `TaskQueue` - For task status retrieval
-- `UnitOfWork` - Optional, for database lookups
+- `UnitOfWork` - For loading the persisted generation record
+- `ArtifactService` - For building download metadata when an artifact exists
 
 **Flow:**
-1. Retrieves task status from queue
-2. Maps status to API response format
+1. Loads generation state from PostgreSQL
+2. Builds the public payload from the persisted lifecycle record
 3. Returns status data or error
 
 **Usage:**
