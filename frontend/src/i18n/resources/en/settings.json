@@ -1,6 +1,10 @@
 {
   "title": "Customize your workspace",
   "subtitle": "Adjust theme, accent colors, queue behavior, notification preferences, and more — all in one place.",
+  "hero": {
+    "title": "A complete control center for every visual mode",
+    "description": "Each mode keeps the same local settings inventory intact while changing how the shell feels, reads, and moves across the product."
+  },
   "groups": {
     "appearance": "Appearance",
     "generation": "Generation interface",
@@ -61,6 +65,11 @@
       "cinematic": "Cinematic"
     }
   },
+  "visual_mode_descriptions": {
+    "dashboard": "Operational, dense, and explicit. Best when you want the full control grid at once.",
+    "editorial": "Narrative, spacious, and typographic. Keeps all controls but changes the reading rhythm.",
+    "cinematic": "Immersive, contrast-heavy, and atmospheric. Retains every local control inside a dramatic shell."
+  },
   "queue": {
     "title": "Queue & history",
     "parallel": {
@@ -104,5 +113,37 @@
     "title": "Visual Laboratory",
     "desc": "Preview and apply visual presets.",
     "apply": "Apply visual mode"
+  },
+  "sections": {
+    "appearance": {
+      "title": "Appearance",
+      "description": "Theme, accent, motion, density, glass surfaces, and interface language."
+    },
+    "mode": {
+      "title": "Mode orchestration",
+      "description": "Control visual mode, shell preset, and component treatment without touching backend settings."
+    },
+    "queue": {
+      "title": "Queue and archive",
+      "description": "Tune local queue behavior, cancellation policy, and visible archive depth."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Choose whether the interface announces finished generations with desktop alerts and sound."
+    },
+    "safety": {
+      "title": "Safety and prompt defaults",
+      "description": "Keep NSFW visibility and negative guidance defaults explicit at the shell level."
+    },
+    "presets": {
+      "title": "Default presets",
+      "description": "Manage reusable local preset bundles for generation defaults."
+    }
+  },
+  "presets": {
+    "add": "Add preset",
+    "default": "Default",
+    "new_preset": "New preset",
+    "neg_placeholder": "Default negative prompt for this preset"
   }
 }

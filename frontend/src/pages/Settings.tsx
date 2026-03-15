@@ -1,39 +1,35 @@
 import { motion } from 'framer-motion'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { 
-  Palette, 
-  Cpu, 
-  History as HistoryIcon, 
-  Bell, 
-  Shield, 
-  FlaskConical, 
-  ChevronRight,
+import { useEffect, useRef, useState } from 'react'
+import {
+  Bell,
+  Check,
+  Cpu,
+  Layers,
+  Palette,
   Settings as SettingsIcon,
-  Monitor,
-  Layout,
-  User,
-  Zap
+  Shield,
+  Sparkles,
+  Trash2,
 } from 'lucide-react'
 
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import { Button } from '../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { MetaPill, SectionEyebrow, SurfacePanel } from '../components/ui/foundation'
+import { MetaPill, SurfacePanel } from '../components/ui/foundation'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Switch } from '../components/ui/switch'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import { Textarea } from '../components/ui/textarea'
 import { getMySettings, patchMySettings } from '../lib/api'
+import { localSettingsSections } from '../lib/settingsInventory'
+import { cn } from '../lib/utils'
 import { useAuth } from '../providers/AuthProvider'
 import { useSettings } from '../providers/SettingsProvider'
 import { useTranslation } from 'react-i18next'
-import { cn } from '../lib/utils'
-import { EditorialFrame } from '../components/editorial/EditorialFrame'
 
 const PRESETS_ACCENT = [
   '#06B6D4',
   '#0EA5E9',
   '#3B82F6',
-  '#0F7ABF',
   '#2DD4BF',
   '#10B981',
   '#F59E0B',
@@ -41,464 +37,575 @@ const PRESETS_ACCENT = [
   '#EF4444',
 ] as const
 
+type Tone = 'dashboard' | 'editorial' | 'cinematic'
+
+function toneCard(tone: Tone) {
+  if (tone === 'editorial') return 'border-foreground/10 bg-card/40'
+  if (tone === 'cinematic') return 'border-white/10 bg-white/5 text-white backdrop-blur-2xl'
+  return 'border-border/50 bg-card/75'
+}
+
+function SettingsSection({
+  tone,
+  title,
+  description,
+  action,
+  children,
+  className,
+}: {
+  tone: Tone
+  title: string
+  description: string
+  action?: React.ReactNode
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <SurfacePanel className={cn('p-6 md:p-8 space-y-6', toneCard(tone), className)}>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <h3 className={cn(
+            'font-black uppercase tracking-[0.2em] text-xs text-primary',
+            tone === 'editorial' && 'font-serif normal-case tracking-normal text-3xl font-light',
+            tone === 'cinematic' && 'text-[10px] tracking-[0.35em]',
+          )}>
+            {title}
+          </h3>
+          <p className={cn('max-w-2xl text-sm leading-relaxed', tone === 'cinematic' ? 'text-white/60' : 'text-foreground/60')}>
+            {description}
+          </p>
+        </div>
+        {action}
+      </div>
+      {children}
+    </SurfacePanel>
+  )
+}
+
+function ToggleRow({
+  tone,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  tone: Tone
+  label: string
+  description?: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-[24px] border border-border/30 bg-secondary/10 p-4 dark:border-white/10">
+      <div className="space-y-1">
+        <div className={cn('text-sm font-bold', tone === 'cinematic' ? 'text-white' : 'text-foreground')}>{label}</div>
+        {description ? (
+          <div className={cn('text-xs leading-relaxed', tone === 'cinematic' ? 'text-white/50' : 'text-foreground/50')}>
+            {description}
+          </div>
+        ) : null}
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  )
+}
+
 export default function Settings() {
-  const { t, i18n } = useTranslation(['settings', 'common'])
+  const { t } = useTranslation(['settings', 'common'])
   const { settings, update } = useSettings()
   const { status: authStatus, isAuthenticated } = useAuth()
   const defaultRef = useRef<typeof settings | null>(null)
-  const lastSentRef = useRef('')
   const [hydrating, setHydrating] = useState(true)
-  const [activeGroup, setActiveGroup] = useState('appearance')
 
-  const CONTROL_GROUPS = [
-    { id: 'appearance', label: t('settings:groups.appearance'), icon: <Palette className="h-4 w-4" /> },
-    { id: 'generation-shell', label: t('settings:groups.generation'), icon: <Cpu className="h-4 w-4" /> },
-    { id: 'queue-history', label: t('settings:groups.queue'), icon: <HistoryIcon className="h-4 w-4" /> },
-    { id: 'notifications', label: t('settings:groups.notifications'), icon: <Bell className="h-4 w-4" /> },
-    { id: 'safety-language', label: t('settings:groups.safety'), icon: <Shield className="h-4 w-4" /> },
-    { id: 'visual-lab', label: t('settings:groups.lab'), icon: <FlaskConical className="h-4 w-4" /> },
-  ] as const
+  if (!defaultRef.current) defaultRef.current = JSON.parse(JSON.stringify(settings))
 
-  if (!defaultRef.current) {
-    defaultRef.current = JSON.parse(JSON.stringify(settings))
-  }
+  const tone = settings.visualMode
 
   const setHex = (hex: string) => {
     if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return
     update('accentHex', hex.startsWith('#') ? hex : `#${hex}`)
   }
 
-  const applyVisualMode = () => {
-    if (settings.visualMode === 'editorial') {
-      update('shellPreset', 'editorial')
-      update('componentStyle', 'clean-soft')
-      update('glass', false)
-    } else if (settings.visualMode === 'cinematic') {
-      update('shellPreset', 'creator-luxury')
-      update('componentStyle', 'glass')
-      update('glass', true)
-    } else {
-      update('shellPreset', 'creator-luxury')
-      update('componentStyle', 'glass')
-    }
-  }
-
-  const summaryFacts = useMemo(
-    () => [
-      { label: t('settings:config.facts.theme'), value: settings.theme === 'dark' ? t('settings:appearance.theme.dark') : t('settings:appearance.theme.light') },
-      { label: t('settings:config.facts.accent'), value: settings.accentHex.toUpperCase() },
-      { label: t('settings:config.facts.motion'), value: settings.motion === 0 ? t('settings:appearance.motion.reduced') : settings.motion === 2 ? t('settings:appearance.motion.expressive') : t('settings:appearance.motion.standard') },
-      { label: t('settings:config.facts.glass'), value: settings.glass ? 'On' : 'Off' },
-      { label: t('settings:config.facts.density'), value: settings.density === 'compact' ? t('settings:appearance.density.compact') : t('settings:appearance.density.comfortable') },
-      { label: t('settings:config.facts.history'), value: String(settings.historyLimit) },
-    ],
-    [settings, i18n.language, t],
-  )
-
   const applySnapshot = (payload: Record<string, unknown>) => {
     const defaults = defaultRef.current!
-    update('theme', (payload.theme as typeof settings.theme) ?? defaults.theme)
-    update('accentHex', (payload.accentHex as string) ?? defaults.accentHex)
-    update('motion', (payload.motion as typeof settings.motion) ?? defaults.motion)
-    update('glass', typeof payload.glass === 'boolean' ? payload.glass : defaults.glass)
-    update('density', (payload.density as typeof settings.density) ?? defaults.density)
-    update('visualMode', (payload.visualMode as typeof settings.visualMode) ?? defaults.visualMode)
-    update('shellPreset', (payload.shellPreset as typeof settings.shellPreset) ?? defaults.shellPreset)
-    update('componentStyle', (payload.componentStyle as typeof settings.componentStyle) ?? defaults.componentStyle)
-    update('historyLimit', (payload.historyLimit as typeof settings.historyLimit) ?? defaults.historyLimit)
-    update('nsfwHide', typeof payload.nsfwHide === 'boolean' ? payload.nsfwHide : defaults.nsfwHide)
-    update('notifyOnDone', typeof payload.notifyOnDone === 'boolean' ? payload.notifyOnDone : defaults.notifyOnDone)
-    update('soundOnDone', typeof payload.soundOnDone === 'boolean' ? payload.soundOnDone : defaults.soundOnDone)
-    update('banlist', (payload.banlist as string) ?? defaults.banlist)
-    update('queue', (payload.queue as typeof settings.queue) ?? defaults.queue)
-    update('defaultPresetId', (payload.defaultPresetId as string | null) ?? defaults.defaultPresetId)
-  }
-
-  const buildSettingsPayload = () => ({
-    theme: settings.theme,
-    accentHex: settings.accentHex,
-    motion: settings.motion,
-    glass: settings.glass,
-    density: settings.density,
-    visualMode: settings.visualMode,
-    shellPreset: settings.shellPreset,
-    componentStyle: settings.componentStyle,
-    historyLimit: settings.historyLimit,
-    nsfwHide: settings.nsfwHide,
-    notifyOnDone: settings.notifyOnDone,
-    soundOnDone: settings.soundOnDone,
-    banlist: settings.banlist,
-    queue: settings.queue,
-    defaultPresetId: settings.defaultPresetId,
-  })
-
-  const loadFromServer = () => {
-    setHydrating(true)
-    const defaults = defaultRef.current!
-    applySnapshot(defaults as unknown as Record<string, unknown>)
-
-    getMySettings()
-      .then((response) => {
-        const remote = (response?.data as Record<string, unknown>) || {}
-        applySnapshot(remote)
-        lastSentRef.current = JSON.stringify({
-          ...defaults,
-          ...remote,
-        })
-      })
-      .catch(() => {
-        lastSentRef.current = JSON.stringify(defaults)
-      })
-      .finally(() => setHydrating(false))
+    Object.keys(defaults).forEach((key) => {
+      if (payload[key] !== undefined) update(key as never, payload[key] as never)
+    })
   }
 
   useEffect(() => {
-    const defaults = defaultRef.current!
-
-    if (authStatus === 'loading') {
-      setHydrating(true)
-      return
-    }
-
+    if (authStatus === 'loading') return
     if (!isAuthenticated) {
-      applySnapshot(defaults as unknown as Record<string, unknown>)
-      lastSentRef.current = JSON.stringify(defaults)
       setHydrating(false)
       return
     }
 
-    loadFromServer()
+    setHydrating(true)
+    getMySettings().then((res) => {
+      if (res?.data) applySnapshot(res.data)
+    }).finally(() => setHydrating(false))
   }, [authStatus, isAuthenticated])
 
   useEffect(() => {
     if (hydrating || !isAuthenticated) return
-
     const timeout = setTimeout(() => {
-      const payload = buildSettingsPayload()
-      const snapshot = JSON.stringify(payload)
-      if (snapshot !== lastSentRef.current) {
-        lastSentRef.current = snapshot
-        patchMySettings(payload).catch(() => {})
-      }
-    }, 400)
-
+      patchMySettings(settings).catch(() => {})
+    }, 1000)
     return () => clearTimeout(timeout)
   }, [settings, hydrating, isAuthenticated])
 
-  return (
-    <EditorialFrame
-      eyebrow="Settings"
-      title="Personalize your studio experience."
-      summary="Control how the interface responds, manage your generation queue, and set your preferences for a professional creative workflow."
-      pills={['v1.0.4-stable', 'Cloud Sync', 'Real-time Updates']}
+  const updatePreset = (presetId: string, patch: Partial<typeof settings.presets[number]>) => {
+    update('presets', settings.presets.map((preset) => (preset.id === presetId ? { ...preset, ...patch } : preset)))
+  }
+
+  const addPreset = () => {
+    const id = `preset-${Date.now()}`
+    update('presets', [
+      ...settings.presets,
+      {
+        id,
+        name: t('settings:presets.new_preset'),
+        steps: 28,
+        guidance: 7,
+        width: 896,
+        height: 1024,
+        seed: null,
+        ipScale: 0.6,
+        neg: '',
+      },
+    ])
+    update('defaultPresetId', id)
+  }
+
+  const removePreset = (presetId: string) => {
+    const next = settings.presets.filter((preset) => preset.id !== presetId)
+    update('presets', next)
+    if (settings.defaultPresetId === presetId) {
+      update('defaultPresetId', next[0]?.id ?? null)
+    }
+  }
+
+  const appearanceSection = (
+    <SettingsSection
+      tone={tone}
+      title={t('settings:sections.appearance.title')}
+      description={t('settings:sections.appearance.description')}
     >
-      <div className="grid gap-12 xl:grid-cols-[280px_1fr_340px] items-start">
-        {/* Navigation Sidebar */}
-        <aside className="space-y-8 sticky top-24">
-          <SurfacePanel className="p-6 space-y-2">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary px-3 mb-4">Command Center</h4>
-            <nav className="space-y-1">
-              {CONTROL_GROUPS.map((group) => (
-                <a
-                  key={group.id}
-                  href={`#${group.id}`}
-                  onClick={() => setActiveGroup(group.id)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-full px-4 py-3 text-sm font-bold transition-all",
-                    activeGroup === group.id 
-                      ? "bg-primary text-primary-foreground shadow-glow" 
-                      : "text-foreground/60 hover:bg-black/5 dark:text-white/60 dark:hover:bg-white/5"
-                  )}
-                >
-                  <span className={cn(activeGroup === group.id ? "text-primary-foreground" : "text-primary")}>{group.icon}</span>
-                  {group.label}
-                </a>
-              ))}
-            </nav>
-          </SurfacePanel>
-
-          <SurfacePanel className="p-8 space-y-6">
-             <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-secondary flex items-center justify-center dark:bg-white/5">
-                   <User className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                   <div className="text-[10px] font-black uppercase tracking-widest text-foreground/40 dark:text-white/40">Connected as</div>
-                   <div className="text-sm font-bold text-foreground dark:text-white">Studio Operator</div>
-                </div>
-             </div>
-             <Button variant="outline" className="w-full rounded-full font-bold border-border">Account Portal</Button>
-          </SurfacePanel>
-        </aside>
-
-        {/* Main Controls */}
-        <div className="space-y-10">
-          <SurfacePanel className="p-10 space-y-10">
-            <div className="space-y-2 border-b border-border pb-8 dark:border-white/10">
-               <h2 className="font-display text-3xl font-bold tracking-tight text-foreground dark:text-white">{t('settings:config.title')}</h2>
-               <p className="text-foreground/60 dark:text-white/60 font-medium">{t('settings:config.preset')}: <span className="text-primary">{settings.shellPreset === 'creator-luxury' ? 'Creator-Luxury' : 'Editorial'}</span></p>
-            </div>
-
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {summaryFacts.map((fact) => (
-                <div key={fact.label} className="p-6 rounded-3xl border border-border bg-secondary/30 dark:border-white/10 dark:bg-white/5">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{fact.label}</div>
-                  <div className="mt-3 text-sm font-bold text-foreground dark:text-white/90">{fact.value}</div>
-                </div>
-              ))}
-            </div>
-          </SurfacePanel>
-
-          <div className="space-y-12">
-            {/* Appearance Section */}
-            <section id="appearance" className="scroll-mt-32 space-y-8">
-              <div className="flex items-center gap-4">
-                 <div className="h-px flex-1 bg-border dark:border-white/10" />
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">{t('settings:appearance.title')}</h3>
-                 <div className="h-px flex-1 bg-border dark:border-white/10" />
-              </div>
-
-              <SurfacePanel className="p-10 space-y-10">
-                <ControlRow 
-                  label={t('settings:appearance.theme.label')} 
-                  description={settings.theme === 'dark' ? t('settings:appearance.theme.dark') : t('settings:appearance.theme.light')}
-                >
-                  <Switch checked={settings.theme === 'dark'} onCheckedChange={() => update('theme', settings.theme === 'dark' ? 'light' : 'dark')} />
-                </ControlRow>
-
-                <div className="space-y-6">
-                  <Label className="text-lg font-bold tracking-tight text-foreground dark:text-white">{t('settings:appearance.accent')}</Label>
-                  <div className="flex flex-wrap items-center gap-4 p-6 rounded-3xl bg-secondary/30 border border-border dark:border-white/10 dark:bg-white/5">
-                    {PRESETS_ACCENT.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => update('accentHex', color)}
-                        className={cn(
-                          "h-10 w-10 rounded-full transition-all hover:scale-110 shadow-glow",
-                          settings.accentHex === color ? "ring-4 ring-primary/20 scale-110" : ""
-                        )}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                    <div className="h-8 w-px bg-border mx-2 dark:border-white/10" />
-                    <Input 
-                      value={settings.accentHex} 
-                      onChange={(event) => setHex(event.target.value)} 
-                      className="w-32 h-12 rounded-xl border-border bg-background font-mono font-bold text-center" 
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <Label className="text-lg font-bold tracking-tight text-foreground dark:text-white">{t('settings:appearance.motion.label')}</Label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { id: 0, label: t('settings:appearance.motion.reduced') },
-                      { id: 1, label: t('settings:appearance.motion.standard') },
-                      { id: 2, label: t('settings:appearance.motion.expressive') }
-                    ].map((m) => (
-                      <Button 
-                        key={m.id} 
-                        variant={settings.motion === m.id ? 'default' : 'outline'} 
-                        className={cn("h-12 rounded-xl font-bold border-border", settings.motion === m.id && "shadow-glow")}
-                        onClick={() => update('motion', m.id as any)}
-                      >
-                        {m.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <ControlRow 
-                  label={t('settings:appearance.glass.label')} 
-                  description={t('settings:appearance.glass.desc')}
-                >
-                  <Switch checked={settings.glass} onCheckedChange={(checked) => update('glass', !!checked)} />
-                </ControlRow>
-              </SurfacePanel>
-            </section>
-
-            {/* Generation Shell Section */}
-            <section id="generation-shell" className="scroll-mt-32 space-y-8">
-              <div className="flex items-center gap-4">
-                 <div className="h-px flex-1 bg-border dark:border-white/10" />
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">{t('settings:generation.title')}</h3>
-                 <div className="h-px flex-1 bg-border dark:border-white/10" />
-              </div>
-
-              <SurfacePanel className="p-10 space-y-10">
-                <div className="grid gap-10 sm:grid-cols-2">
-                  <div className="space-y-6">
-                    <Label className="text-lg font-bold tracking-tight text-foreground dark:text-white">{t('settings:generation.preset')}</Label>
-                    <div className="flex gap-3">
-                      <Button 
-                        variant={settings.shellPreset === 'creator-luxury' ? 'default' : 'outline'} 
-                        className="flex-1 h-12 rounded-xl font-bold border-border" 
-                        onClick={() => update('shellPreset', 'creator-luxury')}
-                      >
-                        Luxury
-                      </Button>
-                      <Button 
-                        variant={settings.shellPreset === 'editorial' ? 'default' : 'outline'} 
-                        className="flex-1 h-12 rounded-xl font-bold border-border" 
-                        onClick={() => update('shellPreset', 'editorial')}
-                      >
-                        Editorial
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <Label className="text-lg font-bold tracking-tight text-foreground dark:text-white">{t('settings:generation.component')}</Label>
-                    <div className="flex gap-3">
-                      <Button 
-                        variant={settings.componentStyle === 'glass' ? 'default' : 'outline'} 
-                        className="flex-1 h-12 rounded-xl font-bold border-border" 
-                        onClick={() => update('componentStyle', 'glass')}
-                      >
-                        Glass
-                      </Button>
-                      <Button 
-                        variant={settings.componentStyle === 'clean-soft' ? 'default' : 'outline'} 
-                        className="flex-1 h-12 rounded-xl font-bold border-border" 
-                        onClick={() => update('componentStyle', 'clean-soft')}
-                      >
-                        Soft
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <Label className="text-lg font-bold tracking-tight text-foreground dark:text-white">{t('settings:generation.visual_mode.label')}</Label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {['dashboard', 'editorial', 'cinematic'].map((mode) => (
-                      <Button 
-                        key={mode} 
-                        variant={settings.visualMode === mode ? 'default' : 'outline'} 
-                        className="h-12 rounded-xl font-bold border-border capitalize" 
-                        onClick={() => update('visualMode', mode as any)}
-                      >
-                        {t(`settings:generation.visual_mode.${mode}`)}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </SurfacePanel>
-            </section>
-
-            {/* Safety & Language Section */}
-            <section id="safety-language" className="scroll-mt-32 space-y-8">
-              <div className="flex items-center gap-4">
-                 <div className="h-px flex-1 bg-border dark:border-white/10" />
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">{t('settings:safety.title')}</h3>
-                 <div className="h-px flex-1 bg-border dark:border-white/10" />
-              </div>
-
-              <SurfacePanel className="p-10 space-y-10">
-                <ControlRow 
-                  label={t('settings:safety.nsfw.label')} 
-                  description={t('settings:safety.nsfw.desc')}
-                >
-                  <Switch checked={settings.nsfwHide} onCheckedChange={(checked) => update('nsfwHide', !!checked)} />
-                </ControlRow>
-
-                <ControlRow 
-                  label={t('settings:safety.language.label')} 
-                  description={t('settings:safety.language.desc')}
-                >
-                  <LanguageSwitcher />
-                </ControlRow>
-
-                <div className="space-y-6">
-                  <Label className="text-lg font-bold tracking-tight text-foreground dark:text-white">{t('settings:safety.banlist.label')}</Label>
-                  <textarea
-                    className="min-h-[160px] w-full rounded-[32px] border border-border bg-secondary/30 px-8 py-6 text-base font-medium leading-relaxed outline-none focus:border-primary/50 transition-all dark:border-white/10 dark:bg-white/5 dark:text-white font-mono"
-                    value={settings.banlist}
-                    placeholder={t('settings:safety.banlist.desc')}
-                    onChange={(event) => update('banlist', event.target.value)}
-                  />
-                </div>
-              </SurfacePanel>
-            </section>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('settings:appearance.accent')}
+          </Label>
+          <div className="flex flex-wrap items-center gap-3">
+            {PRESETS_ACCENT.map((color) => (
+              <button
+                key={color}
+                onClick={() => update('accentHex', color)}
+                className={cn('h-10 w-10 rounded-2xl transition-transform', settings.accentHex === color ? 'scale-110 ring-2 ring-primary ring-offset-2' : 'opacity-70')}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+            <Input value={settings.accentHex} onChange={(event) => setHex(event.target.value)} className="w-32 rounded-2xl font-mono uppercase" />
           </div>
         </div>
 
-        {/* Status Aside */}
-        <aside className="space-y-8 sticky top-24">
-          <SurfacePanel className="p-8 space-y-8" id="visual-lab">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 text-primary">
-                 <FlaskConical className="h-5 w-5" />
-                 <h3 className="font-display text-xl font-bold">{t('settings:lab.title')}</h3>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ToggleRow
+            tone={tone}
+            label={t('settings:appearance.theme.label')}
+            description={settings.theme === 'dark' ? t('settings:appearance.theme.dark') : t('settings:appearance.theme.light')}
+            checked={settings.theme === 'dark'}
+            onChange={() => update('theme', settings.theme === 'dark' ? 'light' : 'dark')}
+          />
+          <ToggleRow
+            tone={tone}
+            label={t('settings:appearance.glass.label')}
+            description={t('settings:appearance.glass.desc')}
+            checked={settings.glass}
+            onChange={(checked) => update('glass', !!checked)}
+          />
+          <ToggleRow
+            tone={tone}
+            label={t('settings:appearance.density.label')}
+            description={settings.density === 'compact' ? t('settings:appearance.density.compact') : t('settings:appearance.density.comfortable')}
+            checked={settings.density === 'compact'}
+            onChange={(checked) => update('density', checked ? 'compact' : 'comfortable')}
+          />
+        </div>
+
+        <div className="space-y-3">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('settings:appearance.motion.label')}
+          </Label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { value: 0, label: t('settings:appearance.motion.reduced') },
+              { value: 1, label: t('settings:appearance.motion.standard') },
+              { value: 2, label: t('settings:appearance.motion.expressive') },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => update('motion', option.value as 0 | 1 | 2)}
+                className={cn(
+                  'rounded-[24px] border px-4 py-3 text-sm font-bold transition-all',
+                  settings.motion === option.value
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : tone === 'cinematic'
+                      ? 'border-white/10 bg-white/5 text-white/70'
+                      : 'border-border bg-secondary/20 text-foreground/70',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('settings:safety.language.label')}
+          </Label>
+          <div className="rounded-[24px] border border-border/40 bg-secondary/20 p-4 dark:border-white/10">
+            <LanguageSwitcher />
+          </div>
+        </div>
+      </div>
+    </SettingsSection>
+  )
+
+  const modeSection = (
+    <SettingsSection
+      tone={tone}
+      title={t('settings:sections.mode.title')}
+      description={t('settings:sections.mode.description')}
+    >
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('settings:generation.visual_mode.label')}
+          </Label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(['dashboard', 'editorial', 'cinematic'] as const).map((modeOption) => (
+              <button
+                key={modeOption}
+                onClick={() => update('visualMode', modeOption)}
+                className={cn(
+                  'rounded-[24px] border px-4 py-4 text-left transition-all',
+                  settings.visualMode === modeOption
+                    ? 'border-primary bg-primary/10 text-primary shadow-glow-sm'
+                    : tone === 'cinematic'
+                      ? 'border-white/10 bg-white/5 text-white/70'
+                      : 'border-border bg-secondary/20 text-foreground/70',
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-[0.22em]">{t(`settings:generation.visual_mode.${modeOption}`)}</span>
+                  {settings.visualMode === modeOption ? <Check className="h-4 w-4" /> : null}
+                </div>
+                <div className="mt-2 text-xs leading-relaxed opacity-80">
+                  {t(`settings:visual_mode_descriptions.${modeOption}`)}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-3">
+            <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+              {t('settings:generation.preset')}
+            </Label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(['creator-luxury', 'editorial'] as const).map((shell) => (
+                <button
+                  key={shell}
+                  onClick={() => update('shellPreset', shell)}
+                  className={cn(
+                    'rounded-[24px] border px-4 py-4 text-sm font-bold transition-all',
+                    settings.shellPreset === shell
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : tone === 'cinematic'
+                        ? 'border-white/10 bg-white/5 text-white/70'
+                        : 'border-border bg-secondary/20 text-foreground/70',
+                  )}
+                >
+                  {shell}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+              {t('settings:generation.component')}
+            </Label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(['glass', 'clean-soft'] as const).map((styleOption) => (
+                <button
+                  key={styleOption}
+                  onClick={() => update('componentStyle', styleOption)}
+                  className={cn(
+                    'rounded-[24px] border px-4 py-4 text-sm font-bold transition-all',
+                    settings.componentStyle === styleOption
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : tone === 'cinematic'
+                        ? 'border-white/10 bg-white/5 text-white/70'
+                        : 'border-border bg-secondary/20 text-foreground/70',
+                  )}
+                >
+                  {styleOption}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </SettingsSection>
+  )
+
+  const queueSection = (
+    <SettingsSection tone={tone} title={t('settings:sections.queue.title')} description={t('settings:sections.queue.description')}>
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('settings:queue.parallel.label')}
+          </Label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[1, 2, 3].map((count) => (
+              <button
+                key={count}
+                onClick={() => update('queue', { ...settings.queue, maxParallel: count as 1 | 2 | 3 })}
+                className={cn(
+                  'rounded-[24px] border px-4 py-4 text-sm font-bold transition-all',
+                  settings.queue.maxParallel === count
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : tone === 'cinematic'
+                      ? 'border-white/10 bg-white/5 text-white/70'
+                      : 'border-border bg-secondary/20 text-foreground/70',
+                )}
+              >
+                {count === 1 ? t('settings:queue.parallel.single') : t('settings:queue.parallel.multi', { count })}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <ToggleRow
+          tone={tone}
+          label={t('settings:queue.cancel.label')}
+          description={t('settings:queue.cancel.desc')}
+          checked={settings.queue.cancelPrevious}
+          onChange={(checked) => update('queue', { ...settings.queue, cancelPrevious: !!checked })}
+        />
+
+        <div className="space-y-3">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('settings:queue.history')}
+          </Label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {([50, 100, 500] as const).map((limit) => (
+              <button
+                key={limit}
+                onClick={() => update('historyLimit', limit)}
+                className={cn(
+                  'rounded-[24px] border px-4 py-4 text-sm font-bold transition-all',
+                  settings.historyLimit === limit
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : tone === 'cinematic'
+                      ? 'border-white/10 bg-white/5 text-white/70'
+                      : 'border-border bg-secondary/20 text-foreground/70',
+                )}
+              >
+                {limit}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </SettingsSection>
+  )
+
+  const notificationsSection = (
+    <SettingsSection tone={tone} title={t('settings:sections.notifications.title')} description={t('settings:sections.notifications.description')}>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ToggleRow
+          tone={tone}
+          label={t('settings:notifications.desktop.label')}
+          description={t('settings:notifications.desktop.desc')}
+          checked={settings.notifyOnDone}
+          onChange={(checked) => update('notifyOnDone', !!checked)}
+        />
+        <ToggleRow
+          tone={tone}
+          label={t('settings:notifications.sound.label')}
+          description={t('settings:notifications.sound.desc')}
+          checked={settings.soundOnDone}
+          onChange={(checked) => update('soundOnDone', !!checked)}
+        />
+      </div>
+    </SettingsSection>
+  )
+
+  const safetySection = (
+    <SettingsSection tone={tone} title={t('settings:sections.safety.title')} description={t('settings:sections.safety.description')}>
+      <div className="space-y-5">
+        <ToggleRow
+          tone={tone}
+          label={t('settings:safety.nsfw.label')}
+          description={t('settings:safety.nsfw.desc')}
+          checked={settings.nsfwHide}
+          onChange={(checked) => update('nsfwHide', !!checked)}
+        />
+        <div className="space-y-3">
+          <Label className={cn('text-[10px] font-black uppercase tracking-[0.22em]', tone === 'cinematic' ? 'text-white/40' : 'text-foreground/40')}>
+            {t('settings:safety.banlist.label')}
+          </Label>
+          <Textarea
+            value={settings.banlist}
+            onChange={(event) => update('banlist', event.target.value)}
+            placeholder={t('settings:safety.banlist.desc')}
+            className={cn(
+              'min-h-[140px] rounded-[28px] border p-5',
+              tone === 'cinematic'
+                ? 'border-white/10 bg-black/30 text-white placeholder:text-white/20'
+                : 'border-border bg-secondary/20',
+            )}
+          />
+        </div>
+      </div>
+    </SettingsSection>
+  )
+
+  const presetsSection = (
+    <SettingsSection
+      tone={tone}
+      title={t('settings:sections.presets.title')}
+      description={t('settings:sections.presets.description')}
+      action={
+        <Button variant="outline" size="sm" onClick={addPreset} className="rounded-full">
+          <Sparkles className="mr-2 h-4 w-4" />
+          {t('settings:presets.add')}
+        </Button>
+      }
+    >
+      <div className="space-y-5">
+        {settings.presets.map((preset) => (
+          <div key={preset.id} className={cn('rounded-[28px] border p-5 space-y-4', tone === 'cinematic' ? 'border-white/10 bg-black/25' : 'border-border/40 bg-secondary/10')}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <Input
+                value={preset.name}
+                onChange={(event) => updatePreset(preset.id, { name: event.target.value })}
+                className="max-w-sm rounded-2xl"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={settings.defaultPresetId === preset.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => update('defaultPresetId', preset.id)}
+                  className="rounded-full"
+                >
+                  {t('settings:presets.default')}
+                </Button>
+                {settings.presets.length > 1 ? (
+                  <Button variant="ghost" size="icon" onClick={() => removePreset(preset.id)} className="rounded-full">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
               </div>
-              <p className="text-sm text-foreground/60 dark:text-white/60 font-medium leading-relaxed">
-                {t('settings:lab.desc')}
-              </p>
             </div>
 
-            <div className="relative aspect-square w-full overflow-hidden rounded-[32px] border border-border bg-secondary shadow-inner dark:bg-black/40 dark:border-white/10">
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.15),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.1),transparent_50%)]" />
-               <div className="absolute inset-0 flex items-center justify-center p-8">
-                  <div className="flex flex-col gap-3 w-full">
-                    <MetaPill className="justify-center bg-background/80 backdrop-blur-md border-border">{settings.shellPreset.toUpperCase()}</MetaPill>
-                    <MetaPill className="justify-center bg-background/80 backdrop-blur-md border-border">{settings.visualMode.toUpperCase()}</MetaPill>
-                    <MetaPill className="justify-center bg-background/80 backdrop-blur-md border-border">{settings.density.toUpperCase()}</MetaPill>
-                  </div>
-               </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Input value={preset.steps} type="number" onChange={(event) => updatePreset(preset.id, { steps: Number(event.target.value) })} />
+              <Input value={preset.guidance} type="number" step="0.5" onChange={(event) => updatePreset(preset.id, { guidance: Number(event.target.value) })} />
+              <Input value={preset.width} type="number" step="64" onChange={(event) => updatePreset(preset.id, { width: Number(event.target.value) })} />
+              <Input value={preset.height} type="number" step="64" onChange={(event) => updatePreset(preset.id, { height: Number(event.target.value) })} />
+              <Input value={preset.seed ?? ''} type="number" onChange={(event) => updatePreset(preset.id, { seed: event.target.value ? Number(event.target.value) : null })} />
+              <Input value={preset.ipScale} type="number" step="0.05" onChange={(event) => updatePreset(preset.id, { ipScale: Number(event.target.value) })} />
             </div>
 
-            <Button onClick={applyVisualMode} size="lg" className="w-full h-14 rounded-full font-bold shadow-glow">
-               {t('settings:lab.apply')}
-            </Button>
-          </SurfacePanel>
-
-          <SurfacePanel className="p-8 space-y-6">
-             <div className="flex items-center gap-3">
-                <Monitor className="h-5 w-5 text-primary" />
-                <h3 className="font-display text-xl font-bold text-foreground dark:text-white">Sync Status</h3>
-             </div>
-             <div className="space-y-4">
-                <StatusRow label="API Latency" value="24ms" />
-                <StatusRow label="Cloud Archive" value="Stable" />
-                <StatusRow label="Local Presets" value={`${settings.presets.length} active`} />
-             </div>
-          </SurfacePanel>
-        </aside>
+            <Textarea
+              value={preset.neg}
+              onChange={(event) => updatePreset(preset.id, { neg: event.target.value })}
+              placeholder={t('settings:presets.neg_placeholder')}
+              className={cn(
+                'min-h-[110px] rounded-[24px] border p-4',
+                tone === 'cinematic'
+                  ? 'border-white/10 bg-black/30 text-white placeholder:text-white/20'
+                  : 'border-border bg-secondary/20',
+              )}
+            />
+          </div>
+        ))}
       </div>
-    </EditorialFrame>
+    </SettingsSection>
   )
-}
 
-function ControlRow({ label, description, children }: { label: string, description: string, children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-8 p-8 rounded-3xl bg-secondary/30 border border-border dark:border-white/10 dark:bg-white/5 transition-all hover:bg-secondary/50 dark:hover:bg-white/8">
-      <div className="space-y-1">
-        <Label className="text-lg font-bold tracking-tight text-foreground dark:text-white">{label}</Label>
-        <div className="text-sm text-foreground/60 dark:text-white/60 font-medium">{description}</div>
-      </div>
-      <div className="shrink-0">
-        {children}
+  const sectionsMap = {
+    appearance: appearanceSection,
+    mode: modeSection,
+    queue: queueSection,
+    notifications: notificationsSection,
+    safety: safetySection,
+    presets: presetsSection,
+  }
+
+  const orderedSections = localSettingsSections.map((section) => (
+    <div key={section.id}>{sectionsMap[section.id]}</div>
+  ))
+
+  const renderDashboard = () => (
+    <div className="grid gap-6 xl:grid-cols-2 items-start">
+      {orderedSections}
+    </div>
+  )
+
+  const renderEditorial = () => (
+    <div className="mx-auto max-w-5xl space-y-8">
+      {orderedSections}
+    </div>
+  )
+
+  const renderCinematic = () => (
+    <div className="relative -mx-4 overflow-hidden rounded-[40px] border border-white/10 bg-black px-4 py-6 md:-mx-6 md:px-6 md:py-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.16),transparent_40%),radial-gradient(circle_at_bottom,rgba(249,115,22,0.12),transparent_35%)]" />
+      <div className="relative z-10 grid gap-6 xl:grid-cols-2 items-start">
+        {orderedSections}
       </div>
     </div>
   )
-}
 
-function StatusRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest border-b border-border pb-3 dark:border-white/5 last:border-0 last:pb-0">
-      <span className="text-foreground/40 dark:text-white/40">{label}</span>
-      <span className="text-primary">{value}</span>
-    </div>
-  )
-}
+    <section className={cn('page-shell transition-all duration-500', tone === 'cinematic' ? 'py-4 md:py-6' : 'py-8 md:py-12 space-y-8')}>
+      {tone !== 'cinematic' ? (
+        <SurfacePanel className={cn('mode-hero-panel p-6 md:p-8', tone === 'editorial' && 'mode-hero-panel--editorial text-center')}>
+          <div className={cn('flex flex-col gap-6 md:flex-row md:items-end md:justify-between', tone === 'editorial' && 'items-center')}>
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-primary">
+                <SettingsIcon className="h-3.5 w-3.5" />
+                {t('settings:title')}
+              </div>
+              <div className="space-y-2">
+                <h1 className={cn('font-black tracking-tight', tone === 'editorial' ? 'font-serif text-5xl font-light italic md:text-7xl' : 'text-3xl md:text-5xl')}>
+                  {t('settings:hero.title')}
+                </h1>
+                <p className={cn('max-w-3xl text-base leading-relaxed', tone === 'editorial' ? 'mx-auto text-lg' : 'text-foreground/60')}>
+                  {t('settings:hero.description')}
+                </p>
+              </div>
+            </div>
 
-function FactRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-sm py-1">
-      <span className="text-muted-foreground font-medium">{label}</span>
-      <span className="font-bold text-foreground/90 dark:text-white">{value}</span>
-    </div>
+            <div className="flex flex-wrap gap-2">
+              <MetaPill>{t(`settings:generation.visual_mode.${settings.visualMode}`)}</MetaPill>
+              <MetaPill>{settings.shellPreset}</MetaPill>
+              <MetaPill>{settings.componentStyle}</MetaPill>
+            </div>
+          </div>
+        </SurfacePanel>
+      ) : null}
+
+      <motion.div key={settings.visualMode} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+        {tone === 'dashboard' ? renderDashboard() : tone === 'editorial' ? renderEditorial() : renderCinematic()}
+      </motion.div>
+    </section>
   )
 }

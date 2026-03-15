@@ -49,8 +49,8 @@ export type Settings = {
 const KEY = 'amaimagery.settings.v3'
 
 const DEFAULT_PRESETS: Preset[] = [
-  { id: 'portrait', name: 'Portrait 896×1152', steps: 28, guidance: 7, width: 896, height: 1152, seed: null, ipScale: 0.6, neg: '' },
-  { id: 'landscape', name: 'Landscape 1152×896', steps: 24, guidance: 6.5 as any, width: 1152, height: 896, seed: null, ipScale: 0.6, neg: '' }
+  { id: 'portrait', name: 'Portrait 896×1024', steps: 28, guidance: 7, width: 896, height: 1024, seed: null, ipScale: 0.6, neg: '' },
+  { id: 'landscape', name: 'Landscape 1024×896', steps: 24, guidance: 6.5 as any, width: 1024, height: 896, seed: null, ipScale: 0.6, neg: '' }
 ]
 
 const DEFAULTS: Settings = {
