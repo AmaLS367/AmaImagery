@@ -1,5 +1,5 @@
 $ErrorActionPreference='Stop'
-./scripts/windows/preflight.ps1 -Profile prod
+./scripts/windows/preflight.ps1 -Mode prod
 ./scripts/windows/build_frontend.ps1
 docker compose -f docker/compose.prod.yml --env-file docker/.env.prod up -d --build
 
