@@ -88,6 +88,16 @@ outputs/
 docker/.env.local
 docker/.env.prod
 
+# === Local AI agent instruction files ===
+AGENTS.md
+CLAUDE.md
+CLAUDE.local.md
+GEMINI.md
+CODEX.md
+CURSOR.md
+.cursorrules
+.cursor/rules/
+
 # === ML / heavy artifacts ===
 outputs/
 runs/
