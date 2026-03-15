@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
 import {
   Bell,
   Check,
@@ -16,10 +15,8 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Switch } from '../components/ui/switch'
 import { Textarea } from '../components/ui/textarea'
-import { getMySettings, patchMySettings } from '../lib/api'
 import { localSettingsSections } from '../lib/settingsInventory'
 import { cn } from '../lib/utils'
-import { useAuth } from '../providers/AuthProvider'
 import { useSettings } from '../providers/SettingsProvider'
 import { useTranslation } from 'react-i18next'
 
@@ -110,11 +107,6 @@ function ToggleRow({
 export default function Settings() {
   const { t } = useTranslation(['settings', 'common'])
   const { settings, update } = useSettings()
-  const { status: authStatus, isAuthenticated } = useAuth()
-  const defaultRef = useRef<typeof settings | null>(null)
-  const [hydrating, setHydrating] = useState(true)
-
-  if (!defaultRef.current) defaultRef.current = JSON.parse(JSON.stringify(settings))
 
   const tone = settings.visualMode
 
@@ -122,34 +114,6 @@ export default function Settings() {
     if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return
     update('accentHex', hex.startsWith('#') ? hex : `#${hex}`)
   }
-
-  const applySnapshot = (payload: Record<string, unknown>) => {
-    const defaults = defaultRef.current!
-    Object.keys(defaults).forEach((key) => {
-      if (payload[key] !== undefined) update(key as never, payload[key] as never)
-    })
-  }
-
-  useEffect(() => {
-    if (authStatus === 'loading') return
-    if (!isAuthenticated) {
-      setHydrating(false)
-      return
-    }
-
-    setHydrating(true)
-    getMySettings().then((res) => {
-      if (res?.data) applySnapshot(res.data)
-    }).finally(() => setHydrating(false))
-  }, [authStatus, isAuthenticated])
-
-  useEffect(() => {
-    if (hydrating || !isAuthenticated) return
-    const timeout = setTimeout(() => {
-      patchMySettings(settings).catch(() => {})
-    }, 1000)
-    return () => clearTimeout(timeout)
-  }, [settings, hydrating, isAuthenticated])
 
   const appearanceSection = (
     <SettingsSection

@@ -2,12 +2,10 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 
 import {
   api,
-  clearLegacyAuthStorage,
   loginRequest,
   logoutRequest,
   refreshAccessToken,
   registerRequest,
-  setAccessToken,
   type LoginInput,
   type LoginResponse,
   type MeResponse,
@@ -43,7 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null)
 
   const setAnonymous = () => {
-    clearLegacyAuthStorage()
     setUser(null)
     setStatus('anonymous')
   }
@@ -75,16 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (payload: LoginInput): Promise<LoginResponse> => {
     const response = await loginRequest(payload)
-    clearLegacyAuthStorage()
-    setAccessToken(response.access_token)
-    setAuthenticated(toUserRecord(response))
+    const loadedUser = await loadMe({ allowRefresh: false })
+    if (!loadedUser) {
+      setAuthenticated(toUserRecord(response))
+    }
     return response
   }
 
   const register = async (payload: RegisterInput): Promise<void> => {
     const response = await registerRequest(payload)
-    clearLegacyAuthStorage()
-    setAccessToken(response.access_token)
 
     const loadedUser = await loadMe({ allowRefresh: false })
     if (!loadedUser) {
@@ -155,4 +151,8 @@ export function useAuth() {
   }
 
   return value
+}
+
+export function useOptionalAuth() {
+  return useContext(AuthContext)
 }
