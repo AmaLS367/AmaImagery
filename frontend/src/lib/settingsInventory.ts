@@ -6,7 +6,6 @@ export type LocalSettingsSectionId =
   | 'queue'
   | 'notifications'
   | 'safety'
-  | 'presets'
 
 export type LocalSettingsSection = {
   id: LocalSettingsSectionId
@@ -39,11 +38,6 @@ export const localSettingsSections: LocalSettingsSection[] = [
     id: 'safety',
     titleKey: 'settings:sections.safety.title',
     descriptionKey: 'settings:sections.safety.description',
-  },
-  {
-    id: 'presets',
-    titleKey: 'settings:sections.presets.title',
-    descriptionKey: 'settings:sections.presets.description',
   },
 ]
 
