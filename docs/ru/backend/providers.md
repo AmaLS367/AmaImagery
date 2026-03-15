@@ -150,7 +150,7 @@ provider = registry.get_default()
 supports_ip = provider.supports_features({"ip_adapter"})
 ```
 
-## Текущие провайдеры
+## Провайдеры
 
 ### DiffusersProvider
 

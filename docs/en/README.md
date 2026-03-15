@@ -1,6 +1,6 @@
 # AmaImagery Documentation (English)
 
-Welcome to the **AmaImagery** documentation. This guide keeps the current repository, runtime, and deployment flows in sync without throwing away the visual structure of the docs.
+Welcome to the **AmaImagery** documentation.
 
 ## 🎯 What is AmaImagery?
 
@@ -13,18 +13,16 @@ AmaImagery is a self-hosted image generation platform built around:
 - 🌐 **React + Vite frontend** with generation, history, settings, and auth pages
 - 🐳 **Docker-based deployment flows** for local and production setups
 
-Planned or not-yet-public features such as editing, upscaling, and resizing stay visible in roadmap/tutorial sections, but they are not documented as shipped public APIs.
-
 ## 📚 Documentation Sections
 
 ### [🔧 Backend](./backend/README.md)
-Current backend architecture, real route surface, providers, queues, repositories, observability, and admin/readiness behavior.
+Backend architecture, route surface, providers, queues, repositories, observability, and admin/readiness behavior.
 
 ### [🎨 Frontend](./frontend/README.md)
 Current React/Vite frontend structure, routes, and integration points.
 
 ### [🐳 Docker](./docker/README.md)
-Compose files, runtime targets, env templates, and container flows that exist today.
+Compose files, runtime targets, env templates, and container flows.
 
 ### [🧪 Tests](./tests/README.md)
 Backend test strategy, frontend checks, and current validation commands.
@@ -48,10 +46,10 @@ Current Alembic migration path and schema evolution notes.
 Security posture, reporting path, and sensitive runtime surfaces.
 
 ### [⚡ Features](./features/README.md)
-Current features, provider-specific capabilities, and planned surfaces.
+Features, provider-dependent capabilities, and planned surfaces.
 
 ### [🔍 Troubleshooting](./troubleshooting/README.md)
-Current operational issues and debugging notes.
+Operational issues and debugging notes.
 
 ### [⚖️ Legal](./legal/README.md)
 Project licensing, model licensing, and attribution guidance.
@@ -60,7 +58,7 @@ Project licensing, model licensing, and attribution guidance.
 Current endpoints, commands, env variables, and ports.
 
 ### [🎓 Tutorials](./tutorials/README.md)
-Guided material and planned tutorials. Some entries are roadmap placeholders by design.
+Guided material and planned tutorials.
 
 ## 🚀 Quick Start Guide
 
@@ -77,7 +75,7 @@ Guided material and planned tutorials. Some entries are roadmap placeholders by 
 ### For API Users
 1. Read [Reference](./reference/README.md)
 2. Review [Backend](./backend/README.md)
-3. Check [Troubleshooting](./troubleshooting/README.md) if your environment differs from the documented happy path
+3. Check [Troubleshooting](./troubleshooting/README.md) if your setup differs from the expected configuration
 
 ## 🏗️ Architecture Overview
 
@@ -94,11 +92,11 @@ Guided material and planned tutorials. Some entries are roadmap placeholders by 
                      └──────────────┘
 ```
 
-The current runtime truth is:
+Key runtime details:
 
 - PostgreSQL stores generation lifecycle state
 - Redis is queue/rate-limit infrastructure, not the primary source of task truth
-- `comfyui` and `diffusers` are the real provider modes
+- `comfyui` and `diffusers` are the provider modes
 - admin pages live under `/admin/*`
 
 ## 📦 Technology Stack
@@ -133,8 +131,7 @@ The current runtime truth is:
 ## 📞 Getting Help
 
 - Check [Troubleshooting](./troubleshooting/README.md)
-- Review the current section README for your area
-- Use roadmap/tutorial pages as planning context, not as proof that a public API already exists
+- Review the section README for your area
 
 ## 📄 License
 

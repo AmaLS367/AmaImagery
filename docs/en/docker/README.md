@@ -37,8 +37,6 @@ The application is containerized with Docker and Docker Compose, with an explici
 | Volumes / networking deep-dive | 🚧 Coming soon |
 | [Troubleshooting](../troubleshooting/README.md) | ✅ Available |
 
-This README is the canonical Docker overview for now.
-
 ## Quick Start
 
 ### Local Core Stack
@@ -81,5 +79,5 @@ See [Queue and Workers](../backend/queue-and-workers.md) for details.
 ## Important Notes
 
 - Build `frontend/dist` before relying on bundled static frontend delivery.
-- Use `docker/.env.docker.example` and verification env files as templates, not as proof that every variable is an app setting.
+- Copy `docker/.env.docker.example` to `docker/.env.docker` before running the local stack. The verification env files are targeted presets for specific provider profiles.
 - A public `/metrics` endpoint is not wired into the app by default.

@@ -2,13 +2,13 @@
 
 ## Обзор
 
-Эта страница различает:
+| Символ | Значение |
+|--------|---------|
+| ✅ | Доступно |
+| 🧪 | Зависит от provider-а или окружения |
+| 🚧 | Запланировано, публично недоступно |
 
-- ✅ функции, которые реально доступны в текущем репозитории
-- 🧪 возможности, зависящие от provider-а или окружения
-- 🚧 planned surfaces, которые остаются видимыми в документации, но ещё не являются публичным API
-
-## Текущий статус функций
+## Статус функций
 
 | Функция | Статус | Примечание |
 |---------|--------|------------|
@@ -29,40 +29,37 @@
 ## Основные функции
 
 ### 🎨 Генерация изображений
-Генерация изображений идёт через текущий async job flow.
+Генерация изображений через async job flow.
 
-**Что реально есть сейчас:**
+**Возможности:**
 - text-to-image генерация
 - отправка prompt и negative prompt
 - параметры генерации: width, height, steps, guidance
 - выполнение через `comfyui` или `diffusers`
 
 ### 🛡️ Модерация контента
-Moderation и hygiene controls существуют уже сейчас.
+Moderation и hygiene controls.
 
-**Что реально есть сейчас:**
+**Возможности:**
 - переключатель NSFW preference
 - маршруты просмотра и reload правил
 - поддержка prompt hygiene mode
 
 ### 📁 Управление файлами
-Доставка артефактов уже входит в текущий контракт.
 
-**Что реально есть сейчас:**
+**Возможности:**
 - signed file access flow
 - download path для артефактов
 - persisted output handling через lifecycle worker-а
 
 ## Planned / Coming Soon Areas
 
-Следующие темы остаются частью документационного roadmap и должны читаться как planned material до тех пор, пока в репозитории не появится реальная публичная поддержка:
-
 - `Image Editing` — Coming soon
 - `Image Upscaling` — Coming soon
 - `Image Resizing` — Coming soon
 - более глубокие feature playbooks и walkthroughs — Coming soon
 
-## API Endpoints В Актуальном Контракте
+## API Endpoints
 
 - `POST /api/v1/images/generate` - Генерация изображений
 - `GET /api/v1/images/status/{task_id}` - Получение статуса
@@ -73,4 +70,4 @@ Moderation и hygiene controls существуют уже сейчас.
 - `POST /api/v1/nsfw/check` - Проверка текста по moderation rules
 - `GET /api/v1/file` - Скачивание signed artifact
 
-Актуальный контракт смотрите в [Reference](../reference/README.md).
+Смотрите также [Reference](../reference/README.md).

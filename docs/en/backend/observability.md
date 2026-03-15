@@ -4,7 +4,7 @@
 
 The backend exposes observability through structured logging, domain exceptions, feature flags, domain events, readiness checks, and metrics modules in the codebase.
 
-## What Exists Today
+## Observability Components
 
 ### 🧾 Error Handling
 - domain exceptions and HTTP mapping
@@ -42,13 +42,11 @@ The event bus currently includes:
 
 ## Public Metrics Note
 
-The repository contains Prometheus-oriented metrics code, but the FastAPI app does **not** mount a public `/metrics` endpoint by default right now.
+The repository contains Prometheus-oriented metrics code, but the FastAPI app does **not** mount a public `/metrics` endpoint by default.
 
-So:
-
-- metrics integration code exists
+- metrics modules exist in `app/metrics/`
 - internal or custom exporter wiring is possible
-- a ready-to-scrape public `/metrics` route should not be documented as live unless you wire it in yourself
+- no `/metrics` route is mounted by default
 
 ## Example Feature Flag Configuration
 

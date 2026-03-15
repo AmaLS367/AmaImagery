@@ -50,7 +50,7 @@ SQLAlchemy implementations are in `app/infra/repositories/`:
 - **`SqlAlchemyGenerationRepository`** - Implements `IGenerationRepository`
 - **`SqlAlchemyUserRepository`** - Implements `IUserRepository`
 
-Repositories use synchronous SQLAlchemy Session internally, wrapping DB calls in `asyncio.to_thread` to avoid blocking the event loop.
+Repositories use async SQLAlchemy `AsyncSession` for all database operations, keeping I/O non-blocking throughout.
 
 ## Unit of Work
 

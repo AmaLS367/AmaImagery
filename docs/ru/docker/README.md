@@ -37,8 +37,6 @@
 | Volumes / networking deep-dive | 🚧 Coming soon |
 | [Troubleshooting](../troubleshooting/README.md) | ✅ Доступно |
 
-Пока именно эта README остаётся каноническим Docker overview.
-
 ## Быстрый старт
 
 ### Local Core Stack

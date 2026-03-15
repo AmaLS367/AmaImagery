@@ -94,9 +94,9 @@ This document describes the testing strategy for the backend, including test lev
 
 ### Minimum Coverage Threshold
 
-**Target: 80%** for the `app/` package.
+**Target: 60%** for the `app/` package.
 
-The CI pipeline will fail if coverage falls below 80%. This ensures that:
+The CI pipeline will fail if coverage falls below 60%. This ensures that:
 - Critical business logic is tested
 - New features include tests
 - Refactoring is safer with test coverage
@@ -112,11 +112,11 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
-    "--cov-fail-under=80",
+    "--cov-fail-under=60",
 ]
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 60
 ```
 
 ### Excluded from Coverage
@@ -275,10 +275,10 @@ Tests run automatically in GitHub Actions on:
 **CI Configuration:**
 - PostgreSQL service container
 - Redis service container
-- Coverage threshold: 80%
+- Coverage threshold: 60%
 - Fails if coverage below threshold
 
-See `.github/workflows/tests.yml` for details.
+See `.github/workflows/ci.yml` for details.
 
 ## Best Practices
 

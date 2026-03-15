@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Руководство по развертыванию **AmaImagery** в окружениях, которые соответствуют текущему репозиторию.
+Руководство по развертыванию **AmaImagery**.
 
 ## Варианты развертывания
 
@@ -12,8 +12,8 @@
 - самый простой способ держать API, worker, database, Redis и nginx в согласованном состоянии
 
 ### ☁️ Cloud / Managed Infrastructure
-- возможно, но не оформлено в репозитории как turnkey-guide
-- ответственность оператора за перенос Docker/runtime контракта
+- turnkey-руководство для этого варианта не предоставляется
+- операторы самостоятельно адаптируют Docker/runtime контракт под свою инфраструктуру
 
 ### 🖥️ Bare Metal
 - возможно для продвинутых операторов
@@ -33,11 +33,9 @@
 | Maintenance playbook | 🚧 Coming soon |
 | [Provider Rollout](./provider-rollout.md) | ✅ Доступно |
 
-Пока именно эта README остаётся каноническим deployment overview.
+## Production Checklist
 
-## Текущий production checklist
-
-1. ✅ Подготовить реальный production env file
+1. ✅ Подготовить production env file
 2. ✅ Задать сильный `SECRET_KEY`
 3. ✅ Использовать PostgreSQL
 4. ✅ Настроить Redis, если включён Redis-backed queueing
@@ -49,12 +47,12 @@
 ## Минимальные требования
 
 - достаточно CPU/RAM под API + worker + database + provider runtime
-- Docker / Docker Compose, если вы идёте по документированному deployment path
+- Docker / Docker Compose для Docker-based развёртывания
 - GPU нужен только если ваш выбранный provider/runtime реально требует локальное GPU execution
 - место на диске под outputs, logs и опциональные локальные model assets
 
 ## Важные заметки
 
-- Репозиторий сейчас не документирует публичный `/metrics` endpoint как live по умолчанию.
-- Worker не является опциональным, если вам нужен документированный async generation lifecycle.
+- Публичный `/metrics` endpoint по умолчанию не смонтирован.
+- Worker обязателен для async generation lifecycle.
 - Переключение между `comfyui` и `diffusers` делается через env/config и compose overrides.

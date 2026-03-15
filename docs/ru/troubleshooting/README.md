@@ -14,8 +14,6 @@
 | Memory issues page | 🚧 Coming soon |
 | Performance issues page | 🚧 Coming soon |
 
-Пока именно эта README остаётся основной точкой входа в troubleshooting.
-
 ## Частые проблемы
 
 ### Проблемы установки

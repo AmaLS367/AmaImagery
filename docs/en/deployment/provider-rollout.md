@@ -7,7 +7,7 @@ Use the Docker env templates under `docker/`:
 - `docker/.env.verify.diffusers.example` for the `diffusers` verification profile
 - `docker/.env.verify.comfyui.example` for the `comfyui` verification profile
 
-The profiles now represent two different runtime modes:
+The profiles represent two different runtime modes:
 
 - `comfyui`: `PROVIDERS_ENABLED=comfyui` on the lightweight `runtime-core` image
 - `diffusers`: `PROVIDERS_ENABLED=diffusers` on the `runtime-ml` image

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Quick reference for the current AmaImagery contract: real endpoints, real commands, real env files, and the ports/services that exist now.
+API endpoints, commands, environment variables, configuration files, and ports.
 
 ## Reference Sections
 
@@ -13,8 +13,6 @@ Quick reference for the current AmaImagery contract: real endpoints, real comman
 | CLI deep-dive pages | 🚧 Coming soon |
 | Env reference expansion | 🚧 Coming soon |
 | Glossary | 🚧 Coming soon |
-
-For now, this README is the canonical quick reference.
 
 ## API Endpoints
 
@@ -107,4 +105,4 @@ docker compose --env-file docker/.env.prod -f docker/compose.prod.yml up -d --bu
 | Redis | `6379` | Queue / rate limit backend |
 | Nginx | `80` / `443` / `8080` | Reverse proxy depending on stack |
 
-There is no public `/metrics` endpoint mounted by default in the current app.
+No public `/metrics` endpoint is mounted by default.

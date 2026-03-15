@@ -2,13 +2,13 @@
 
 ## Overview
 
-This page distinguishes between:
+| Symbol | Meaning |
+|--------|---------|
+| ✅ | Available |
+| 🧪 | Provider-dependent or environment-dependent |
+| 🚧 | Planned, not yet available |
 
-- ✅ features that are available in the current repository
-- 🧪 provider-dependent or environment-dependent capabilities
-- 🚧 planned surfaces that remain visible in docs planning, but are not public APIs yet
-
-## Current Feature Status
+## Feature Status
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -29,40 +29,37 @@ This page distinguishes between:
 ## Core Features
 
 ### 🎨 Image Generation
-Generate images from text prompts through the current async job flow.
+Generate images from text prompts through the async job flow.
 
-**Capabilities today:**
+**Capabilities:**
 - text-to-image generation
 - prompt + negative prompt submission
 - generation parameters such as width, height, steps, and guidance
 - provider-backed execution through `comfyui` or `diffusers`
 
 ### 🛡️ Content Moderation
-Moderation and hygiene controls exist today.
+Moderation and hygiene controls.
 
-**Capabilities today:**
+**Capabilities:**
 - NSFW preference toggle
 - NSFW rule inspection and reload routes
 - prompt hygiene mode support
 
 ### 📁 File Management
-Artifact delivery is part of the current contract.
 
-**Capabilities today:**
+**Capabilities:**
 - signed file access flow
 - artifact download path
 - persisted output handling through the worker lifecycle
 
 ## Planned / Coming Soon Areas
 
-The following sections remain part of the documentation roadmap, but should be read as planned material until the repository exposes real public support:
-
 - `Image Editing` — Coming soon
 - `Image Upscaling` — Coming soon
 - `Image Resizing` — Coming soon
 - deeper feature playbooks and walkthroughs — Coming soon
 
-## API Endpoints In Scope Today
+## API Endpoints
 
 - `POST /api/v1/images/generate` - Generate images
 - `GET /api/v1/images/status/{task_id}` - Poll status
@@ -73,4 +70,4 @@ The following sections remain part of the documentation roadmap, but should be r
 - `POST /api/v1/nsfw/check` - Check text against moderation rules
 - `GET /api/v1/file` - Download signed artifact
 
-See [Reference](../reference/README.md) for the current contract.
+See [Reference](../reference/README.md) for full details.
