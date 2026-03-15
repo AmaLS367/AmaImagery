@@ -85,8 +85,8 @@ HTTP Handler (FastAPI) → Use Case → UnitOfWork → Repository → Async DB
 
 The following operations **MUST** be performed in background workers:
 
-- **ML Inference** - Image generation, upscaling, editing
-- **Image Processing** - Resizing, format conversion, transformations
+- **ML Inference** - Image generation and provider-side processing that takes meaningful time
+- **Image Processing** - Format conversion and artifact preparation when those operations are part of a worker flow
 - **File Operations** - Large file uploads/downloads, batch processing
 - **External API Calls** - Long-running external service calls
 - **Data Processing** - Large dataset processing, batch operations
@@ -98,8 +98,7 @@ The following operations are **acceptable** in HTTP handlers:
 - **Validation** - Input validation, business rule checks
 - **Authentication** - Token verification, user lookup
 - **Light Queries** - Simple database lookups (user info, settings)
-- **Status Checks** - Task status retrieval from queue
- - **Status Checks** - Task status retrieval from database-backed lifecycle
+- **Status Checks** - Task status retrieval from the database-backed lifecycle record
 - **Response Formatting** - Data transformation for API responses
 
 ## Rules and Best Practices

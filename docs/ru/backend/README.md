@@ -2,104 +2,88 @@
 
 ## Обзор
 
-Бэкенд построен на **FastAPI** и Python, предоставляя надежный REST API для генерации, редактирования и управления изображениями. Включает ML inference pipeline, управление базой данных, аутентификацию и всесторонний мониторинг.
+Бэкенд построен на **FastAPI** и Python. Его текущая публичная поверхность сосредоточена на генерации изображений, auth, пользовательских настройках/истории, moderation, file delivery и admin/readiness flow.
 
 ## Ключевые компоненты
 
 ### 🔌 API слой
-- RESTful API на FastAPI
-- JWT аутентификация
-- Rate limiting и валидация запросов
-- Автоматическая генерация OpenAPI документации
+- FastAPI route tree под `/api/v1/*`
+- JWT-based auth flows
+- валидация запросов и rate limiting
+- OpenAPI docs через docs route приложения, когда она включена
 
-### 🧠 Inference Pipeline
-- Интеграция Stable Diffusion 1.5
-- Кастомные модели (AmaFusion, DreamShaper)
-- IP-Adapter для условной генерации
-- Оптимизированный CUDA inference
-
-### 🔌 Слой провайдеров
-- Абстракция провайдеров для генерации изображений
-- Архитектура с подключаемыми провайдерами
-- Поддержка нескольких бэкендов генерации
-- См. [Документацию провайдеров](./providers.md) для подробностей
+### 🧠 Provider Runtime
+- абстракция provider-ов для генерации изображений
+- поддержка `comfyui` и `diffusers`
+- tracking readiness и ошибок provider-а
+- см. [Providers](./providers.md)
 
 ### 📦 Очередь и воркеры
-- Асинхронная очередь задач для генерации изображений
-- Фоновые воркеры для тяжелой обработки
-- Отслеживание статуса задач через Redis
-- См. [Документацию очереди и воркеров](./queue-and-workers.md) для подробностей
+- асинхронная очередь генерации
+- отдельный worker process для тяжёлых generation tasks
+- PostgreSQL как источник истины для lifecycle state
+- Redis как инфраструктура очереди и лимитов, когда он включён
+- см. [Queue and Workers](./queue-and-workers.md)
 
 ### 📋 Слой приложения
-- Use cases для оркестрации бизнес-сценариев
-- Паттерн Command/Result для четкого ввода/вывода
-- Разделение бизнес-логики от API handlers
-- См. [Документацию слоя приложения](./application.md) для подробностей
+- use cases для бизнес-оркестрации
+- command/result pattern вокруг generation и status flow
+- см. [Application Layer](./application.md)
 
 ### 🗄️ Слой данных
-- База данных PostgreSQL с async SQLAlchemy
-- Миграции Alembic
-- Redis для кэширования и rate limiting
-- Паттерн Repository для абстракции доступа к данным
-- Unit of Work для управления транзакциями
-- См. [Документацию по репозиториям и Unit of Work](./repositories.md) для подробностей
+- PostgreSQL с async SQLAlchemy
+- миграции Alembic
+- repository pattern + unit of work
+- см. [Repositories and Unit of Work](./repositories.md)
 
 ### ⚡ Модель конкурентности
-- Async ORM для неблокирующих операций с БД
-- Очередь задач для тяжелых операций
-- Фоновые воркеры для ML inference и обработки
-- Безопасность event loop и оптимизация производительности
-- См. [Документацию по модели конкурентности](./concurrency.md) для подробностей
+- async ORM и async API handlers
+- worker-based выполнение для long-running generation
+- см. [Concurrency Model](./concurrency.md)
 
 ### 🛡️ Безопасность и защита
-- Система проверки промптов (prompt hygiene)
-- Фильтрация NSFW контента
-- Валидация ввода
-- Сетевая безопасность (net_guard)
+- поддержка prompt hygiene
+- NSFW moderation routes
+- валидация ввода и security middleware
 
-### 📊 Мониторинг
-- Метрики Prometheus
-- Структурированное логирование
-- Мониторинг GPU
-- Отслеживание производительности
-
-### 🔍 Наблюдаемость
-- Структурированная обработка ошибок с доменными исключениями
-- Комплексные метрики для провайдеров, очередей и воркеров
-- Feature flags для конфигурации в runtime
-- Доменные события для развязанной коммуникации
-- См. [Документацию по наблюдаемости](./observability.md) для подробностей
+### 📊 Наблюдаемость
+- структурированное логирование
+- доменные события
+- feature flags
+- metrics modules внутри репозитория
+- важно: публичный `/metrics` endpoint по умолчанию не смонтирован
+- см. [Observability](./observability.md)
 
 ## Разделы документации
 
-- [Архитектура](./architecture.md) - Архитектура системы и дизайн
-- [API документация](./api/overview.md) - Полный справочник API
-- [Провайдеры](./providers.md) - Слой абстракции провайдеров
-- [Очередь и воркеры](./queue-and-workers.md) - Архитектура очереди задач и воркеров
-- [Слой приложения](./application.md) - Use cases и оркестрация бизнес-сценариев
-- [Репозитории и Unit of Work](./repositories.md) - Слой доступа к данным и управление транзакциями
-- [Модель конкурентности](./concurrency.md) - Async ORM и архитектура конкурентности
-- [Наблюдаемость](./observability.md) - Обработка ошибок, метрики, feature flags и доменные события
-- [Основные модули](./core/) - Безопасность, логирование, ошибки, лимиты
-- [Сервисы](./services/) - Сервисы бизнес-логики
-- [Inference](./inference/) - ML inference pipeline
-- [Prompt Hygiene](./prompt-hygiene/) - Система валидации промптов
-- [База данных](./database/) - Схема БД и модели
-- [Middleware](./middleware/) - Middleware обработки запросов
-- [Мониторинг](./monitoring/) - Метрики и логирование
-- [Конфигурация](./configuration.md) - Конфигурация бэкенда
+- [Providers](./providers.md) - слой абстракции provider-ов
+- [Queue and Workers](./queue-and-workers.md) - архитектура очереди и worker-а
+- [Application Layer](./application.md) - use cases и orchestration
+- [Repositories and Unit of Work](./repositories.md) - доступ к данным и транзакции
+- [Concurrency Model](./concurrency.md) - async и worker execution model
+- [Observability](./observability.md) - ошибки, события, metrics modules, feature flags
+
+### 🚧 Planned Deep-Dive Pages
+
+- Architecture page — Coming soon
+- API sub-tree docs — Coming soon
+- Core modules deep-dive — Coming soon
+- Services deep-dive — Coming soon
+- Inference deep-dive — Coming soon
+- Database deep-dive — Coming soon
+- Middleware deep-dive — Coming soon
+- Configuration deep-dive — Coming soon
 
 ## Быстрый старт
 
-См. [Настройка разработки](../development/getting-started.md) для инструкций по установке.
+См. [Development](../development/README.md) для установки и локального запуска.
 
 ## Технологический стек
 
-- **Framework:** FastAPI 0.116.1
+- **Framework:** FastAPI
 - **Python:** 3.11+
-- **ML:** PyTorch 2.2.2, Diffusers 0.29.2
-- **База данных:** PostgreSQL, SQLAlchemy 2.0
-- **Кэш:** Redis 5.0
-- **Аутентификация:** JWT (PyJWT)
-- **Валидация:** Pydantic 2.11
-
+- **База данных:** PostgreSQL + SQLAlchemy
+- **Очередь / лимиты:** Redis
+- **Миграции:** Alembic
+- **Auth:** JWT / cookies
+- **ML runtime:** provider-based `comfyui` или `diffusers`
