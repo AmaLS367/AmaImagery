@@ -2,69 +2,59 @@
 
 ## Обзор
 
-Комплексные руководства по развертыванию AI Image Generator в production окружении, включая облачное развертывание, конфигурацию окружения и процедуры обслуживания.
+Руководство по развертыванию **AmaImagery** в окружениях, которые соответствуют текущему репозиторию.
 
 ## Варианты развертывания
 
 ### 🐳 Docker развертывание (рекомендуется)
-- Самый простой для развертывания и поддержки
-- Согласованность между окружениями
-- Встроенная оркестрация с Docker Compose
-- См. [Документация Docker](../docker/README.md)
+- текущий основной deployment path
+- соответствует compose-файлам из репозитория
+- самый простой способ держать API, worker, database, Redis и nginx в согласованном состоянии
 
-### ☁️ Облачное развертывание
-- Поддержка AWS, GCP, Azure
-- Конфигурации Kubernetes
-- Возможности автомасштабирования
-- Интеграция управляемых сервисов
+### ☁️ Cloud / Managed Infrastructure
+- возможно, но не оформлено в репозитории как turnkey-guide
+- ответственность оператора за перенос Docker/runtime контракта
 
 ### 🖥️ Bare Metal
-- Максимальная производительность
-- Прямой доступ к GPU
-- Кастомная оптимизация
-- Ручное управление зависимостями
+- возможно для продвинутых операторов
+- особенно актуально при локальном GPU/Diffusers runtime
 
 ## Разделы документации
 
-- [Требования](./requirements.md) - Системные требования
-- [Окружение](./environment/) - Настройка окружения
-  - [Переменные окружения](./environment/environment-variables.md)
-  - [Управление секретами](./environment/secrets-management.md)
-  - [Конфигурация](./environment/configuration.md)
-- [Production](./production/) - Production развертывание
-  - [Чеклист](./production/checklist.md)
-  - [Безопасность](./production/security.md)
-  - [SSL сертификаты](./production/ssl-certificates.md)
-  - [Мониторинг](./production/monitoring.md)
-  - [Масштабирование](./production/scaling.md)
-- [Облако](./cloud/) - Облачные руководства
-  - [AWS](./cloud/aws.md)
-  - [GCP](./cloud/gcp.md)
-  - [Azure](./cloud/azure.md)
-  - [DigitalOcean](./cloud/digitalocean.md)
-- [Обслуживание](./maintenance.md) - Текущее обслуживание
-- [Rollout провайдеров](./provider-rollout.md) - Профили верификации Diffusers и ComfyUI и rollout policy
+| Тема | Статус |
+|------|--------|
+| Requirements page | 🚧 Coming soon |
+| Environment deep-dive | 🚧 Coming soon |
+| Production checklist page | 🚧 Coming soon |
+| TLS / SSL page | 🚧 Coming soon |
+| Monitoring page | 🚧 Coming soon |
+| Scaling page | 🚧 Coming soon |
+| Cloud guides | 🚧 Coming soon |
+| Maintenance playbook | 🚧 Coming soon |
+| [Provider Rollout](./provider-rollout.md) | ✅ Доступно |
 
-## Быстрый старт
+Пока именно эта README остаётся каноническим deployment overview.
 
-### Чеклист Production развертывания
+## Текущий production checklist
 
-1. ✅ Проверьте [Системные требования](./requirements.md)
-2. ✅ Настройте [Переменные окружения](./environment/environment-variables.md)
-3. ✅ Установите [SSL сертификаты](./production/ssl-certificates.md)
-4. ✅ Настройте [Безопасность](./production/security.md)
-5. ✅ Настройте [Мониторинг](./production/monitoring.md)
-6. ✅ Разверните используя [Docker](../docker/compose/production-setup.md)
-7. ✅ Проверьте smoke тестами
-8. ✅ Настройте [Бэкап](../operations/backup-restore.md)
+1. ✅ Подготовить реальный production env file
+2. ✅ Задать сильный `SECRET_KEY`
+3. ✅ Использовать PostgreSQL
+4. ✅ Настроить Redis, если включён Redis-backed queueing
+5. ✅ Собрать `frontend/dist`
+6. ✅ Поднять API и `generation_worker`
+7. ✅ Проверить `/api/v1/health` и `/api/v1/healthz`
+8. ✅ Запустить smoke generation и убедиться, что history/status согласованы
 
 ## Минимальные требования
 
-- **CPU:** 4 ядра (8+ рекомендуется)
-- **RAM:** 16GB (32GB+ рекомендуется)
-- **GPU:** NVIDIA GPU с 6GB+ VRAM
-- **Хранилище:** 50GB+ SSD
-- **ОС:** Linux (Ubuntu 20.04+)
-- **Docker:** 20.10+
-- **CUDA:** 11.8+ с NVIDIA драйверами
+- достаточно CPU/RAM под API + worker + database + provider runtime
+- Docker / Docker Compose, если вы идёте по документированному deployment path
+- GPU нужен только если ваш выбранный provider/runtime реально требует локальное GPU execution
+- место на диске под outputs, logs и опциональные локальные model assets
 
+## Важные заметки
+
+- Репозиторий сейчас не документирует публичный `/metrics` endpoint как live по умолчанию.
+- Worker не является опциональным, если вам нужен документированный async generation lifecycle.
+- Переключение между `comfyui` и `diffusers` делается через env/config и compose overrides.
