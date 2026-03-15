@@ -90,7 +90,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--guidance-scale", type=float, default=PAYLOAD["guidance_scale"], help="CFG / guidance")
     parser.add_argument("--width", type=int, default=PAYLOAD["width"], help="Image width")
     parser.add_argument("--height", type=int, default=PAYLOAD["height"], help="Image height")
-    parser.add_argument("--style", default="anime", choices=["anime", "realistic"], help="Generation style")
+    parser.add_argument("--style", default="realistic", choices=["anime", "realistic"], help="Generation style")
     parser.add_argument("--timeout-sec", type=int, default=DEFAULT_POLL_TIMEOUT_SEC, help="Polling timeout")
     parser.add_argument(
         "--interval-sec",

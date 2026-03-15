@@ -17,7 +17,7 @@ class GenReq(BaseModel):
 
     ref_image_b64: str | None = Field(None, description="Base64 encoded reference image for IP-Adapter")
     ip_scale: float = Field(0.6, ge=0.0, le=2.0, description="IP-Adapter scale")
-    style: Style = Field(default="anime", description="Visual style for generation")
+    style: Style = Field(default="realistic", description="Visual style for generation")
 
 
 class GenResp(BaseModel):

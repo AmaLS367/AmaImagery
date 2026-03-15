@@ -9,7 +9,7 @@ from app.core.security import hash_password, normalize_email
 from app.domain.models import User, UserSettings
 from app.infra.db import AsyncSessionLocal
 
-DEFAULT_SETTINGS = {"style": "anime", "steps": 28, "size": 768, "negative": ""}
+DEFAULT_SETTINGS = {"style": "realistic", "steps": 28, "size": 768, "negative": ""}
 
 
 async def _run_seed_async() -> None:
