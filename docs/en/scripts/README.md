@@ -2,12 +2,12 @@
 
 ## Overview
 
-Collection of utility scripts for bootstrapping, building, migrating, and managing the AI Image Generator application. Scripts are available for both Linux and Windows platforms.
+Collection of utility scripts for bootstrapping, building, migrating, running, testing, and maintaining **AmaImagery**. Scripts are available for both Linux and Windows, plus Python utilities.
 
 ## Script Categories
 
 ### 🚀 Bootstrap Scripts
-Initialize the development or production environment with all dependencies and configurations.
+Initialize development or deployment prerequisites.
 
 **Linux:** `scripts/linux/bootstrap.sh`
 **Windows:** `scripts/windows/bootstrap.ps1`
@@ -15,8 +15,8 @@ Initialize the development or production environment with all dependencies and c
 ### 🔨 Build Scripts
 Build Docker images and frontend assets.
 
-**Linux:** `scripts/linux/build_images.sh`, `build_frontend.sh`
-**Windows:** `scripts/windows/build_images.ps1`, `build_frontend.ps1`
+**Linux:** `scripts/linux/build_images.sh`, `scripts/linux/build_frontend.sh`
+**Windows:** `scripts/windows/build_images.ps1`, `scripts/windows/build_frontend.ps1`
 
 ### 🗄️ Migration Scripts
 Run database migrations.
@@ -25,38 +25,41 @@ Run database migrations.
 **Windows:** `scripts/windows/migrate.ps1`
 
 ### ⚙️ Run Scripts
-Start the application in different modes.
+Start local or production Docker flows.
 
-**Linux:** `scripts/linux/run_local.sh`, `run_prod.sh`
-**Windows:** `scripts/windows/run_local.ps1`, `run_prod.ps1`
+**Linux:** `scripts/linux/run_local.sh`, `scripts/linux/run_prod.sh`
+**Windows:** `scripts/windows/run_local.ps1`, `scripts/windows/run_prod.ps1`
 
-### 🧪 Testing Scripts
-Run smoke tests and validation.
+### 🧪 Validation Scripts
+Run smoke and helper checks.
 
-**Linux:** `scripts/linux/smoketest.sh`
-**Windows:** `scripts/windows/smoketest.ps1`
+**Linux:** `scripts/linux/smoketest.sh`, `scripts/linux/preflight.sh`
+**Windows:** `scripts/windows/smoketest.ps1`, `scripts/windows/preflight.ps1`
 
 ### 🌱 Seed Scripts
-Seed the database with initial data.
+Seed initial data.
 
 **Linux:** `scripts/linux/seed.sh`
 **Windows:** `scripts/windows/seed.ps1`
 
 ### 🐍 Python Utilities
-Helper scripts in Python.
 
-- `generate_context.py` - Generate project context
-- `generate_secret_key.py` - Generate secure keys
-- `warm_cache.py` - Warm up model cache
-- `Checkdoubles.py` - Check for duplicate code
+- `generate_context.py` - Generate a compact project snapshot
+- `generate_secret_key.py` - Generate secret keys
+- `warm_cache.py` - Warm model cache
+- `test_generate.py` - Submit a real generation request and poll result
+- `delete_cache.py` - Remove Python cache artifacts
+- `Checkdoubles.py` - Check for duplicate FastAPI routes
 
 ## Documentation Sections
 
-- [Bootstrap](./bootstrap.md) - Bootstrap scripts
-- [Build](./build.md) - Build scripts
-- [Migration](./migration.md) - Migration scripts
-- [Utilities](./utilities.md) - Utility scripts
-- [Windows vs Linux](./windows-vs-linux.md) - Platform differences
+| Topic | Status |
+|------|--------|
+| Bootstrap deep-dive | 🚧 Coming soon |
+| Build deep-dive | 🚧 Coming soon |
+| Migration deep-dive | 🚧 Coming soon |
+| Utilities deep-dive | 🚧 Coming soon |
+| Windows vs Linux comparison | 🚧 Coming soon |
 
 ## Quick Reference
 
@@ -78,18 +81,17 @@ Helper scripts in Python.
 .\scripts\windows\run_local.ps1
 ```
 
-### Build for Production
+### Build Frontend
 ```bash
 # Linux
-./scripts/linux/build_images.sh
+./scripts/linux/build_frontend.sh
 
 # Windows
-.\scripts\windows\build_images.ps1
+.\scripts\windows\build_frontend.ps1
 ```
 
 ## Script Requirements
 
-- **Linux:** Bash 4.0+, standard GNU tools
+- **Linux:** Bash 4.0+
 - **Windows:** PowerShell 5.1+
 - **Python:** 3.11+ for Python utilities
-

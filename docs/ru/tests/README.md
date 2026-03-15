@@ -2,83 +2,68 @@
 
 ## Обзор
 
-Комплексная стратегия тестирования включающая unit тесты, integration тесты, E2E тесты, security тесты и performance тесты для бэкенда и фронтенда.
+Текущая стратегия тестирования и валидации backend, frontend и runtime-поведения в **AmaImagery**.
 
-## Типы тестов
+## Типы проверок
 
-### ✅ Unit тесты
-- Бэкенд: pytest
-- Фронтенд: Vitest
-- Изоляция компонентов
-- Моки зависимостей
+### ✅ Backend tests
+- pytest-based unit и integration coverage
+- API и repository tests
+- coverage сервисов и use cases
 
-### 🔗 Integration тесты
-- Интеграция API
-- Интеграция базы данных
-- Интеграция сервисов
-- Моки внешних сервисов
+### 🌐 Frontend validation
+- TypeScript typecheck
+- production build verification
+- Playwright-based frontend tests живут в дереве тестов репозитория
 
-### 🌐 E2E тесты
-- Полные пользовательские сценарии
-- Автоматизация браузера
-- Тестирование API контрактов
-- Smoke тесты
+### 🔒 Security / Limits coverage
+- покрытие auth
+- проверки authorization
+- валидация ввода
+- тесты rate limiting и signed files
 
-### 🔒 Security тесты
-- Тесты аутентификации
-- Тесты авторизации
-- Валидация ввода
-- Предотвращение SQL инъекций
-
-### ⚡ Performance тесты
-- Тесты задержки API
-- Нагрузочное тестирование
-- Профилирование памяти
-- Использование GPU
+### ⚡ Performance / Runtime checks
+- smoke tests
+- generation latency/perf tests там, где окружение это позволяет
 
 ## Разделы документации
 
-- [Unit тесты](./unit-tests/) - Руководства по unit тестам
-- [Integration тесты](./integration-tests/) - Integration тестирование
-- [E2E тесты](./e2e-tests/) - End-to-end тестирование
-- [Security тесты](./security-tests/) - Security тестирование
-- [Performance тесты](./performance-tests/) - Performance тестирование
-- [Написание тестов](./writing-tests.md) - Как писать тесты
-- [Запуск тестов](./running-tests.md) - Как запускать тесты
-- [CI/CD](./ci-cd.md) - Непрерывная интеграция
+| Тема | Статус |
+|------|--------|
+| Unit test deep-dive | 🚧 Coming soon |
+| Integration deep-dive | 🚧 Coming soon |
+| E2E deep-dive | 🚧 Coming soon |
+| Security test deep-dive | 🚧 Coming soon |
+| Performance deep-dive | 🚧 Coming soon |
+| Running tests page | 🚧 Coming soon |
+| CI/CD deep-dive | 🚧 Coming soon |
+| [Testing Strategy](./testing-strategy.md) | ✅ Доступно |
 
 ## Быстрый старт
 
-### Тесты бэкенда
+### Backend
 ```bash
-pytest tests/
+pytest -q
+python -m ruff check app tests
+python -m mypy app
 ```
 
-### Тесты фронтенда
+### Frontend
 ```bash
-cd frontend_tests
-npm test
+cd frontend
+npm ci
+npm run typecheck
+npm run build
 ```
-
-См. [Запуск тестов](./running-tests.md) для подробностей.
 
 ## Покрытие тестами
 
-Текущее покрытие тестами:
-- Бэкенд: Unit тесты, integration, E2E, security
-- Фронтенд: Unit тесты, E2E тесты
-- Цель: **Минимум 80% покрытия** для пакета `app/`
+Текущий enforced Python coverage threshold в конфиге репозитория:
+- **60% minimum** для пакета `app/`
 
-### Конфигурация покрытия
+Форматы coverage outputs:
+- terminal
+- HTML
+- XML
 
-Покрытие контролируется в CI и локальной разработке:
-- Минимальный порог: **80%**
-- CI падает, если покрытие опускается ниже порога
-- Отчеты о покрытии: терминал, HTML, XML
-
-См. [Стратегия тестирования](./testing-strategy.md) для подробных правил покрытия.
-
-## Документация
-
-- [Стратегия тестирования](./testing-strategy.md) - Подробная стратегия тестирования, цели по покрытию и лучшие практики
-
+Больше контекста в [Testing Strategy](./testing-strategy.md).
