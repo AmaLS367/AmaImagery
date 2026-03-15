@@ -91,7 +91,7 @@ function adaptBackendItem(item: GenerationItem): HistoryRecord {
     promptText: typeof item.prompt?.prompt === 'string' ? item.prompt.prompt : 'Untitled Result',
     guidance: Number.isFinite(Number(item.params?.guidance_scale)) ? Number(item.params?.guidance_scale) : null,
     steps: Number.isFinite(Number(item.params?.steps)) ? Number(item.params?.steps) : null,
-    providerName: typeof item.provider_name === 'string' && item.provider_name.length > 0 ? item.provider_name : 'AmaFusion',
+    providerName: typeof item.provider_name === 'string' && item.provider_name.length > 0 ? item.provider_name : 'Unknown provider',
     createdAtLabel: formatTimestamp(item.created_at),
     createdAtSource: new Date(item.created_at).getTime(),
     ratio: formatRatio(width, height),
@@ -287,7 +287,7 @@ export default function History() {
                   {filtered.map((item) => {
                     if (broken[item.id]) return null
                     const stepsText = item.steps == null ? '—' : String(item.steps)
-                    const modelText = item.providerName || 'AmaFusion'
+                    const modelText = item.providerName || 'Unknown provider'
                     const imageUrl = item.imageUrl
 
                     return (
