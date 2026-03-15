@@ -39,11 +39,6 @@ import { useSettings } from '../providers/SettingsProvider'
 
 const ACTIVE_KEY = 'amaimagery.activeJobId'
 
-const styleOptions = [
-  { value: 'realistic', labelKey: 'generate:style_options.realistic' },
-  { value: 'anime', labelKey: 'generate:style_options.anime' },
-] as const
-
 type GenerateFormState = FormState
 type SectionTone = 'dashboard' | 'editorial' | 'cinematic'
 
@@ -232,7 +227,7 @@ export default function Generate() {
   const [height, setHeight] = useState(initialForm.height)
   const [seed, setSeed] = useState<number | null>(initialForm.seed)
   const [ipScale, setIpScale] = useState(initialForm.ipScale)
-  const [style, setStyle] = useState<'realistic' | 'anime'>(initialForm.style)
+  const [style] = useState<'realistic' | 'anime'>(initialForm.style)
   const [error, setError] = useState<string | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
   const [refPreview, setRefPreview] = useState<string | null>(null)
@@ -264,7 +259,7 @@ export default function Generate() {
         : imgUrl
           ? 'completed'
           : 'idle'
-  const styleLabel = t(styleOptions.find((option) => option.value === style)?.labelKey ?? 'generate:style_options.realistic')
+  const styleLabel = t('generate:style_options.realistic')
 
   useEffect(() => {
     saveForm({ prompt, neg, steps, guidance, width, height, seed, ipScale, style })
@@ -459,34 +454,6 @@ export default function Generate() {
             : 'border-border bg-secondary/20',
         )}
       />
-    </SectionCard>
-  )
-
-  const styleSection = (tone: SectionTone) => (
-    <SectionCard tone={tone} title={t('generate:style')} description={t('generate:sections.style_description')}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {styleOptions.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => setStyle(option.value)}
-            className={cn(
-              'rounded-[24px] border px-5 py-4 text-left transition-all',
-              style === option.value
-                ? 'border-primary bg-primary/10 text-primary shadow-glow-sm'
-                : tone === 'cinematic'
-                  ? 'border-white/10 bg-white/5 text-white/70 hover:border-primary/25'
-                  : 'border-border bg-secondary/20 text-foreground/70 hover:border-primary/20',
-            )}
-          >
-            <div className="text-[10px] font-black uppercase tracking-[0.25em]">
-              {t(option.labelKey)}
-            </div>
-            <div className={cn('mt-2 text-sm leading-relaxed', style === option.value ? '' : 'opacity-80')}>
-              {t(`generate:style_cards.${option.value}`)}
-            </div>
-          </button>
-        ))}
-      </div>
     </SectionCard>
   )
 
@@ -779,10 +746,7 @@ export default function Generate() {
     <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr] items-start">
       <div className="space-y-6">
         {promptSection('dashboard')}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {negativeSection('dashboard')}
-          {styleSection('dashboard')}
-        </div>
+        {negativeSection('dashboard')}
         <div className="grid gap-6 lg:grid-cols-2">
           {dimensionsSection('dashboard')}
           {samplingSection('dashboard')}
@@ -803,10 +767,7 @@ export default function Generate() {
         <div className="space-y-8">
           {promptSection('editorial')}
           {negativeSection('editorial')}
-          <div className="grid gap-8 lg:grid-cols-2">
-            {styleSection('editorial')}
-            {dimensionsSection('editorial')}
-          </div>
+          {dimensionsSection('editorial')}
         </div>
         <div className="space-y-8 xl:sticky xl:top-24">
           {resultSection('editorial')}
@@ -835,7 +796,6 @@ export default function Generate() {
         </div>
         <div className="space-y-6 xl:sticky xl:top-24">
           {statusSection('cinematic')}
-          {styleSection('cinematic')}
           {dimensionsSection('cinematic')}
           {samplingSection('cinematic')}
           {actionsSection('cinematic')}
