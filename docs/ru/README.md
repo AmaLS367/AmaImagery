@@ -1,148 +1,148 @@
-# Документация AI Image Generator (Русский)
+# Документация AmaImagery (Русский)
 
-Добро пожаловать в документацию **AI Image Generator**! Это полное руководство охватывает все аспекты системы, от установки до развертывания.
+Добро пожаловать в документацию **AmaImagery**. Это руководство сохраняет визуальный стиль документации, но приводит тексты, ссылки и обещания в соответствие с текущим репозиторием.
 
-## 🎯 Что такое AI Image Generator?
+## 🎯 Что такое AmaImagery?
 
-AI Image Generator — это мощная платформа для генерации изображений на базе Stable Diffusion с возможностью самостоятельного развертывания. Возможности:
+AmaImagery — это self-hosted платформа генерации изображений, в которой сейчас реально есть:
 
-- 🎨 **Высококачественная генерация изображений** с Stable Diffusion 1.5
-- ✏️ **Редактирование изображений** и манипуляция
-- 🔍 **Увеличение разрешения** для улучшенного качества
-- 🛡️ **Встроенные функции безопасности** и модерация контента
-- 🔒 **Корпоративная безопасность** с JWT аутентификацией
-- 📊 **Мониторинг и метрики** с Prometheus
-- 🌐 **Современный веб-интерфейс** на React
-- 🐳 **Готовое развертывание** с Docker
+- 🎨 **Генерация изображений** через текущий маршрут `/api/v1/images/generate`
+- 🔄 **Асинхронный lifecycle worker-а** с сохранением состояния задач
+- 🔌 **Абстракция provider-ов** для `comfyui` и `diffusers`
+- 🛡️ **Auth, admin и moderation surface** в backend
+- 🌐 **React + Vite фронтенд** со страницами генерации, истории, настроек и auth
+- 🐳 **Docker-сценарии развертывания** для local и production режимов
+
+Планируемые или ещё не опубликованные публично возможности вроде edit, upscale и resize остаются видимыми в roadmap/tutorial секциях, но больше не описываются как уже готовые public API.
 
 ## 📚 Разделы документации
 
 ### [🔧 Бэкенд](./backend/README.md)
-Полная документация бэкенда включая FastAPI, API endpoints, сервисы, базу данных и ML inference pipeline.
+Текущая архитектура backend, реальные маршруты, providers, очереди, repositories, observability и admin/readiness.
 
 ### [🎨 Фронтенд](./frontend/README.md)
-Документация фронтенда включая React компоненты, управление состоянием, стилизацию и интеграцию с API.
+Текущая структура React/Vite фронтенда, маршруты и точки интеграции.
 
 ### [🐳 Docker](./docker/README.md)
-Документация Docker и контейнеризации включая конфигурации Docker Compose и развертывание.
+Compose-файлы, runtime targets, env templates и container flows, которые реально существуют.
 
 ### [🧪 Тесты](./tests/README.md)
-Документация тестирования включая unit тесты, integration тесты, E2E тесты и лучшие практики.
+Стратегия backend-тестов, frontend проверки и актуальные validation-команды.
 
 ### [🤖 Модели](./models/README.md)
-Документация ML моделей включая Stable Diffusion, AmaFusion, DreamShaper, VAE и IP-Adapter.
+Текущие model assets, ожидания от provider/runtime и licensing context.
 
 ### [🚀 Развертывание](./deployment/README.md)
-Руководства по production развертыванию включая настройку окружения, облачное развертывание и обслуживание.
+Production-oriented deployment notes и provider rollout guidance.
 
 ### [📜 Скрипты](./scripts/README.md)
-Документация для bootstrap, build, migration и утилитарных скриптов.
+Реальные shell, PowerShell и Python helper scripts из репозитория.
 
 ### [💻 Разработка](./development/README.md)
-Руководства для разработчиков включая установку, структуру проекта, стандарты кодирования и contributing.
+Локальная установка, запуск API + worker и текущий developer workflow.
 
 ### [🔄 Миграции](./migrations/README.md)
-Заметки о рефакторинге и миграциях документирующие архитектурные изменения и руководства по обновлению.
+Текущий путь Alembic migration и заметки по эволюции схемы.
 
 ### [🔒 Безопасность](./security/README.md)
-Документация безопасности включая аутентификацию, авторизацию, rate limiting и лучшие практики.
+Security posture, путь для disclosure и чувствительные runtime поверхности.
 
 ### [⚡ Функции](./features/README.md)
-Документация функций объясняющая генерацию изображений, редактирование, увеличение и модерацию контента.
+Текущие функции, provider-specific возможности и planned surfaces.
 
 ### [🔍 Устранение неполадок](./troubleshooting/README.md)
-Частые проблемы, коды ошибок и решения для GPU, памяти и проблем производительности.
+Текущие operational issues и debugging notes.
 
 ### [⚖️ Юридическая информация](./legal/README.md)
-Юридическая информация включая лицензии, лицензии моделей, источники данных и ограничения использования.
+Лицензирование проекта, лицензирование моделей и атрибуция.
 
 ### [📚 Справочник](./reference/README.md)
-Быстрый справочник по API, конфигурации, CLI командам, переменным окружения и глоссарий.
+Текущие endpoints, команды, env-переменные и порты.
 
 ### [🎓 Учебные материалы](./tutorials/README.md)
-Пошаговые руководства для частых задач и продвинутых функций.
+Guided material и planned tutorials. Часть пунктов там намеренно остаётся roadmap placeholder-ами.
 
 ## 🚀 Быстрый старт
 
 ### Для разработчиков
-1. Прочитайте [Начало работы](./development/getting-started.md)
-2. Настройте [Окружение разработки](./development/setup/windows.md)
-3. Изучите [Структуру проекта](./development/project-structure.md)
-4. Узнайте о [Тестировании](./tests/README.md)
+1. Прочитайте [Development](./development/README.md)
+2. Изучите [Backend](./backend/README.md)
+3. Прогоните проверки из [Tests](./tests/README.md)
 
-### Для DevOps
-1. Проверьте [Системные требования](./deployment/requirements.md)
-2. Следуйте [Руководству по Docker развертыванию](./docker/getting-started.md)
-3. Настройте [Переменные окружения](./deployment/environment/environment-variables.md)
-4. Настройте [Мониторинг](./deployment/production/monitoring.md)
+### Для операторов / DevOps
+1. Откройте [Docker](./docker/README.md)
+2. Следуйте [Deployment](./deployment/README.md)
+3. Используйте [Provider Rollout](./deployment/provider-rollout.md) при переключении runtime
 
 ### Для пользователей API
-1. Прочитайте [Обзор API](./backend/api/overview.md)
-2. Узнайте об [Аутентификации](./backend/api/authentication.md)
-3. Изучите [API Endpoints](./backend/api/endpoints/images.md)
-4. Посмотрите [Примеры API](./backend/api/examples.md)
+1. Начните со [Reference](./reference/README.md)
+2. Затем откройте [Backend](./backend/README.md)
+3. Если окружение ведёт себя не так, как ожидается, проверьте [Troubleshooting](./troubleshooting/README.md)
 
 ## 🏗️ Обзор архитектуры
 
 ```
 ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   Frontend  │◄────►│    Backend   │◄────►│  Database   │
-│   (React)   │      │   (FastAPI)  │      │ (PostgreSQL)│
+│   Frontend  │◄────►│    Backend   │◄────►│ PostgreSQL  │
+│   (React)   │      │   (FastAPI)  │      │ lifecycle   │
 └─────────────┘      └──────────────┘      └─────────────┘
                             │
                             ▼
                      ┌──────────────┐
-                     │   ML Models  │
-                     │ (Stable Diff)│
+                     │  Worker +    │
+                     │  Providers   │
                      └──────────────┘
 ```
 
-Подробнее в [Документации архитектуры](./backend/architecture.md).
+Текущая runtime-правда такая:
+
+- PostgreSQL хранит lifecycle state генераций
+- Redis — это инфраструктура очереди и лимитов, а не главный источник истины о задаче
+- `comfyui` и `diffusers` — реальные provider modes
+- admin pages живут под `/admin/*`
 
 ## 📦 Технологический стек
 
 **Бэкенд:**
-- FastAPI 0.116.1
+- FastAPI
 - Python 3.11+
-- PyTorch 2.2.2
-- Diffusers 0.29.2
 - PostgreSQL
 - Redis
+- SQLAlchemy + Alembic
 
 **Фронтенд:**
 - React + TypeScript
 - Vite
 - Tailwind CSS
-- i18next (интернационализация)
+- i18next
 
 **Инфраструктура:**
 - Docker & Docker Compose
 - Nginx
-- Prometheus метрики
-- Alembic миграции
+- Async generation worker
+- Опциональный локальный Diffusers runtime или внешний ComfyUI runtime
 
 ## 🔗 Быстрые ссылки
 
-- [Руководство по установке](./development/getting-started.md)
-- [Документация API](./backend/api/overview.md)
-- [Настройка Docker](./docker/getting-started.md)
+- [Руководство по разработке](./development/README.md)
+- [Справочник](./reference/README.md)
+- [Docker Setup](./docker/README.md)
 - [Contributing](../../CONTRIBUTING.md)
-- [Устранение неполадок](./troubleshooting/common-issues.md)
+- [Устранение неполадок](./troubleshooting/README.md)
 
 ## 📞 Получение помощи
 
-- Проверьте [Устранение неполадок](./troubleshooting/README.md) для частых проблем
-- Просмотрите [Коды ошибок](./troubleshooting/error-codes.md)
-- Смотрите [FAQ](./troubleshooting/common-issues.md)
+- Начните с [Troubleshooting](./troubleshooting/README.md)
+- Смотрите section README для своей области
+- Используйте roadmap/tutorial страницы как план, а не как доказательство существования уже готового public API
 
 ## 📄 Лицензия
 
-Этот проект использует несколько лицензий. Подробнее в [Юридическая информация](./legal/README.md):
-- Код: См. LICENSE проекта
-- Модели Stable Diffusion: CreativeML Open RAIL-M
-- VAE: MIT License
+Проект использует несколько лицензий. Подробности в [Legal](./legal/README.md):
+
+- лицензирование кода приложения в корне репозитория
+- обязательства по моделям и датасетам в `models/`, `NOTICE.txt` и `ATTRIBUTIONS.md`
 
 ---
 
-**Версия:** 0.1.0 | **Последнее обновление:** 11 марта 2026
-
+**Версия:** 0.1.0 | **Последнее обновление:** 15 марта 2026
