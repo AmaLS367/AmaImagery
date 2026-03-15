@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock3, RefreshCw, Search, TriangleAlert, Filter, Layers } from 'lucide-react'
+import { Clock3, RefreshCw, Search, TriangleAlert, Layers } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { listMyGenerations, toAssetUrl, type GenerationItem } from '../lib/api'
@@ -11,28 +11,39 @@ import { MetaPill, SurfacePanel } from '../components/ui/foundation'
 import { EditorialFrame } from '../components/editorial/EditorialFrame'
 import { cn } from '../lib/utils'
 import { useSettings } from '../providers/SettingsProvider'
+import { useAuth } from '../providers/AuthProvider'
+import { getHistory, type HistoryItem } from '../lib/storage'
 
 type RatioKey = 'any' | '1:1' | '3:4' | '4:3' | '9:16' | '16:9' | '4:5'
 type CfgKey = 'any' | 'lt6' | '6-8' | 'gt8'
+type HistoryRecord = {
+  id: string
+  imageUrl: string | null
+  promptText: string
+  guidance: number | null
+  steps: number | null
+  providerName: string | null
+  createdAtLabel: string
+  createdAtSource: number
+  ratio: string
+}
 
 const LIMIT = 50
 
-function ratioMatch(item: GenerationItem, ratio: RatioKey) {
+function ratioMatch(item: HistoryRecord, ratio: RatioKey) {
   if (ratio === 'any') return true
-  return formatRatio(item) === ratio
+  return item.ratio === ratio
 }
 
-function cfgMatch(item: GenerationItem, cfg: CfgKey) {
+function cfgMatch(item: HistoryRecord, cfg: CfgKey) {
   if (cfg === 'any') return true
-  const guidance = Number(item.params?.guidance_scale ?? 7)
+  const guidance = Number(item.guidance ?? 7)
   if (cfg === 'lt6') return guidance < 6
   if (cfg === '6-8') return guidance >= 6 && guidance <= 8
   return guidance > 8
 }
 
-function formatRatio(item: GenerationItem) {
-  const width = Number(item.params?.width ?? 0)
-  const height = Number(item.params?.height ?? 0)
+function formatRatio(width: number, height: number) {
   if (!width || !height) return 'Unknown'
 
   const gcd = (left: number, right: number): number => (right === 0 ? left : gcd(right, left % right))
@@ -43,7 +54,7 @@ function formatRatio(item: GenerationItem) {
   return ratio
 }
 
-function buildImageUrl(item: GenerationItem) {
+function buildBackendImageUrl(item: GenerationItem) {
   if (item.image_url) return toAssetUrl(item.image_url)
 
   const filename = item.image_filename || String(item.image_path || '').split(/[\\/]/).pop() || ''
@@ -60,8 +71,8 @@ function buildImageUrl(item: GenerationItem) {
   return toAssetUrl(`/api/v1/file?${query.toString()}`)
 }
 
-function formatTimestamp(value: string) {
-  const date = new Date(value)
+function formatTimestamp(value: string | number) {
+  const date = typeof value === 'number' ? new Date(value) : new Date(value)
   return date.toLocaleString([], {
     month: 'short',
     day: 'numeric',
@@ -70,9 +81,46 @@ function formatTimestamp(value: string) {
   })
 }
 
+function adaptBackendItem(item: GenerationItem): HistoryRecord {
+  const width = Number(item.params?.width ?? 0)
+  const height = Number(item.params?.height ?? 0)
+
+  return {
+    id: item.id,
+    imageUrl: buildBackendImageUrl(item),
+    promptText: typeof item.prompt?.prompt === 'string' ? item.prompt.prompt : 'Untitled Result',
+    guidance: Number.isFinite(Number(item.params?.guidance_scale)) ? Number(item.params?.guidance_scale) : null,
+    steps: Number.isFinite(Number(item.params?.steps)) ? Number(item.params?.steps) : null,
+    providerName: typeof item.provider_name === 'string' && item.provider_name.length > 0 ? item.provider_name : 'AmaFusion',
+    createdAtLabel: formatTimestamp(item.created_at),
+    createdAtSource: new Date(item.created_at).getTime(),
+    ratio: formatRatio(width, height),
+  }
+}
+
+function adaptLocalItem(item: HistoryItem, index: number): HistoryRecord {
+  const filename = String(item.path || '').split(/[\\/]/).pop() || ''
+  const query = new URLSearchParams({ path: filename })
+  if (typeof item.exp === 'number') query.set('exp', String(item.exp))
+  if (typeof item.sig === 'string' && item.sig.length > 0) query.set('sig', item.sig)
+
+  return {
+    id: `${item.path}-${item.ts}-${index}`,
+    imageUrl: filename ? toAssetUrl(`/api/v1/file?${query.toString()}`) : null,
+    promptText: item.prompt || 'Untitled Result',
+    guidance: item.guidance,
+    steps: item.steps,
+    providerName: 'Local session',
+    createdAtLabel: formatTimestamp(item.ts),
+    createdAtSource: item.ts,
+    ratio: formatRatio(item.width, item.height),
+  }
+}
+
 export default function History() {
   const { settings } = useSettings()
-  const [items, setItems] = useState<GenerationItem[]>([])
+  const { status: authStatus, isAuthenticated } = useAuth()
+  const [items, setItems] = useState<HistoryRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [broken, setBroken] = useState<Record<string, true>>({})
@@ -82,12 +130,22 @@ export default function History() {
   const [cfg, setCfg] = useState<CfgKey>('any')
 
   async function load() {
+    if (authStatus === 'loading') return
+
     setLoading(true)
     setError(null)
 
     try {
-      const response = await listMyGenerations(LIMIT, 0)
-      setItems(response.items)
+      if (isAuthenticated) {
+        const response = await listMyGenerations(LIMIT, 0)
+        setItems(response.items.map(adaptBackendItem))
+      } else {
+        const localItems = getHistory()
+          .slice(0, LIMIT)
+          .map(adaptLocalItem)
+          .sort((left, right) => right.createdAtSource - left.createdAtSource)
+        setItems(localItems)
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to load history.')
       setItems([])
@@ -97,14 +155,14 @@ export default function History() {
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    void load()
+  }, [authStatus, isAuthenticated])
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
 
     return items.filter((item) => {
-      const promptText = String(item.prompt?.prompt ?? '').toLowerCase()
+      const promptText = item.promptText.toLowerCase()
       return (
         (!normalizedQuery || promptText.includes(normalizedQuery)) &&
         ratioMatch(item, ratio) &&
@@ -228,11 +286,9 @@ export default function History() {
                 >
                   {filtered.map((item) => {
                     if (broken[item.id]) return null
-                    const imageUrl = buildImageUrl(item)
-                    const params = item.params || {}
-                    const promptText = typeof item.prompt?.prompt === 'string' ? item.prompt.prompt : 'Untitled Result'
-                    const stepsText = params.steps == null ? '—' : String(params.steps)
-                    const modelText = typeof item.provider_name === 'string' && item.provider_name.length > 0 ? item.provider_name : 'AmaFusion'
+                    const stepsText = item.steps == null ? '—' : String(item.steps)
+                    const modelText = item.providerName || 'AmaFusion'
+                    const imageUrl = item.imageUrl
 
                     return (
                       <motion.article 
@@ -246,7 +302,7 @@ export default function History() {
                         <div className="relative h-64 overflow-hidden bg-secondary dark:bg-black/20">
                           {imageUrl ? (
                             <img
-                              src={imageUrl}
+                              src={item.imageUrl || undefined}
                               alt=""
                               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                               loading="lazy"
@@ -260,18 +316,18 @@ export default function History() {
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
                              <div className="flex gap-2">
-                                <MetaPill className="bg-black/40 border-white/10 text-white backdrop-blur-md">{formatRatio(item)}</MetaPill>
+                                <MetaPill className="bg-black/40 border-white/10 text-white backdrop-blur-md">{item.ratio}</MetaPill>
                              </div>
                           </div>
                         </div>
                         <div className="p-6 space-y-4">
                           <div className="font-bold text-foreground line-clamp-2 leading-relaxed dark:text-white group-hover:text-primary transition-colors">
-                            {promptText}
+                            {item.promptText}
                           </div>
                           <div className="grid grid-cols-2 gap-4 text-[10px] font-black uppercase tracking-widest text-foreground/40 dark:text-white/40">
                             <div className="space-y-1">
                                <div className="text-primary/60">Guidance</div>
-                               <div className="text-foreground dark:text-white/70">{Number(params.guidance_scale ?? 0).toFixed(1)}</div>
+                               <div className="text-foreground dark:text-white/70">{item.guidance == null ? '—' : item.guidance.toFixed(1)}</div>
                             </div>
                             <div className="space-y-1">
                                <div className="text-primary/60">Steps</div>
@@ -283,7 +339,7 @@ export default function History() {
                             </div>
                             <div className="space-y-1">
                                <div className="text-primary/60">Date</div>
-                               <div className="text-foreground dark:text-white/70">{formatTimestamp(item.created_at)}</div>
+                               <div className="text-foreground dark:text-white/70">{item.createdAtLabel}</div>
                             </div>
                           </div>
                         </div>
@@ -354,8 +410,8 @@ export default function History() {
              <div className="space-y-4">
                 {filtered.slice(0, 4).map(item => (
                   <div key={item.id} className="flex items-center justify-between gap-4 text-[10px] font-bold border-b border-border pb-3 dark:border-white/5 last:border-0 last:pb-0">
-                    <span className="text-foreground/40 dark:text-white/40 truncate flex-1">{typeof item.prompt?.prompt === 'string' ? item.prompt.prompt : 'Untitled'}</span>
-                    <span className="text-primary shrink-0">{formatTimestamp(item.created_at)}</span>
+                    <span className="text-foreground/40 dark:text-white/40 truncate flex-1">{item.promptText}</span>
+                    <span className="text-primary shrink-0">{item.createdAtLabel}</span>
                   </div>
                 ))}
                 {filtered.length === 0 && (

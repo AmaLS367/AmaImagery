@@ -17,8 +17,6 @@ export type Preset = {
   neg: string
 }
 
-export type HeaderKV = { key: string; value: string }
-
 export type Settings = {
   theme: ThemeMode
   accentHex: string
@@ -35,8 +33,6 @@ export type Settings = {
   queue: { maxParallel: 1 | 2 | 3; cancelPrevious: boolean }
 
   historyLimit: 50 | 100 | 500
-
-  headers: HeaderKV[]
 
   notifyOnDone: boolean
   soundOnDone: boolean
@@ -66,7 +62,6 @@ const DEFAULTS: Settings = {
   defaultPresetId: 'portrait',
   queue: { maxParallel: 1, cancelPrevious: true },
   historyLimit: 100,
-  headers: [],
   notifyOnDone: false,
   soundOnDone: false,
   nsfwHide: false,

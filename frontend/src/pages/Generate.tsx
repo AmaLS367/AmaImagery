@@ -77,7 +77,7 @@ function deriveInitialForm(saved: Partial<FormState> | null, defaults: Partial<F
     height: clampToConstraint('height', saved?.height ?? defaults.height ?? generationConstraints.height.default),
     seed: saved?.seed ?? defaults.seed ?? null,
     ipScale: clampToConstraint('ipScale', saved?.ipScale ?? defaults.ipScale ?? generationConstraints.ipScale.default),
-    style: saved?.style ?? defaults.style ?? 'realistic',
+    style: 'realistic',
   }
 }
 
@@ -227,7 +227,7 @@ export default function Generate() {
   const [height, setHeight] = useState(initialForm.height)
   const [seed, setSeed] = useState<number | null>(initialForm.seed)
   const [ipScale, setIpScale] = useState(initialForm.ipScale)
-  const [style] = useState<'realistic' | 'anime'>(initialForm.style)
+  const style: 'realistic' = 'realistic'
   const [error, setError] = useState<string | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
   const [refPreview, setRefPreview] = useState<string | null>(null)

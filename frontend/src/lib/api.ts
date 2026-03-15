@@ -20,8 +20,6 @@ const API_BASE =
     ? import.meta.env.VITE_API_URL.trim()
     : ''
 
-let headerProvider: (() => Record<string, string>) | null = null
-let compatibilityAccessToken: string | null = null
 let refreshPromise: Promise<boolean> | null = null
 
 function normalizeBaseUrl(url: string): string {
@@ -42,7 +40,7 @@ function normalizePath(path: string): string {
 
 function hasJsonBody(body: BodyInit | null | undefined): boolean {
   if (!body) return false
-  if (typeof body === 'string') return false
+  if (typeof body === 'string') return true
   if (typeof FormData !== 'undefined' && body instanceof FormData) return false
   if (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) return false
   if (typeof Blob !== 'undefined' && body instanceof Blob) return false
@@ -51,45 +49,14 @@ function hasJsonBody(body: BodyInit | null | undefined): boolean {
   return true
 }
 
-function readLegacyStoredToken(): string | null {
-  try {
-    const direct = localStorage.getItem('access_token')
-    if (direct) return direct
-
-    const raw = localStorage.getItem('auth')
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw)
-    return parsed?.user?.access_token || parsed?.access_token || parsed?.token || null
-  } catch {
-    return null
-  }
-}
-
-function getCompatibilityToken(): string | null {
-  return compatibilityAccessToken ?? readLegacyStoredToken()
-}
-
 function buildRequestHeaders(init: RequestInit = {}): Headers {
   const headers = new Headers()
-
-  const provided = headerProvider ? headerProvider() : {}
-  for (const [key, value] of Object.entries(provided)) {
-    headers.set(key, value)
-  }
 
   const fromInit = new Headers(init.headers || {})
   fromInit.forEach((value, key) => headers.set(key, value))
 
   if (!headers.has('Content-Type') && hasJsonBody(init.body)) {
     headers.set('Content-Type', 'application/json')
-  }
-
-  if (!headers.has('Authorization')) {
-    const token = getCompatibilityToken()
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
   }
 
   return headers
@@ -231,39 +198,6 @@ export async function parseApiError(response: Response): Promise<string> {
   )
 }
 
-export function configureApiHeaders(fn: () => Record<string, string>) {
-  headerProvider = fn
-}
-
-export function setAccessToken(token: string | null, options: { persistLegacy?: boolean } = {}) {
-  compatibilityAccessToken = token
-
-  if (!options.persistLegacy) {
-    return
-  }
-
-  try {
-    if (token) {
-      localStorage.setItem('access_token', token)
-    } else {
-      localStorage.removeItem('access_token')
-    }
-  } catch {
-    // ignore legacy storage failures
-  }
-}
-
-export function clearLegacyAuthStorage() {
-  compatibilityAccessToken = null
-
-  try {
-    localStorage.removeItem('auth')
-    localStorage.removeItem('access_token')
-  } catch {
-    // ignore legacy storage failures
-  }
-}
-
 export async function refreshAccessToken(): Promise<boolean> {
   if (refreshPromise) return refreshPromise
 
@@ -280,17 +214,7 @@ export async function refreshAccessToken(): Promise<boolean> {
       return false
     }
 
-    const data = (await response.json().catch(() => null)) as Record<string, unknown> | null
-    const token =
-      typeof data?.access_token === 'string'
-        ? data.access_token
-        : typeof data?.token === 'string'
-          ? data.token
-          : null
-
-    if (token) {
-      setAccessToken(token)
-    }
+    await response.json().catch(() => null)
 
     return true
   })()
@@ -328,15 +252,6 @@ export async function apiVoid(input: string, init: RequestInit = {}, options: Ap
   const response = await api(input, init, options)
   if (!response.ok) {
     throw new Error(await parseApiError(response))
-  }
-}
-
-export async function health(): Promise<boolean> {
-  try {
-    const response = await api('/api/v1/health', { cache: 'no-store' }, { retryOn401: false })
-    return response.ok
-  } catch {
-    return false
   }
 }
 
@@ -431,10 +346,6 @@ export async function logoutRequest() {
   )
 }
 
-export async function getCurrentUser(options: ApiRequestOptions = {}): Promise<MeResponse> {
-  return apiJson<MeResponse>('/api/v1/auth/me', undefined, options)
-}
-
 export type GeneratePayload = {
   prompt: string
   negative_prompt?: string | null
@@ -448,14 +359,16 @@ export type GeneratePayload = {
   style?: 'realistic' | 'anime'
 }
 
+export type BackendTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'canceled'
+
 export type TaskResp = {
   task_id: string
-  status: string
+  status: BackendTaskStatus
 }
 
 export type TaskStatusResp = {
   task_id: string
-  status: string
+  status: BackendTaskStatus
   provider_name?: string | null
   provider_state?: Record<string, unknown> | null
   image_path?: string | null
@@ -515,17 +428,3 @@ export async function listMyGenerations(limit = 50, offset = 0): Promise<Generat
   return apiJson<GenerationListResponse>(`/api/v1/users/me/generations?${query.toString()}`)
 }
 
-export type SettingsResponse = {
-  data: Record<string, unknown>
-}
-
-export async function getMySettings(): Promise<SettingsResponse> {
-  return apiJson<SettingsResponse>('/api/v1/users/me/settings')
-}
-
-export async function patchMySettings(payload: Record<string, unknown>): Promise<SettingsResponse> {
-  return apiJson<SettingsResponse>('/api/v1/users/me/settings', {
-    method: 'PATCH',
-    body: JSON.stringify({ data: payload }),
-  })
-}
