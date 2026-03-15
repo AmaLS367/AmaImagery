@@ -15,7 +15,9 @@
     "vitest": "^1.6.0"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest"
   },
   "overrides": {
     "diff": "4.0.4",
