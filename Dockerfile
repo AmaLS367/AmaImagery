@@ -1,4 +1,46 @@
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM python:3.11-slim-bookworm AS runtime-core
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/app/models/.cache/huggingface
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ffmpeg \
+    git \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN addgroup --system app && adduser --system --ingroup app --home /app app
+
+COPY pyproject.toml README.md ./
+RUN mkdir -p /app/app \
+    && printf "__all__ = []\n" > /app/app/__init__.py \
+    && pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir .
+
+COPY app ./app
+COPY migrations ./migrations
+COPY scripts ./scripts
+COPY run.py ./run.py
+COPY NOTICE.txt ./NOTICE.txt
+COPY ATTRIBUTIONS.md ./ATTRIBUTIONS.md
+COPY LICENSE ./LICENSE
+
+RUN mkdir -p /app/outputs /app/logs /app/models \
+    && chown -R app:app /app
+
+EXPOSE 8000
+
+USER app
+
+CMD ["python3", "run.py"]
+
+
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04 AS runtime-ml
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -28,22 +70,12 @@ WORKDIR /app
 
 RUN addgroup --system app && adduser --system --ingroup app --home /app app
 
-# Cache dependency installation separately from application code.
 COPY pyproject.toml README.md ./
 RUN mkdir -p /app/app \
     && printf "__all__ = []\n" > /app/app/__init__.py \
     && pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir ".[ml]"
 
-# Validate and complete the runtime dependency set explicitly.
-RUN pip install --no-cache-dir \
-    asyncpg \
-    aiosqlite \
-    protobuf
-
-RUN python -c "import aiosqlite, asyncpg, google.protobuf"
-
-# Copy only runtime files needed by the API and worker.
 COPY app ./app
 COPY migrations ./migrations
 COPY scripts ./scripts

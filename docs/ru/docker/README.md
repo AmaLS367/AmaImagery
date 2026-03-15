@@ -2,19 +2,20 @@
 
 ## Обзор
 
-Приложение полностью контейнеризовано с Docker и Docker Compose, поддерживая несколько сценариев развертывания: локальная разработка, только CPU и production с GPU.
+Приложение полностью контейнеризовано с Docker и Docker Compose, с явным разделением между лёгкой orchestration-схемой для ComfyUI и локальным ML runtime для Diffusers.
 
 ## Ключевые возможности
 
-### 🐳 Многоэтапные сборки
-- Оптимизированный Dockerfile для production
-- Отдельные образы для разработки и production
-- Кэширование слоев для быстрой сборки
+### 🐳 Runtime Targets
+- `runtime-core` для API и ComfyUI orchestration без локальных ML-зависимостей
+- `runtime-ml` для локальных Diffusers-воркеров и API-инстансов, которым нужно поднимать Diffusers
+- Кэширование слоёв для быстрой пересборки
 
 ### 🎯 Несколько конфигураций Compose
-- **compose.local.yml** - Локальная разработка
-- **compose.cpu.yml** - Развертывание только на CPU
-- **compose.prod.yml** - Production с GPU
+- **compose.local.yml** - Локальный ComfyUI-first стек без локального Diffusers runtime
+- **compose.local.diffusers.yml** - Локальный override для включения ML runtime
+- **compose.prod.yml** - Production ComfyUI-first стек
+- **compose.prod.diffusers.yml** - Production override для локального Diffusers runtime
 
 ### 🔧 Сервисы
 - Backend (FastAPI)
@@ -37,14 +38,24 @@
 
 ## Быстрый старт
 
-### Локальная разработка
+### Локальная ComfyUI-first разработка
 ```bash
 docker compose -f docker/compose.local.yml up
 ```
 
-### Production
+### Локальная разработка с Diffusers
+```bash
+docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up
+```
+
+### Production ComfyUI-first
 ```bash
 docker compose -f docker/compose.prod.yml up -d
+```
+
+### Production с Diffusers
+```bash
+docker compose -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d
 ```
 
 См. [Начало работы](./getting-started.md) для подробностей.
@@ -53,7 +64,7 @@ docker compose -f docker/compose.prod.yml up -d
 
 - Docker 20.10+
 - Docker Compose 2.0+
-- NVIDIA Docker (для поддержки GPU)
+- NVIDIA Docker (нужен только для локального GPU runtime с Diffusers)
 - 8GB+ RAM (16GB+ рекомендуется)
 - 20GB+ дискового пространства
 

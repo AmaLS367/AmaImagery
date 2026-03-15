@@ -7,7 +7,10 @@ Use the Docker env templates under `docker/`:
 - `docker/.env.verify.diffusers.example` for the `diffusers` verification profile
 - `docker/.env.verify.comfyui.example` for the `comfyui` verification profile
 
-Both profiles keep `PROVIDERS_ENABLED=diffusers,comfyui`. The only rollout switch is `PROVIDERS_DEFAULT_NAME`.
+The profiles now represent two different runtime modes:
+
+- `comfyui`: `PROVIDERS_ENABLED=comfyui` on the lightweight `runtime-core` image
+- `diffusers`: `PROVIDERS_ENABLED=diffusers` on the `runtime-ml` image
 
 ## Live Verification Flow
 
@@ -26,7 +29,7 @@ Example:
 
 ```bash
 cp docker/.env.verify.diffusers.example docker/.env.docker
-docker compose -f docker/compose.local.yml up -d --build
+docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up -d --build
 SMOKE_EXPECT_PROVIDER=diffusers ./scripts/linux/smoketest.sh http://localhost:8000
 ```
 
@@ -50,5 +53,5 @@ SMOKE_EXPECT_PROVIDER=comfyui ./scripts/linux/smoketest.sh http://localhost:8000
 
 - Canonical default provider after verification: `comfyui`
 - Fallback provider: `diffusers`
-- Keep both providers enabled during rollout
-- Roll back to `PROVIDERS_DEFAULT_NAME=diffusers` if repeated live failures appear in the `submit`, `wait_for_result`, or artifact download path
+- Keep the default Docker runtime lightweight and ComfyUI-only unless a deployment explicitly needs local Diffusers
+- Roll forward to Diffusers by adding `docker/compose.local.diffusers.yml` or `docker/compose.prod.diffusers.yml`

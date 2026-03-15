@@ -93,6 +93,7 @@ generation_worker:
   build:
     context: ..
     dockerfile: Dockerfile
+    target: runtime-core
   command: ["python", "-m", "app.entrypoints.generation_worker"]
   depends_on: [redis, postgres]
 ```
@@ -108,8 +109,8 @@ python -m app.entrypoints.generation_worker
 Воркеры требуют:
 - Подключение к Redis (`REDIS_URL`)
 - Подключение к базе данных (`DATABASE_URL`)
-- Доступ к файлам моделей (как и API)
-- Доступ к GPU (если используются GPU-провайдеры)
+- Доступ к runtime выбранного провайдера
+- Доступ к GPU только при использовании `runtime-ml` / режима Diffusers
 
 ## API эндпоинты
 
@@ -200,9 +201,19 @@ python -m app.entrypoints.generation_worker
 docker compose -f docker/compose.prod.yml up -d
 ```
 
+**Продакшн с локальным Diffusers runtime:**
+```bash
+docker compose -f docker/compose.prod.yml -f docker/compose.prod.diffusers.yml up -d
+```
+
 **Локально:**
 ```bash
 docker compose -f docker/compose.local.yml up -d
+```
+
+**Локально с Diffusers runtime:**
+```bash
+docker compose -f docker/compose.local.yml -f docker/compose.local.diffusers.yml up -d
 ```
 
 ### Масштабирование воркеров
@@ -218,8 +229,8 @@ docker compose -f docker/compose.prod.yml up -d --scale generation_worker=3
 Воркеры требуют:
 - **Redis** - Для очереди задач и хранения статусов
 - **PostgreSQL** - Для сохранения метаданных генерации
-- **Файлы моделей** - Те же volume mounts, что и у API сервиса
-- **GPU** - Если используются GPU-провайдеры
+- **Доступность ComfyUI** - Для `runtime-core` / ComfyUI-only деплоя
+- **Файлы моделей и GPU** - Только для `runtime-ml` / режима Diffusers
 
 ## Мониторинг
 

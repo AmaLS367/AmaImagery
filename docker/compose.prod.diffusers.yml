@@ -1,0 +1,48 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime-ml
+    environment:
+      RUN_IN_DOCKER: "1"
+      REFRESH_COOKIE_SECURE: "1"
+      PROVIDERS_ENABLED: ${PROVIDERS_ENABLED:-diffusers}
+      PROVIDERS_DEFAULT_NAME: ${PROVIDERS_DEFAULT_NAME:-diffusers}
+      HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-1}
+      TRANSFORMERS_OFFLINE: ${TRANSFORMERS_OFFLINE:-1}
+      DIFFUSERS_OFFLINE: ${DIFFUSERS_OFFLINE:-1}
+      HF_HUB_DISABLE_TELEMETRY: ${HF_HUB_DISABLE_TELEMETRY:-1}
+    volumes:
+      - outputs:/app/outputs
+      - logs:/app/logs
+      - ../frontend/dist:/app/static:ro
+      - ./models:/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+
+  generation_worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime-ml
+    environment:
+      RUN_IN_DOCKER: "1"
+      PROVIDERS_ENABLED: ${PROVIDERS_ENABLED:-diffusers}
+      PROVIDERS_DEFAULT_NAME: ${PROVIDERS_DEFAULT_NAME:-diffusers}
+      HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-1}
+      TRANSFORMERS_OFFLINE: ${TRANSFORMERS_OFFLINE:-1}
+      DIFFUSERS_OFFLINE: ${DIFFUSERS_OFFLINE:-1}
+      HF_HUB_DISABLE_TELEMETRY: ${HF_HUB_DISABLE_TELEMETRY:-1}
+    volumes:
+      - outputs:/app/outputs
+      - logs:/app/logs
+      - ./models:/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
