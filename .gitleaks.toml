@@ -1,0 +1,9 @@
+[allowlist]
+description = "Allow the empty public API base placeholder in the frontend example config."
+regexTarget = "line"
+paths = [
+  '''^frontend/\.env\.example$''',
+]
+regexes = [
+  '''^VITE_API_BASE=$''',
+]
