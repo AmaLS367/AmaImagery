@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MoonStar, Sun, LogOut } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, type NavLinkRenderProps, useNavigate } from 'react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 
@@ -83,7 +83,7 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
                 <NavLink
                   key={link.href}
                   to={link.href}
-                  className={({ isActive }) =>
+                  className={({ isActive }: NavLinkRenderProps) =>
                     cn(
                       'relative rounded-full px-5 py-2 text-sm font-bold tracking-tight transition-all duration-200',
                       isActive
@@ -92,7 +92,7 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
                     )
                   }
                 >
-                  {({ isActive }) => (
+                  {({ isActive }: NavLinkRenderProps) => (
                     <>
                       {t(link.labelKey)}
                       {isActive && (
@@ -168,7 +168,7 @@ export function Topbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () =
             <NavLink
               key={link.href}
               to={link.href}
-              className={({ isActive }) =>
+              className={({ isActive }: NavLinkRenderProps) =>
                 cn(
                   'shrink-0 rounded-full border px-5 py-2 text-xs font-bold uppercase tracking-widest transition-all duration-200',
                   isActive
