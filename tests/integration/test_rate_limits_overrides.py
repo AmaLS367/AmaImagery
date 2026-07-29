@@ -1,6 +1,7 @@
 import fastapi
 from fastapi.routing import APIRoute
 
+from app.api.v1.auth.router import router as auth_router
 from app.main import app
 
 
@@ -9,14 +10,10 @@ def fake_dep():
 
 
 def test_auth_rate_limited_simulated(app_client):
-    overrides = {}
-    for route in app.routes:
-        if not isinstance(route, APIRoute) or route.path != "/api/v1/auth/login":
-            continue
-        for dependency in route.dependant.dependencies:
-            if dependency.call is not None:
-                overrides[dependency.call] = fake_dep
-        break
+    login_route = next(route for route in auth_router.routes if isinstance(route, APIRoute) and route.path == "/login")
+    overrides = {
+        dependency.call: fake_dep for dependency in login_route.dependant.dependencies if dependency.call is not None
+    }
 
     app.dependency_overrides.update(overrides)
     try:
