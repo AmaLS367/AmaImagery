@@ -109,6 +109,7 @@ describe('JobProvider', () => {
     fireEvent.click(screen.getByText('start'))
     await flush()
     await advancePoll()
+    await advancePoll()
 
     expect(screen.getByTestId('summary')).toHaveTextContent('completed:completed')
     expect(getHistory()).toEqual([])
@@ -121,6 +122,7 @@ describe('JobProvider', () => {
     fireEvent.click(screen.getByText('start'))
     await flush()
     await advancePoll()
+    await advancePoll()
 
     expect(screen.getByTestId('summary')).toHaveTextContent('error:failed')
   })
@@ -132,6 +134,7 @@ describe('JobProvider', () => {
     fireEvent.click(screen.getByText('start'))
     await flush()
     fireEvent.click(screen.getByText('cancel'))
+    await advancePoll()
     await advancePoll()
 
     expect(screen.getByTestId('summary')).toHaveTextContent('canceled:canceled')

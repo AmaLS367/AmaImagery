@@ -3,7 +3,7 @@ import '@src/i18n/i18n'
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 
 import Settings from '@src/pages/Settings'
 import { AuthProvider } from '@src/providers/AuthProvider'
