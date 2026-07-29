@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { Clock3, RefreshCw, Search, TriangleAlert, Layers } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
