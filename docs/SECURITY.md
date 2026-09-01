@@ -4,7 +4,7 @@
 
 If you believe you found a vulnerability in AmaImagery, report it privately:
 
-<p align="center"><strong>amalsdev367@gmail.com</strong></p>
+<p align="center"><strong>ama@amadev.tech</strong></p>
 
 Do not open a public issue for an unpatched security problem.
 

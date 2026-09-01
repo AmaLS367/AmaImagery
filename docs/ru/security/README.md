@@ -50,6 +50,6 @@ Security notes для текущего runtime **AmaImagery**: auth, file delive
 
 ## Сообщение о проблемах безопасности
 
-Если вы нашли уязвимость, пишите на `amalsdev367@gmail.com`. Не открывайте публичный issue для непочиненной security-проблемы.
+Если вы нашли уязвимость, пишите на `ama@amadev.tech`. Не открывайте публичный issue для непочиненной security-проблемы.
 
 Смотрите корневой [SECURITY.md](../../../SECURITY.md) для актуальной disclosure policy.

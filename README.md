@@ -167,7 +167,7 @@ The runtime path is intentionally coherent:
 AmaImagery application code is dual-licensed:
 
 - open-source use under `AGPL-3.0-only`
-- commercial licensing by direct agreement via `amalsdev367@gmail.com`
+- commercial licensing by direct agreement via `ama@amadev.tech`
 
 Third-party models, datasets, and assets may carry separate obligations. Review:
 
@@ -183,7 +183,7 @@ Third-party models, datasets, and assets may carry separate obligations. Review:
 | --------------------------- | ------------------------- |
 | Bugs and defects            | GitHub Issues             |
 | Product or usage discussion | GitHub Discussions        |
-| Security disclosure         | `amalsdev367@gmail.com` |
-| Commercial licensing        | `amalsdev367@gmail.com` |
+| Security disclosure         | `ama@amadev.tech`         |
+| Commercial licensing        | `ama@amadev.tech`         |
 
 AmaImagery should feel sharp, calm, and inspectable before the code ever runs. The docs are part of that contract.

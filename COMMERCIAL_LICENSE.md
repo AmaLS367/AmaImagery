@@ -17,6 +17,6 @@ If that does not fit your use case, commercial licensing is available by direct 
 
 ## 📬 Contact
 
-<p align="center"><strong>amalsdev367@gmail.com</strong></p>
+<p align="center"><strong>ama@amadev.tech</strong></p>
 
 No commercial rights are granted unless they are explicitly provided in a written agreement.

@@ -50,6 +50,6 @@ Security notes for the current **AmaImagery** runtime: auth, file delivery, rate
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability, email `amalsdev367@gmail.com`. Do not open a public issue for an unpatched security problem.
+If you discover a security vulnerability, email `ama@amadev.tech`. Do not open a public issue for an unpatched security problem.
 
 See the repository-level [SECURITY.md](../../../SECURITY.md) for the current disclosure policy.

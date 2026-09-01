@@ -24,7 +24,7 @@ AmaImagery has a few distinct support paths. Picking the right one gets you a be
     </td>
     <td width="25%">
       <strong>📨 Commercial or private support</strong><br/>
-      Email <code>amalsdev367@gmail.com</code>.
+      Email <code>ama@amadev.tech</code>.
     </td>
   </tr>
 </table>
@@ -45,6 +45,6 @@ Use private email when the topic is:
 
 Contact:
 
-<p align="center"><strong>amalsdev367@gmail.com</strong></p>
+<p align="center"><strong>ama@amadev.tech</strong></p>
 
 Clear routing keeps the project fast, calm, and easier to maintain.

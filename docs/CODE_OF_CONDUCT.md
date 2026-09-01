@@ -26,4 +26,4 @@ Maintainers may remove comments, reject contributions, or restrict participation
 
 For serious concerns:
 
-<p align="center"><strong>amalsdev367@gmail.com</strong></p>
+<p align="center"><strong>ama@amadev.tech</strong></p>
