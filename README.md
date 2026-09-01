@@ -173,7 +173,6 @@ Third-party models, datasets, and assets may carry separate obligations. Review:
 
 - [LICENSE](./LICENSE)
 - [NOTICE.txt](./NOTICE.txt)
-- [ATTRIBUTIONS.md](./ATTRIBUTIONS.md)
 - [Legal Docs](./docs/en/legal/README.md)
 
 ---

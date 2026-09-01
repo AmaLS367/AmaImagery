@@ -145,7 +145,7 @@ Key runtime details:
 This project uses multiple licenses. See [Legal](./legal/README.md) for details:
 
 - application code licensing at the repository root
-- model and dataset obligations under `models/`, `NOTICE.txt`, and `ATTRIBUTIONS.md`
+- model and dataset obligations under `NOTICE.txt` and respective upstream licenses
 
 ---
 

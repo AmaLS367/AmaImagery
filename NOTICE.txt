@@ -1,24 +1,13 @@
 NOTICE
 
-This repository includes model assets and documentation that depend on third-party components.
-Those components remain under their own licenses. If you use, redistribute, or expose the model weights as a service, you are responsible for complying with those terms.
+This repository includes configuration and code that may interact with third-party model components.
+Those components remain under their own licenses. If you use, redistribute, or expose third-party model weights as a service, you are responsible for complying with those terms.
 
-Upstream lineage
-- Stable Diffusion v1.5 - CreativeML Open RAIL-M
-- DreamShaper v6 - CreativeML Open RAIL-M
-- VAE sd-vae-ft-mse - MIT
-
-Local license files
-- `models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt`
-- `models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt`
-- `models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt`
-
-Data provenance
-- `models/AmaFusion_V1/DATA_SOURCES.md` contains the dataset ledger, attribution requirements, and evidence references
-
-Attribution
-- `ATTRIBUTIONS.md` consolidates upstream references and license locations
+Third-party models and components
+- Stable Diffusion / SDXL - CreativeML Open RAIL / Stability AI Community License
+- DreamShaper - CreativeML Open RAIL-M
+- VAE / CLIP weights - Respective upstream licenses
 
 Disclaimer
-- This repository and the included model materials are provided as-is, without warranties of any kind
+- This repository and the application code are provided as-is, without warranties of any kind
 - You remain responsible for legal, policy, and deployment compliance in your environment

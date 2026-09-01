@@ -18,4 +18,5 @@ Canonical AGPL text
 
 Third-party assets
 - Model weights, datasets, and other third-party assets may carry additional obligations
-- Review `NOTICE.txt`, `ATTRIBUTIONS.md`, and the model-specific license files under `models/`
+- Review `NOTICE.txt` and model-specific upstream licenses for details
+
