@@ -7,14 +7,16 @@ import re
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from loguru import logger as _logger
 from starlette.concurrency import iterate_in_threadpool
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
+from starlette.responses import Response
 from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
 
 from app.config import settings
@@ -76,7 +78,7 @@ logger = _logger
 # -------- intercept standard logging -> loguru --------
 class InterceptHandler(logging.Handler):
     @staticmethod
-    def _safe_message(record):
+    def _safe_message(record: logging.LogRecord) -> str:
         try:
             return record.getMessage()
         except Exception:
@@ -91,8 +93,9 @@ class InterceptHandler(logging.Handler):
                 return base
             return base
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         try:
+            level: str | int
             try:
                 level = logger.level(record.levelname).name
             except Exception:
@@ -106,7 +109,7 @@ class InterceptHandler(logging.Handler):
                 logging.Handler.handleError(self, record)
 
 
-def _patch_std_logging():
+def _patch_std_logging() -> None:
     logging.root.handlers = [InterceptHandler()]
     # Set root level to DEBUG to capture all logs, filtering happens at sink level
     logging.root.setLevel(logging.DEBUG)
@@ -121,7 +124,7 @@ def _patch_std_logging():
 def _mask_text(text: str) -> str:
     try:
 
-        def replace_match(m):
+        def replace_match(m: re.Match[str]) -> str:
             if m.group("bearer"):
                 return m.group("bearer") + "****"
             elif m.group("key"):
@@ -130,9 +133,9 @@ def _mask_text(text: str) -> str:
                 return m.group("cookie") + "****"
             return ""
 
-        return _SECRET_RX.sub(replace_match, str(text))
+        return _SECRET_RX.sub(replace_match, text)
     except Exception:
-        return str(text)
+        return text
 
 
 # -------- setup sinks --------
@@ -191,7 +194,7 @@ def setup_logging(level: str = "INFO") -> None:
 class AccessLogMiddleware(BaseHTTPMiddleware):
     """Middleware that logs all incoming HTTP requests with duration, status, and size."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start = time.perf_counter()
         rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         set_request_id(rid)
@@ -208,7 +211,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 body_iterator = getattr(response, "body_iterator", None)
                 if body_iterator is not None:
                     body = [section async for section in body_iterator]
-                    response.body_iterator = iterate_in_threadpool(iter(body))
+                    setattr(response, "body_iterator", iterate_in_threadpool(iter(body)))
             except (AttributeError, TypeError):
                 # If body_iterator is unavailable, skip byte counting
                 pass
@@ -250,7 +253,7 @@ def install_exception_handlers(app: FastAPI) -> None:
 
     # PROD handlers
     @app.exception_handler(Exception)
-    async def _unhandled(request: Request, exc: Exception):
+    async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         # In DEV don't suppress provide full traceback to console/uvicorn
         if getattr(settings, "env", "").lower() in ("dev", "development") or getattr(settings, "debug", 0) == 1:
             raise exc
@@ -264,7 +267,7 @@ def install_exception_handlers(app: FastAPI) -> None:
         return JSONResponse({"detail": "Internal Server Error"}, status_code=500)
 
     @app.exception_handler(RequestValidationError)
-    async def _validation(request: Request, exc: RequestValidationError):
+    async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
         logger.bind(
             event_type="error",
             scope="validation",
@@ -274,12 +277,12 @@ def install_exception_handlers(app: FastAPI) -> None:
 
 
 # -------- helpers --------
-def lg(kind: str):
+def lg(kind: str) -> Any:
     return logger.bind(event_type=kind)
 
 
 def save_prompt_raw(prompt_hash: str, original: str, negative: str | None) -> None:
-    if int(settings.prompts_raw or 0) != 1:
+    if not settings.prompts_raw:
         return
     p = Path(settings.log_dir) / "prompts" / "raw" / f"{prompt_hash}.txt"
     try:
@@ -289,7 +292,7 @@ def save_prompt_raw(prompt_hash: str, original: str, negative: str | None) -> No
         logger.bind(event_type="app").warning("Failed to save raw prompt", extra={"prompt_hash": prompt_hash})
 
 
-def sec(event: str, **fields):
+def sec(event: str, **fields: Any) -> None:
     payload = {"event": event}
     payload.update(fields)
     logger.bind(event_type="security", **payload).info("security")

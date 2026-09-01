@@ -23,15 +23,15 @@ _FALLBACK_PATTERNS: list[str] = [
 ]
 
 _cache_lock = threading.Lock()
-_cache_compiled: list[Pattern] | None = None
+_cache_compiled: list[Pattern[str]] | None = None
 _cache_mtime: float | None = None
 
 _cache_forced_lock = threading.Lock()
-_cache_forced_compiled: list[Pattern] | None = None
+_cache_forced_compiled: list[Pattern[str]] | None = None
 _cache_forced_mtime: float | None = None
 
 
-def _load_rules_cache(force: bool = False) -> list[Pattern]:
+def _load_rules_cache(force: bool = False) -> list[Pattern[str]]:
     """
     Load and compile blocklist patterns with caching.
     force=True ignores nsfw_allow flag.
@@ -107,7 +107,7 @@ def _read_blocklist_file(p: Path) -> list[str]:
         return []
 
 
-def _compile_patterns(entries: Iterable[str]) -> list[Pattern]:
+def _compile_patterns(entries: Iterable[str]) -> list[Pattern[str]]:
     return [re.compile(e, re.IGNORECASE) for e in _normalize_entries(entries)]
 
 
@@ -120,7 +120,7 @@ def get_rules() -> list[str]:
     return entries if entries else list(_FALLBACK_PATTERNS)
 
 
-def _get_compiled() -> list[Pattern]:
+def _get_compiled() -> list[Pattern[str]]:
     return _load_rules_cache(force=False)
 
 
@@ -133,7 +133,7 @@ def is_blocked(text: str | None) -> bool:
     return any(rx.search(text) for rx in pats)
 
 
-def _get_compiled_forced() -> list[Pattern]:
+def _get_compiled_forced() -> list[Pattern[str]]:
     return _load_rules_cache(force=True)
 
 

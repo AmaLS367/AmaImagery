@@ -17,7 +17,7 @@ async def health_options() -> Response:
 
 
 @router.get("/health")
-async def health_check(request: Request) -> dict:
+async def health_check(request: Request) -> dict[str, Any]:
     providers = get_provider_boot_snapshot().as_dict()
     infra = getattr(request.app.state, "infrastructure_status", {})
     return {

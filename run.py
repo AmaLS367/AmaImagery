@@ -4,6 +4,7 @@ Main entry point for the application server.
 
 import signal
 import sys
+from typing import Any
 
 import uvicorn
 
@@ -11,7 +12,7 @@ from app.config import settings
 from app.core.logging import lg
 
 
-def run_server():
+def run_server() -> None:
     """Run the FastAPI server."""
     uvicorn.run(
         "app.main:app",
@@ -26,7 +27,7 @@ def run_server():
     )
 
 
-def signal_handler(sig, frame):
+def signal_handler(sig: int, frame: Any) -> None:
     """Handle shutdown signals gracefully."""
     logger = lg("app")
     logger.info("Shutdown signal received, terminating processes...")

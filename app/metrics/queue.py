@@ -16,16 +16,16 @@ try:
 except Exception:  # pragma: no cover - minimal env fallback
 
     class _NoopMetric:
-        def labels(self, **kwargs):
+        def labels(self, **kwargs: Any) -> "_NoopMetric":
             return self
 
-        def inc(self, *args, **kwargs):
+        def inc(self, *args: Any, **kwargs: Any) -> None:
             return None
 
-        def set(self, *args, **kwargs):
+        def set(self, *args: Any, **kwargs: Any) -> None:
             return None
 
-        def observe(self, *args, **kwargs):
+        def observe(self, *args: Any, **kwargs: Any) -> None:
             return None
 
     def _noop_counter(*args: Any, **kwargs: Any) -> _NoopMetric:

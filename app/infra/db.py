@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess  # nosec B404
 import sys
+from collections.abc import AsyncIterator
 from typing import Any
 
 from sqlalchemy.engine.url import make_url
@@ -69,7 +70,7 @@ class Base(DeclarativeBase):
     pass
 
 
-async def get_db():
+async def get_db() -> AsyncIterator[AsyncSession]:
     """
     Dependency for FastAPI to get async database session.
 

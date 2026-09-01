@@ -21,7 +21,7 @@ def _req_id(request: Request) -> str | None:
 
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
-    async def _starlette_http(request: Request, exc: StarletteHTTPException):
+    async def _starlette_http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         # Handle 404 specifically
         if exc.status_code == 404:
             payload = {
@@ -56,7 +56,7 @@ def install_error_handlers(app: FastAPI) -> None:
         return JSONResponse(status_code=exc.status_code, content=payload)
 
     @app.exception_handler(DomainException)
-    async def _domain_exception(request: Request, exc: DomainException):
+    async def _domain_exception(request: Request, exc: DomainException) -> JSONResponse:
         status_code, response_data = map_exception_to_http(exc)
 
         payload = {
@@ -75,7 +75,7 @@ def install_error_handlers(app: FastAPI) -> None:
         return JSONResponse(status_code=status_code, content=payload)
 
     @app.exception_handler(HTTPException)
-    async def _http(request: Request, exc: HTTPException):
+    async def _http(request: Request, exc: HTTPException) -> JSONResponse:
         detail = exc.detail if isinstance(exc.detail, str) else exc.__class__.__name__
         payload = {
             "error": {
@@ -104,7 +104,7 @@ def install_error_handlers(app: FastAPI) -> None:
         return JSONResponse(status_code=exc.status_code, content=payload)
 
     @app.exception_handler(RequestValidationError)
-    async def _validation(request: Request, exc: RequestValidationError):
+    async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
         details: dict[str, object] = {}
         if _is_debug():
             details["fields"] = list(exc.errors())
@@ -120,7 +120,7 @@ def install_error_handlers(app: FastAPI) -> None:
         return JSONResponse(status_code=HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
 
     @app.exception_handler(Exception)
-    async def _unhandled(request: Request, exc: Exception):
+    async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         # Don't handle HTTPException here - it's already handled by specific handlers
         if isinstance(exc, (HTTPException, StarletteHTTPException)):
             raise exc

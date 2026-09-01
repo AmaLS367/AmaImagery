@@ -26,7 +26,7 @@ class GenerationRequest:
     ip_scale: float | None = None
     style: Style = "realistic"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.prompt or len(self.prompt.strip()) == 0:
             raise ValueError("Prompt cannot be empty")
         if self.width < 1 or self.height < 1:
@@ -48,7 +48,7 @@ class GenerationResult:
     image_path: str
     metadata: dict[str, Any]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.image_path:
             raise ValueError("Image path cannot be empty")
 

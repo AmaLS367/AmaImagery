@@ -24,7 +24,7 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on", "dev", "debug", "development"}
 
 
-def _blocked_connect(self, address):
+def _blocked_connect(self: socket.socket, address: Any) -> None:
     """Block outbound connections except to localhost."""
     host = address[0] if isinstance(address, (tuple, list)) and address else address
     if isinstance(host, str) and host in {"127.0.0.1", "localhost", "::1"}:
@@ -34,7 +34,7 @@ def _blocked_connect(self, address):
     raise OSError("Outbound network is disabled by net_guard")
 
 
-def _blocked_connect_ex(self, address):
+def _blocked_connect_ex(self: socket.socket, address: Any) -> int:
     """Block outbound connections (connect_ex variant)."""
     try:
         _blocked_connect(self, address)
@@ -43,12 +43,12 @@ def _blocked_connect_ex(self, address):
         return 111  # Connection refused
 
 
-def _blocked_create_connection(*a, **k):
+def _blocked_create_connection(*a: Any, **k: Any) -> Any:
     """Block socket.create_connection()."""
     raise OSError("Outbound network is disabled by net_guard")
 
 
-def apply():
+def apply() -> None:
     """Apply network blocking patches"""
     global _APPLIED
     if _APPLIED:
@@ -75,7 +75,7 @@ def apply():
     _APPLIED = True
 
 
-def restore():
+def restore() -> None:
     global _APPLIED
     if not _APPLIED:
         return

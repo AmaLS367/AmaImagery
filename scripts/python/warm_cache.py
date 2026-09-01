@@ -1,7 +1,7 @@
 import os
 
 import torch
-from diffusers import AutoencoderKL, StableDiffusionPipeline  # type: ignore
+from diffusers import AutoencoderKL, StableDiffusionPipeline
 from huggingface_hub import snapshot_download
 
 snapshot_download("openai/clip-vit-large-patch14", local_files_only=False)

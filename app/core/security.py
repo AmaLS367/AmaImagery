@@ -37,7 +37,7 @@ def verify_password(raw: str, hashed: str) -> bool:
 
 
 def create_access_token(
-    sub: str | int | UUID, extra: dict | None = None, expires_minutes: int | None = None
+    sub: str | int | UUID, extra: dict[str, Any] | None = None, expires_minutes: int | None = None
 ) -> tuple[str, int]:
     now = datetime.now(UTC)
     exp_minutes = expires_minutes or settings.access_ttl_min

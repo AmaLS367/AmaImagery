@@ -17,24 +17,27 @@ class RequestLimitsMiddleware:
         self.max_q_len = int(settings.max_query_value_len)
         self.timeout = int(settings.request_timeout_seconds)
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope.get("type") != "http":
-            return await self.app(scope, receive, send)
+            await self.app(scope, receive, send)
+            return
 
         headers = {key.decode("latin1").lower(): value.decode("latin1") for key, value in scope.get("headers", [])}
         content_length = headers.get("content-length")
         if content_length:
             try:
                 if int(content_length) > self.max_body:
-                    return await JSONResponse(
+                    await JSONResponse(
                         {"error": "request_too_large", "message": "request body exceeds limit"},
                         status_code=413,
                     )(scope, receive, send)
+                    return
             except ValueError:
-                return await JSONResponse(
+                await JSONResponse(
                     {"error": "bad_request", "message": "invalid content-length header"},
                     status_code=400,
                 )(scope, receive, send)
+                return
 
         # Query-string limits
         qs = scope.get("query_string", b"")
@@ -44,16 +47,18 @@ class RequestLimitsMiddleware:
                     if "=" in pair:
                         _, v = pair.split("=", 1)
                         if len(v) > self.max_q_len:
-                            return await JSONResponse(
+                            await JSONResponse(
                                 {"error": "request_too_large", "message": "query value too long"},
                                 status_code=413,
                             )(scope, receive, send)
+                            return
             except Exception:
                 # If parsing fails, treat as bad request size
-                return await JSONResponse(
+                await JSONResponse(
                     {"error": "bad_request", "message": "malformed query string"},
                     status_code=400,
                 )(scope, receive, send)
+                return
 
         consumed = 0
 
@@ -75,7 +80,7 @@ class RequestLimitsMiddleware:
             # Keep public behavior: extend a bit for generation endpoint
             effective_timeout = max(self.timeout, int(settings.generation_timeout_seconds) + 10)
 
-        async def call_next():
+        async def call_next() -> None:
             await self.app(scope, limited_receive, send)
 
         try:

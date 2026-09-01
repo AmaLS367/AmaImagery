@@ -1,4 +1,4 @@
-from __future__ import annotations
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ from app.core.safety import (
     is_blocked_forced,
     reload_rules,
 )
-from app.domain.models import UserSettings
+from app.domain.models import User, UserSettings
 from app.infra.uow import get_uow
 
 router = APIRouter()
@@ -32,7 +32,7 @@ class NSFWCheckResponse(BaseModel):
 
 
 @router.patch("/users/me/nsfw")
-async def set_nsfw(toggle: NSFWToggle, user=Depends(current_user)):
+async def set_nsfw(toggle: NSFWToggle, user: User = Depends(current_user)) -> dict[str, Any]:
     uow = get_uow()
     async with uow:
         settings_row = await uow.users.get_settings(user.id) or UserSettings(user_id=user.id, data={})
@@ -44,19 +44,19 @@ async def set_nsfw(toggle: NSFWToggle, user=Depends(current_user)):
 
 
 @router.post("/check", response_model=NSFWCheckResponse)
-def check_text(req: NSFWCheckRequest):
+def check_text(req: NSFWCheckRequest) -> NSFWCheckResponse:
     if req.forced:
         return NSFWCheckResponse(blocked=is_blocked_forced(req.text), forced=True)
     return NSFWCheckResponse(blocked=is_blocked(req.text), forced=False)
 
 
 @router.get("/rules")
-def list_rules():
+def list_rules() -> dict[str, Any]:
     path = str(getattr(settings, "nsfw_blocklist_path", ""))
     return {"path": path, "rules": get_rules(), "count": len(get_rules())}
 
 
 @router.post("/reload")
-def reload_rules_cache():
+def reload_rules_cache() -> dict[str, bool]:
     reload_rules()
     return {"ok": True}

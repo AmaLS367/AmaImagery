@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from app.config import settings
@@ -11,7 +12,7 @@ _gen_limit_cached: int | None = None
 
 def get_gen_semaphore() -> asyncio.Semaphore:
     global _gen_semaphore, _gen_limit_cached
-    limit = int(settings.max_concurrent_generations)
+    limit = settings.max_concurrent_generations
     if limit < 1:
         limit = 1
 
@@ -32,7 +33,7 @@ async def try_acquire(timeout_sec: float = 0.0) -> bool:
 
 
 @asynccontextmanager
-async def gen_slot(timeout_sec: float | None = None):
+async def gen_slot(timeout_sec: float | None = None) -> AsyncIterator[bool]:
     sem = get_gen_semaphore()
     acquired = False
     try:

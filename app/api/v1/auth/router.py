@@ -104,7 +104,7 @@ def _clear_refresh_cookie(resp: Response) -> None:
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(create_rate_limiter(limit=3, window_sec=3600))],
 )
-async def register(payload: RegisterIn):
+async def register(payload: RegisterIn) -> JSONResponse:
     email = normalize_email(payload.email)
     username = payload.username.strip()
 
@@ -143,7 +143,7 @@ async def register(payload: RegisterIn):
 
 
 @router.get("/me", response_model=MeOut)
-async def me(user: User = Depends(current_user)):
+async def me(user: User = Depends(current_user)) -> MeOut:
     lg("app").bind(scope="auth", action="me").info("auth.me")
     uow = get_uow()
     async with uow:
@@ -175,7 +175,7 @@ class LoginOut(BaseModel):
 
 
 @router.post("/login", response_model=LoginOut, dependencies=[Depends(create_rate_limiter(limit=5, window_sec=60))])
-async def login(payload: LoginIn, response: Response):
+async def login(payload: LoginIn, response: Response) -> JSONResponse:
     ident = payload.identifier.strip()
     email_norm = normalize_email(ident)
     uow = get_uow()
@@ -328,7 +328,7 @@ class TokenOut(BaseModel):
 
 
 @router.post("/refresh", response_model=TokenOut, dependencies=[Depends(create_rate_limiter(limit=30, window_sec=60))])
-async def refresh(response: Response, request: Request):
+async def refresh(response: Response, request: Request) -> TokenOut | JSONResponse:
     rt = request.cookies.get(settings.refresh_cookie_name)
     if not rt:
         raise HTTPException(status_code=401, detail="no refresh")

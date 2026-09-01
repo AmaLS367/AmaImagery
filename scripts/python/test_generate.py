@@ -3,6 +3,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
@@ -34,22 +35,22 @@ def _client() -> httpx.Client:
     return httpx.Client(timeout=DEFAULT_TIMEOUT, follow_redirects=True)
 
 
-def generate(client: httpx.Client, payload: dict) -> str:
+def generate(client: httpx.Client, payload: dict[str, Any]) -> str:
     response = client.post(f"{BASE_URL}/api/v1/images/generate", json=payload)
     response.raise_for_status()
     data = response.json()
-    task_id = data["task_id"]
+    task_id = str(data["task_id"])
     print(f"Task ID: {task_id}")
     return task_id
 
 
-def poll(client: httpx.Client, task_id: str, timeout_sec: int, interval_sec: float) -> dict:
+def poll(client: httpx.Client, task_id: str, timeout_sec: int, interval_sec: float) -> dict[str, Any]:
     deadline = time.time() + timeout_sec
 
     while time.time() < deadline:
         response = client.get(f"{BASE_URL}/api/v1/images/status/{task_id}")
         response.raise_for_status()
-        data = response.json()
+        data = dict(response.json())
         status = data.get("status")
         provider = data.get("provider_name")
         print(f"Status: {status} | Provider: {provider}")
@@ -63,7 +64,7 @@ def poll(client: httpx.Client, task_id: str, timeout_sec: int, interval_sec: flo
     raise TimeoutError(f"Timed out waiting for generation {task_id}")
 
 
-def download_image(client: httpx.Client, status_payload: dict) -> Path | None:
+def download_image(client: httpx.Client, status_payload: dict[str, Any]) -> Path | None:
     image_url = status_payload.get("image_url")
     if not image_url:
         return None

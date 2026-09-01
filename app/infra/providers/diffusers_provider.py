@@ -40,6 +40,8 @@ class DiffusersProvider(IImageProvider):
     """
 
     provider_name = "diffusers"
+    _get_pipeline: Callable[[], Any]
+    _get_pipeline_with_ip: Callable[[], Any]
 
     def __init__(
         self,
@@ -418,7 +420,7 @@ class DiffusersProvider(IImageProvider):
         # Add callback for timeout checking
         soft_deadline = time.time() + float(settings.generation_timeout_seconds) - 1.0
 
-        def _timeout_callback(pipe: Any, step: int, timestep: Any, callback_kwargs: dict) -> dict:
+        def _timeout_callback(pipe: Any, step: int, timestep: Any, callback_kwargs: dict[str, Any]) -> dict[str, Any]:
             if time.time() > soft_deadline:
                 raise RuntimeError("generation_timeout")
             return {}

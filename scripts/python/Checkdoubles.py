@@ -5,20 +5,19 @@ import importlib
 import json
 import sys
 from collections.abc import Iterable
-
-# Make project root importable regardless of CWD
 from pathlib import Path
+from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 
-def _is_fastapi_instance(obj) -> bool:
+def _is_fastapi_instance(obj: Any) -> bool:
     return hasattr(obj, "routes") and hasattr(obj, "openapi") and hasattr(obj, "add_api_route")
 
 
-def _load_app(target: str):
+def _load_app(target: str) -> Any:
     """
     target format:
       module:attr
@@ -44,21 +43,21 @@ def _load_app(target: str):
     raise TypeError(f"--app '{target}' is neither FastAPI instance nor factory, got: {type(obj)!r}")
 
 
-def _route_id(route) -> tuple[str, str]:
+def _route_id(route: Any) -> tuple[str, str]:
     # Starlette Route has .methods and .path
     methods = list(route.methods or ["GET"])
     method = methods[0].upper()
-    return method, route.path
+    return method, str(route.path)
 
 
-def _endpoint_origin(route) -> str:
+def _endpoint_origin(route: Any) -> str:
     # try get module name of endpoint for diagnostics
     ep = getattr(route, "endpoint", None)
     mod = getattr(ep, "__module__", "")
-    return mod or "<unknown>"
+    return str(mod or "<unknown>")
 
 
-def find_duplicates(app, ignore: Iterable[str]) -> dict[tuple[str, str], list[str]]:
+def find_duplicates(app: Any, ignore: Iterable[str]) -> dict[tuple[str, str], list[str]]:
     from starlette.routing import Route
 
     seen: dict[tuple[str, str], list[str]] = {}
@@ -82,16 +81,16 @@ def main(argv: list[str]) -> int:
     dups = find_duplicates(app, set(args.ignore))
 
     if args.json:
-        out = {f"{m} {p}": origins for (m, p), origins in sorted(dups.items())}
+        out = {f"{m} {path}": origins for (m, path), origins in sorted(dups.items())}
         print(json.dumps(out, indent=2, ensure_ascii=False))
     else:
         if not dups:
             print("No duplicate routes found.")
         else:
             print("Duplicate routes detected:")
-            for (m, p), origins in sorted(dups.items()):
+            for (m, path), origins in sorted(dups.items()):
                 origins_str = ", ".join(origins)
-                print(f"{m} {p}  ->  {origins_str}")
+                print(f"{m} {path}  ->  {origins_str}")
 
     return 1 if dups else 0
 

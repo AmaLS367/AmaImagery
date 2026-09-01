@@ -19,10 +19,11 @@ logging.getLogger("alembic").setLevel(logging.INFO)
 
 config = context.config
 
+DATABASE_URL: str | None = None
 try:
     from app.config import settings
 
-    DATABASE_URL = settings.database_url
+    DATABASE_URL = str(settings.database_url)
 except Exception:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -33,7 +34,7 @@ config.set_main_option("sqlalchemy.url", DATABASE_URL)
 target_metadata = RuntimeBase.metadata
 
 
-def run_migrations_offline():
+def run_migrations_offline() -> None:
     context.configure(
         url=DATABASE_URL,
         target_metadata=target_metadata,
@@ -44,7 +45,7 @@ def run_migrations_offline():
         context.run_migrations()
 
 
-def run_migrations_online():
+def run_migrations_online() -> None:
     connectable = engine_from_config(
         {"sqlalchemy.url": DATABASE_URL},
         prefix="sqlalchemy.",
