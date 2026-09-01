@@ -211,7 +211,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 body_iterator = getattr(response, "body_iterator", None)
                 if body_iterator is not None:
                     body = [section async for section in body_iterator]
-                    setattr(response, "body_iterator", iterate_in_threadpool(iter(body)))
+                    response.body_iterator = iterate_in_threadpool(iter(body))  # type: ignore[attr-defined]
             except (AttributeError, TypeError):
                 # If body_iterator is unavailable, skip byte counting
                 pass
