@@ -46,9 +46,6 @@ jobs:
     name: frontend-unit-tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: tests/frontend_tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,12 +55,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: tests/frontend_tests/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            tests/frontend_tests/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
 
       - name: Install test dependencies
+        working-directory: tests/frontend_tests
         run: npm ci
 
       - name: Run Vitest
+        working-directory: tests/frontend_tests
         run: npm test
 
   python-lint:
