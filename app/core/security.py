@@ -113,17 +113,17 @@ REVOKE_PREFIX = settings.revoke_prefix
 LOGOUT_PREFIX = "logout:"
 REFRESH_TTL_SEC = settings.refresh_ttl_days * 86400
 
-_in_memory_families: dict[str, dict[str, int | str]] = {}
+_in_memory_families: dict[str, dict[str, str]] = {}
 _in_memory_revoked: dict[str, int] = {}
 _in_memory_logged_out: dict[str, int] = {}
 
 
-def _family_record(new_jti: str, exp_ts: int) -> dict[str, int | str]:
+def _family_record(new_jti: str, exp_ts: int) -> dict[str, str]:
     """Build family record for Redis with unified structure."""
     return {
         "current_jti": new_jti,
-        "exp": exp_ts,
-        "created": _now_ts(),
+        "exp": str(exp_ts),
+        "created": str(_now_ts()),
     }
 
 
@@ -187,7 +187,7 @@ async def issue_tokens_rotating(user_id: str, session_id: str) -> dict[str, str]
     if r is None:
         _in_memory_families[family_key] = _family_record(rjti, exp_ts)
     else:
-        await cast(Any, r.hset(family_key, mapping=_family_record(rjti, exp_ts)))
+        await cast(Any, r).hset(family_key, mapping=_family_record(rjti, exp_ts))
         await cast(Any, r.expire(family_key, REFRESH_TTL_SEC))
 
     return {"access": access, "refresh": refresh}
@@ -227,7 +227,7 @@ async def rotate_refresh(user_id: str, session_id: str, old_jti: str) -> dict[st
     if r is None:
         _in_memory_families[family_key] = _family_record(new_jti, exp_ts)
     else:
-        await cast(Any, r.hset(family_key, mapping=_family_record(new_jti, exp_ts)))
+        await cast(Any, r).hset(family_key, mapping=_family_record(new_jti, exp_ts))
         await cast(Any, r.expire(family_key, REFRESH_TTL_SEC))
 
     return {"access": access, "refresh": refresh}

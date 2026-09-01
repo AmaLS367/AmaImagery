@@ -6,7 +6,7 @@ import {
   Route,
   Routes,
   useLocation,
-} from 'react-router-dom'
+} from 'react-router'
 
 import { LegacyNavigationBridge } from './components/LegacyNavigationBridge'
 import { Footbar } from './components/Footbar'
