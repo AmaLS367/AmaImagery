@@ -29,6 +29,7 @@ import { MetaPill, SurfacePanel } from '../components/ui/foundation'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
+import { GenerationErrorState } from '../components/GenerationErrorState'
 import { toAssetUrl, type GeneratePayload, type TaskStatusResp } from '../lib/api'
 import { clampToConstraint, generationConstraints } from '../lib/generationConstraints'
 import { appRoutes } from '../lib/routes'
@@ -184,12 +185,12 @@ function StatusMessage({
           : 'border-primary/20 bg-primary/5 text-primary'
 
   return (
-    <div className={cn('rounded-3xl border p-5 space-y-3', palette)}>
+    <div className={cn('rounded-3xl border p-5 space-y-3 break-words overflow-hidden', palette)}>
       <div className="flex items-center gap-3">
-        {state === 'error' ? <TriangleAlert className="h-5 w-5" /> : state === 'completed' ? <Sparkles className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
+        {state === 'error' ? <TriangleAlert className="h-5 w-5 shrink-0" /> : state === 'completed' ? <Sparkles className="h-5 w-5 shrink-0" /> : <Activity className="h-5 w-5 shrink-0" />}
         <div className="font-bold tracking-tight">{title}</div>
       </div>
-      <p className={cn('text-sm leading-relaxed', state === 'idle' ? '' : 'opacity-90')}>{description}</p>
+      <p className={cn('text-sm leading-relaxed break-words line-clamp-3', state === 'idle' ? '' : 'opacity-90')}>{description}</p>
     </div>
   )
 }
@@ -629,7 +630,15 @@ export default function Generate() {
         tone === 'cinematic' ? 'border-white/10 bg-black/40' : 'border-border/50 bg-secondary/20',
       )}>
         <AnimatePresence mode="wait">
-          {imgUrl ? (
+          {error ? (
+            <GenerationErrorState
+              key="generation-error"
+              error={error}
+              tone={tone}
+              onRetry={retryCurrentSettings}
+              onDismiss={() => setError(null)}
+            />
+          ) : imgUrl ? (
             <motion.img
               key={imgUrl}
               initial={{ opacity: 0, scale: 1.02 }}
@@ -663,7 +672,7 @@ export default function Generate() {
         <MetaPill>{steps} {t('generate:advanced.steps')}</MetaPill>
       </div>
 
-      {imgUrl ? (
+      {imgUrl && !error ? (
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg" className="rounded-full">
             <a href={imgUrl} download>

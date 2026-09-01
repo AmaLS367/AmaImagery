@@ -91,7 +91,6 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # 5. Graceful Shutdown
         logger.info("Shutting down application...")
         await close_redis()
 

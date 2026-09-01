@@ -34,14 +34,26 @@ def delete_cache_files(root: Path) -> dict[str, list[str]]:
         "pyo_files": [],
         "pyd_files": [],
     }
-    
-    skip_dirs = {".git", ".venv", "venv", "env", "ENV", "node_modules", "build", "dist", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
-    
+
+    skip_dirs = {
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        "ENV",
+        "node_modules",
+        "build",
+        "dist",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+    }
+
     for root_dir, dirs, files in os.walk(root):
         root_path = Path(root_dir)
-        
+
         dirs[:] = [d for d in dirs if d not in skip_dirs]
-        
+
         if root_path.name == "__pycache__":
             try:
                 shutil.rmtree(root_path)
@@ -50,7 +62,7 @@ def delete_cache_files(root: Path) -> dict[str, list[str]]:
             except OSError as e:
                 print(f"Error deleting {root_path}: {e}", file=sys.stderr)
             continue
-        
+
         for file in files:
             file_path = root_path / file
             if file.endswith(".pyc"):
@@ -74,7 +86,7 @@ def delete_cache_files(root: Path) -> dict[str, list[str]]:
                     print(f"Deleted file: {file_path}")
                 except OSError as e:
                     print(f"Error deleting {file_path}: {e}", file=sys.stderr)
-    
+
     return deleted
 
 
@@ -83,29 +95,29 @@ def main():
         project_root = find_project_root()
         print(f"Project root: {project_root}")
         print("Scanning for cache files and directories...\n")
-        
+
         deleted = delete_cache_files(project_root)
-        
+
         print("\n" + "=" * 60)
         print("Summary:")
         print(f"  Directories deleted: {len(deleted['directories'])}")
         print(f"  .pyc files deleted: {len(deleted['pyc_files'])}")
         print(f"  .pyo files deleted: {len(deleted['pyo_files'])}")
         print(f"  .pyd files deleted: {len(deleted['pyd_files'])}")
-        
+
         total = (
             len(deleted["directories"])
             + len(deleted["pyc_files"])
             + len(deleted["pyo_files"])
             + len(deleted["pyd_files"])
         )
-        
+
         if total == 0:
             print("\nNo cache files found. Project is clean!")
         else:
             print(f"\nTotal items deleted: {total}")
             print("Cache cleanup completed successfully!")
-        
+
     except KeyboardInterrupt:
         print("\n\nOperation cancelled by user.", file=sys.stderr)
         sys.exit(1)
@@ -116,4 +128,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

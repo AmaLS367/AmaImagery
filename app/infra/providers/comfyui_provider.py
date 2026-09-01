@@ -199,8 +199,7 @@ class ComfyUIProvider(IImageProvider):
             resolved = _match_checkpoint_name(configured, available)
             if resolved is None:
                 raise ComfyUISubmitError(
-                    "Configured COMFYUI_CHECKPOINT_NAME was not found. "
-                    f"Requested: {configured}. Available: {available}"
+                    f"Configured COMFYUI_CHECKPOINT_NAME was not found. Requested: {configured}. Available: {available}"
                 )
             return resolved
 

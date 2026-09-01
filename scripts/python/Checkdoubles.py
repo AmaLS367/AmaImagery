@@ -7,12 +7,15 @@ from typing import Any, Iterable, Tuple, Dict, List
 
 # Make project root importable regardless of CWD
 from pathlib import Path
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+
 def _is_fastapi_instance(obj) -> bool:
     return hasattr(obj, "routes") and hasattr(obj, "openapi") and hasattr(obj, "add_api_route")
+
 
 def _load_app(target: str):
     """
@@ -46,14 +49,17 @@ def _route_id(route) -> Tuple[str, str]:
     method = methods[0].upper()
     return method, route.path
 
+
 def _endpoint_origin(route) -> str:
     # try get module name of endpoint for diagnostics
     ep = getattr(route, "endpoint", None)
     mod = getattr(ep, "__module__", "")
     return mod or "<unknown>"
 
+
 def find_duplicates(app, ignore: Iterable[str]) -> Dict[Tuple[str, str], List[str]]:
     from starlette.routing import Route
+
     seen: Dict[Tuple[str, str], List[str]] = {}
     for r in app.routes:
         if isinstance(r, Route):
@@ -62,6 +68,7 @@ def find_duplicates(app, ignore: Iterable[str]) -> Dict[Tuple[str, str], List[st
                 continue
             seen.setdefault(key, []).append(_endpoint_origin(r))
     return {k: v for k, v in seen.items() if len(v) > 1}
+
 
 def main(argv: list[str]) -> int:
     p = argparse.ArgumentParser(description="Detect duplicate FastAPI routes")
@@ -86,6 +93,7 @@ def main(argv: list[str]) -> int:
                 print(f"{m} {p}  ->  {origins_str}")
 
     return 1 if dups else 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))

@@ -16,7 +16,9 @@ async def _run_seed_async() -> None:
     async with AsyncSessionLocal() as db:
         email = normalize_email("admin@example.com")
         username = "admin"
-        user = (await db.execute(select(User).where(or_(User.email == email, User.username == username)))).scalar_one_or_none()
+        user = (
+            await db.execute(select(User).where(or_(User.email == email, User.username == username)))
+        ).scalar_one_or_none()
 
         if user is None:
             user = User(

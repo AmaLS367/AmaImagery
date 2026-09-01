@@ -15,7 +15,7 @@ DEFAULT_POLL_INTERVAL_SEC = 3.0
 
 PAYLOAD = {
     "prompt": (
-        "masterpiece, best quality, 1girl, solo, school uniform, pleated skirt, thighhighs," 
+        "masterpiece, best quality, 1girl, solo, school uniform, pleated skirt, thighhighs,"
         "ponytail, brown hair, blush, embarrassed, panties visible, white panties,"
         "rating:explicit, nsfw "
     ),
