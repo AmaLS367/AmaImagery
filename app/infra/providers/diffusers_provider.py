@@ -307,7 +307,7 @@ class DiffusersProvider(IImageProvider):
         try:
             ref_image = self._image_service.prepare_reference_image(request.ref_image_b64, target_size=512)
 
-            ip_scale = 0.55 if request.ip_scale is None else float(request.ip_scale)
+            ip_scale = 0.55 if request.ip_scale is None else request.ip_scale
             ip_scale = max(0.0, min(1.5, ip_scale))
 
             if hasattr(pipeline, "set_ip_adapter_scale"):
@@ -361,16 +361,16 @@ class DiffusersProvider(IImageProvider):
             return {}
 
     def _resolve_dimensions(self, request: GenerationRequest, device: torch.device) -> tuple[int, int]:
-        use_width = int(request.width or 512)
-        use_height = int(request.height or 512)
+        use_width = request.width or 512
+        use_height = request.height or 512
 
         # CPU-specific constraints to prevent long wait times
         if device.type == "cpu":
             max_side = 640
             if max(use_width, use_height) > max_side:
                 ratio = max_side / float(max(use_width, use_height))
-                use_width = int(round(use_width * ratio / 8) * 8)
-                use_height = int(round(use_height * ratio / 8) * 8)
+                use_width = round(use_width * ratio / 8) * 8
+                use_height = round(use_height * ratio / 8) * 8
 
         return use_width, use_height
 
@@ -390,7 +390,7 @@ class DiffusersProvider(IImageProvider):
         """
         generator = None
         if request.seed is not None:
-            generator = torch.Generator(device=str(device)).manual_seed(int(request.seed))
+            generator = torch.Generator(device=str(device)).manual_seed(request.seed)
 
         # Setup autocast context
         ctx = torch.autocast(device_type=device.type, dtype=dtype) if device.type == "cuda" else nullcontext()
@@ -412,7 +412,7 @@ class DiffusersProvider(IImageProvider):
             "num_inference_steps": steps,
             "width": width,
             "height": height,
-            "guidance_scale": float(request.guidance_scale or 7.5),
+            "guidance_scale": request.guidance_scale or 7.5,
             "generator": generator,
             "noise_offset": 0.02,
         }
@@ -489,9 +489,9 @@ class DiffusersProvider(IImageProvider):
             metadata={
                 "width": width,
                 "height": height,
-                "steps": int(request.steps or 28),
+                "steps": request.steps or 28,
                 "effective_steps": steps,
-                "guidance_scale": float(request.guidance_scale or 7.5),
+                "guidance_scale": request.guidance_scale or 7.5,
                 "seed": request.seed,
                 "device": str(device),
                 "dtype": str(dtype),

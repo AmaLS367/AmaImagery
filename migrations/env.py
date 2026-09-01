@@ -23,7 +23,7 @@ DATABASE_URL: str | None = None
 try:
     from app.config import settings
 
-    DATABASE_URL = str(settings.database_url)
+    DATABASE_URL = settings.database_url
 except Exception:
     DATABASE_URL = os.getenv("DATABASE_URL")
 

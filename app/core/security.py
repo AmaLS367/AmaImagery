@@ -76,11 +76,11 @@ def decode_access_token(token: str) -> dict[str, Any]:
 
 
 def create_reset_token(*, sub: str, ttl_min: int | None = None) -> tuple[str, int]:
-    ttl = int(ttl_min or settings.reset_token_ttl_min)
+    ttl = ttl_min or settings.reset_token_ttl_min
     now = datetime.now(UTC)
     exp = now + timedelta(minutes=ttl)
     payload = {
-        "sub": str(sub),
+        "sub": sub,
         "typ": RESET_TYP,
         "jti": str(uuid.uuid4()),
         "iat": int(now.timestamp()),

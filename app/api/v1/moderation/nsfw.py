@@ -37,10 +37,10 @@ async def set_nsfw(toggle: NSFWToggle, user: User = Depends(current_user)) -> di
     async with uow:
         settings_row = await uow.users.get_settings(user.id) or UserSettings(user_id=user.id, data={})
         payload = dict(settings_row.data or {})
-        payload["nsfw_allow"] = bool(toggle.allow)
+        payload["nsfw_allow"] = toggle.allow
         settings_row.data = payload
         await uow.users.save_settings(settings_row)
-    return {"ok": True, "nsfw_allow": bool(toggle.allow)}
+    return {"ok": True, "nsfw_allow": toggle.allow}
 
 
 @router.post("/check", response_model=NSFWCheckResponse)

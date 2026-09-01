@@ -47,7 +47,7 @@ def install_error_handlers(app: FastAPI) -> None:
         payload = {
             "error": {
                 "code": "http_error",
-                "message": str(detail),
+                "message": detail,
                 "details": {},
             },
             "request_id": _req_id(request),

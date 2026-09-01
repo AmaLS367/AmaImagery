@@ -13,9 +13,9 @@ class _BodyTooLarge(Exception):
 class RequestLimitsMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
-        self.max_body = int(settings.max_body_bytes)
-        self.max_q_len = int(settings.max_query_value_len)
-        self.timeout = int(settings.request_timeout_seconds)
+        self.max_body = settings.max_body_bytes
+        self.max_q_len = settings.max_query_value_len
+        self.timeout = settings.request_timeout_seconds
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope.get("type") != "http":
@@ -78,7 +78,7 @@ class RequestLimitsMiddleware:
         effective_timeout = self.timeout
         if path == "/api/v1/images/generate":
             # Keep public behavior: extend a bit for generation endpoint
-            effective_timeout = max(self.timeout, int(settings.generation_timeout_seconds) + 10)
+            effective_timeout = max(self.timeout, settings.generation_timeout_seconds + 10)
 
         async def call_next() -> None:
             await self.app(scope, limited_receive, send)

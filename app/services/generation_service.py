@@ -31,7 +31,7 @@ class GenerationService:
             raise ValueError("Image size too large")
 
         max_safe = int(cfg.max_steps)
-        if int(request.steps) > max_safe:
+        if request.steps > max_safe:
             raise ValueError(f"Steps too large (>{max_safe})")
 
         guidance = getattr(request, "guidance_scale", getattr(request, "guidance", 7.5))
@@ -91,7 +91,7 @@ class GenerationService:
         return min(cfg_cap, 1024)
 
     def _snap64(self, x: int) -> int:
-        return max(256, (int(x) // 64) * 64)
+        return max(256, (x // 64) * 64)
 
     def _process_prompt(self, prompt: str, negative: str, user: Any | None) -> tuple[str, list[tuple[str, str]]]:
         user_id = str(getattr(user, "id", "anon"))
@@ -117,22 +117,22 @@ class GenerationService:
             "worst quality, low quality"
         )
 
-        req_w = int(request.width or 768)
-        req_h = int(request.height or 1152)
+        req_w = request.width or 768
+        req_h = request.height or 1152
 
         cap = self._effective_max_size()
         long_side = max(req_w, req_h)
         if long_side > cap:
             scale = cap / float(long_side)
-            req_w = int(round(req_w * scale))
-            req_h = int(round(req_h * scale))
+            req_w = round(req_w * scale)
+            req_h = round(req_h * scale)
 
         w = self._snap64(req_w)
         h = self._snap64(req_h)
 
         max_safe = int(cfg.max_steps)
-        use_steps = min(max_safe, max(24, int(request.steps or 28)))
-        use_gs = float(request.guidance_scale if request.guidance_scale is not None else 7.5)
+        use_steps = min(max_safe, max(24, request.steps or 28))
+        use_gs = request.guidance_scale if request.guidance_scale is not None else 7.5
 
         return {
             "prompt": final_prompt,
