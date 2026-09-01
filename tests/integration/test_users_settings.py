@@ -4,7 +4,7 @@ import pytest
 def test_patch_user_settings(app_client, auth_headers):
     r = app_client.get("/me/settings", headers=auth_headers)
     if r.status_code != 200:
-        pytest.skip("/me/settings недоступен")
+        pytest.skip("/me/settings not available")
     s = r.json()
     new = {"nsfw_allow": not s.get("nsfw_allow", False)}
     r = app_client.patch("/me/settings", json=new, headers=auth_headers)

@@ -39,7 +39,7 @@ export type Settings = {
 
   nsfwHide: boolean
 
-  banlist: string // строки через запятую/перенос
+  banlist: string // comma- or newline-separated strings
 }
 
 const KEY = 'amaimagery.settings.v3'

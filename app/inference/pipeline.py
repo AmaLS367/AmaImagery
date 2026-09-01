@@ -127,14 +127,14 @@ def _align_ip_encoders(pipe):
 
 
 def _move_ip_encoders_to_cpu(pipe):
-    # Глобальный image_encoder → CPU FP32
+    # Global image_encoder -> CPU FP32
     enc = getattr(pipe, "image_encoder", None)
     if enc is not None:
         try:
             pipe.image_encoder = enc.to(device="cpu", dtype=torch.float32)
         except Exception:
             pipe.image_encoder = enc.to(device="cpu")
-    # Вложенные encoders внутри ip_adapter → CPU FP32
+    # Nested encoders inside ip_adapter -> CPU FP32
     adapters = getattr(pipe, "ip_adapter", None)
     if not adapters:
         return
@@ -169,20 +169,20 @@ def _align_ipadapter_long_buffers_to_unet_device(pipe):
         it = [adapters]
 
     for a in it:
-        # пройтись по всем вложенным буферам
+        # Iterate over all nested buffers
         for name, buf in a.named_buffers(recurse=True):
             if buf is None:
                 continue
-            # image_encoder буферы пропускаем (он должен остаться на CPU)
+            # Skip image_encoder buffers (should remain on CPU)
             if name.startswith("image_encoder") or "image_encoder" in name:
                 continue
-            # переносим только если устройство отличается
+            # Migrate only if device differs
             if buf.device != dev:
                 try:
-                    # двигаем буфер на device UNet; dtype сохраняем
+                    # Move buffer to UNet device; preserve dtype
                     a._buffers[name] = buf.to(dev)
                 except Exception:
-                    # если буфер заморожен/неперсистентен — пробуем заменить через register_buffer
+                    # If buffer is frozen/non-persistent, attempt replacing via register_buffer
                     try:
                         a.register_buffer(name, buf.to(dev), persistent=False)
                     except Exception as exc:
@@ -331,9 +331,9 @@ def get_pipeline():
         pipe = StableDiffusionPipeline.from_single_file(mid, **pipe_kwargs)
 
     else:
-        # 2) HF-репозиторий или локальная папка с model_index.json
+        # 2) HF repository or local directory with model_index.json
         if offline and not os.path.exists(mid):
-            raise RuntimeError("OFFLINE и model_id не локальный путь")
+            raise RuntimeError("OFFLINE mode enabled and model_id is not a local path")
         pipe = AutoPipelineForText2Image.from_pretrained(
             mid,
             torch_dtype=dtype,
@@ -341,7 +341,7 @@ def get_pipeline():
             local_files_only=offline,
         )
 
-    # --- шедулер: заменяем на DPMSolver++ (Karras, 2nd order) ---
+    # --- Scheduler: replace with DPMSolver++ (Karras, 2nd order) ---
     try:
         pipe.scheduler = DPMSolverMultistepScheduler.from_config(
             pipe.scheduler.config,
@@ -352,7 +352,7 @@ def get_pipeline():
     except Exception as exc:
         logger.debug(f"scheduler_swap_failed: {exc}")
 
-    # --- экономия памяти ---
+    # --- Memory optimizations ---
     pipe.unet.set_attn_processor(AttnProcessor2_0())
     pipe.enable_attention_slicing()
     pipe.enable_vae_slicing()
@@ -368,7 +368,7 @@ def get_pipeline():
     if device == "cuda":
         pipe.unet.to(memory_format=torch.channels_last)
 
-    # лог: базовая модель загружена и сконфигурирована
+    # Log: base model loaded and configured
     lg("app").bind(
         event="model.loaded",
         model_id=settings.model_id,
@@ -381,16 +381,16 @@ def get_pipeline():
     try:
         dev = torch.device(device)
 
-        # базовый dtype всего пайпа: fp16 на CUDA, иначе fp32
+        # Base dtype of pipeline: fp16 on CUDA, fp32 otherwise
         pipe.to(device=dev, dtype=dtype)
 
-        # UNet/VAE строго в dtype пайпа
+        # UNet/VAE strictly in pipeline dtype
         if getattr(pipe, "unet", None) is not None:
             pipe.unet.to(device=dev, dtype=dtype)
         if getattr(pipe, "vae", None) is not None:
             pipe.vae.to(device=dev, dtype=dtype)
 
-        # text_encoder оставляем FP32 (на том же девайсе), image_encoder — всегда CPU/FP32
+        # text_encoder stays FP32 (on same device), image_encoder is always CPU/FP32
         text_encoder = getattr(pipe, "text_encoder", None)
         if text_encoder is not None:
             text_encoder.to(device=dev, dtype=torch.float32)
@@ -402,7 +402,7 @@ def get_pipeline():
         logger.exception("device_sync_failed")
     # --- end: force device sync ---
 
-    # --- единый патч: синхронизируем dtype для sample/timestep и входа time_embedding ---
+    # --- Unified patch: synchronize dtype for sample/timestep and time_embedding input ---
     try:
         unet = pipe.unet
         unet_dtype = next(unet.parameters()).dtype
@@ -427,7 +427,7 @@ def get_pipeline():
     except Exception:
         logger.exception("unet_time_embedding_patch_failed")
 
-    # --- П4: time_embedding.forward -> привести вход к dtype весов TE ---
+    # --- Patch: time_embedding.forward -> cast input to TE weights dtype ---
     try:
         _unet2 = getattr(pipe, "unet", None)
         te = getattr(_unet2, "time_embedding", None)
@@ -444,7 +444,7 @@ def get_pipeline():
     except Exception:
         logger.exception("time_embedding_patch_failed")
 
-    # --- П5: VAE.decode -> привести z к dtype VAE перед post_quant_conv ---
+    # --- Patch: VAE.decode -> cast z to VAE dtype before post_quant_conv ---
     try:
         vae = getattr(pipe, "vae", None)
         if vae is not None:
@@ -466,8 +466,8 @@ def get_pipeline():
 
 def get_pipeline_with_ip():
     """
-    Загружает IP-Adapter и возвращает пайп.
-    На время загрузки выключаем slicing у self.unet.
+    Loads IP-Adapter and returns pipeline.
+    Disables slicing on self.unet during load.
     """
     global _ip_ready, _pipe
     pipe = get_pipeline()
@@ -518,7 +518,7 @@ def get_pipeline_with_ip():
     _move_ip_encoders_to_cpu(pipe)
     _align_ipadapter_long_buffers_to_unet_device(pipe)
 
-    # Синхронизация dtype всех слоёв UNet (включая добавленные IP-Adapter)
+    # Synchronize dtype across all UNet layers (including newly added IP-Adapter layers)
     try:
         _unet_dtype = next(pipe.unet.parameters()).dtype
         pipe.unet.to(dtype=_unet_dtype)

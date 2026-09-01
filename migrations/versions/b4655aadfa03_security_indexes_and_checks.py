@@ -1,15 +1,16 @@
+from collections.abc import Sequence
+
 from alembic import op
-from typing import Sequence, Union
 
 # revision identifiers, used by Alembic.
 revision: str = "b4655aadfa03"
-down_revision: Union[str, Sequence[str], None] = "506057d97046"
+down_revision: str | Sequence[str] | None = "506057d97046"
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
-    # users.email уникальность (регистронезависимо), если таблица существует
+    # users.email uniqueness (case-insensitive) if table exists
     op.execute("""
     DO $$
     BEGIN
@@ -19,7 +20,7 @@ def upgrade():
     END$$;
     """)
 
-    # refresh_tokens.jti уникальный
+    # refresh_tokens.jti unique index
     op.execute("""
     DO $$
     BEGIN
@@ -29,7 +30,7 @@ def upgrade():
     END$$;
     """)
 
-    # частые фильтры: created_at
+    # Frequent filters: created_at
     op.execute("""
     DO $$
     BEGIN
@@ -39,7 +40,7 @@ def upgrade():
     END$$;
     """)
 
-    # лимиты длин на уровне БД (idempotent через DO/EXCEPTION)
+    # DB-level length limits (idempotent via DO/EXCEPTION)
     op.execute("""
     DO $$
     BEGIN
@@ -62,7 +63,7 @@ def upgrade():
         BEGIN
           ALTER TABLE public.generations DROP CONSTRAINT IF EXISTS generations_prompt_len_ck;
           ALTER TABLE public.generations ADD CONSTRAINT generations_prompt_len_ck CHECK (
-            -- нет ключа 'prompt' в JSONB — ограничение пропускаем
+            -- if key 'prompt' is missing from JSONB, pass check
             (NOT (prompt ? 'prompt'))
             OR (
               jsonb_typeof(prompt->'prompt') = 'string'

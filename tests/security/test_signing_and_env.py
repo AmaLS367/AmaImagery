@@ -30,4 +30,4 @@ def test_settings_failfast_secret_key_required(monkeypatch):
     import app.config as cfg
 
     with pytest.raises(RuntimeError):
-        importlib.reload(cfg)  # внутри модуля создаётся settings = Settings() и падает без SECRET_KEY
+        importlib.reload(cfg)  # module instantiation runs settings = Settings() and fails without SECRET_KEY

@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import argparse
 import importlib
 import json
 import sys
-from typing import Any, Iterable, Tuple, Dict, List
+from collections.abc import Iterable
 
 # Make project root importable regardless of CWD
 from pathlib import Path
@@ -21,7 +22,7 @@ def _load_app(target: str):
     """
     target format:
       module:attr
-    attr может быть экземпляром FastAPI или фабрикой, возвращающей его.
+    attr can be a FastAPI instance or a factory function returning one.
     """
     if ":" not in target:
         raise ValueError("Expected --app format 'module:attr'")
@@ -29,11 +30,11 @@ def _load_app(target: str):
     mod = importlib.import_module(mod_name)
     obj = getattr(mod, attr)
 
-    # Если это уже FastAPI-приложение (экземпляр), вернуть как есть.
+    # Return directly if already a FastAPI instance
     if _is_fastapi_instance(obj):
         return obj
 
-    # Иначе, если это фабрика — вызвать и проверить результат.
+    # If it's a factory function, call it and validate return value
     if callable(obj):
         app = obj()
         if _is_fastapi_instance(app):
@@ -43,7 +44,7 @@ def _load_app(target: str):
     raise TypeError(f"--app '{target}' is neither FastAPI instance nor factory, got: {type(obj)!r}")
 
 
-def _route_id(route) -> Tuple[str, str]:
+def _route_id(route) -> tuple[str, str]:
     # Starlette Route has .methods and .path
     methods = list(route.methods or ["GET"])
     method = methods[0].upper()
@@ -57,10 +58,10 @@ def _endpoint_origin(route) -> str:
     return mod or "<unknown>"
 
 
-def find_duplicates(app, ignore: Iterable[str]) -> Dict[Tuple[str, str], List[str]]:
+def find_duplicates(app, ignore: Iterable[str]) -> dict[tuple[str, str], list[str]]:
     from starlette.routing import Route
 
-    seen: Dict[Tuple[str, str], List[str]] = {}
+    seen: dict[tuple[str, str], list[str]] = {}
     for r in app.routes:
         if isinstance(r, Route):
             key = _route_id(r)

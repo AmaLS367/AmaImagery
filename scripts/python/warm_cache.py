@@ -1,6 +1,8 @@
-import os, torch
+import os
+
+import torch
+from diffusers import AutoencoderKL, StableDiffusionPipeline  # type: ignore
 from huggingface_hub import snapshot_download
-from diffusers import StableDiffusionPipeline, AutoencoderKL  # type: ignore
 
 snapshot_download("openai/clip-vit-large-patch14", local_files_only=False)
 vae_id = os.getenv("VAE_ID", "stabilityai/sd-vae-ft-mse")

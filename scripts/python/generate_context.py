@@ -1,6 +1,6 @@
 import os
 
-# Список папок, которые мы ИГНОРИРУЕМ (мусор и большие файлы)
+# Directories to ignore
 IGNORE_DIRS = {
     ".git",
     "__pycache__",
@@ -12,11 +12,11 @@ IGNORE_DIRS = {
     "node_modules",
     "logs",
     "outputs",
-    "models",  # models содержит большие файлы моделей
-    "migrations/__pycache__",  # кэш миграций
+    "models",  # models contains large weight files
+    "migrations/__pycache__",
 }
 
-# Список расширений файлов, которые мы БЕРЕМ
+# File extensions to include
 INCLUDE_EXT = {
     ".py",
     ".ts",
@@ -34,36 +34,36 @@ INCLUDE_EXT = {
     ".css",
 }
 
-# Конкретные файлы, которые мы игнорируем
+# Specific files to ignore
 IGNORE_FILES = {
     "desktop.ini",
     "poetry.lock",
     "yarn.lock",
     "package-lock.json",
-    # Большие файлы моделей
+    # Large model files
     "dreamshaper_6NoVae.safetensors",
 }
 
-# Расширения файлов, которые мы игнорируем (большие бинарные файлы)
+# Binary / heavy extensions to ignore
 IGNORE_EXT = {".safetensors", ".bin", ".pt", ".pth", ".ckpt"}
 
 
 def should_include_file(file_path: str, file: str) -> bool:
-    """Проверяет, нужно ли включать файл в контекст."""
-    # Проверяем конкретные файлы
+    """Checks whether a file should be included in the context bundle."""
+    # Check specific ignored files
     if file in IGNORE_FILES:
         return False
 
-    # Проверяем расширение файла
+    # Check ignored extensions
     _, ext = os.path.splitext(file)
     if ext in IGNORE_EXT:
         return False
 
-    # Проверяем, есть ли расширение в списке включаемых
+    # Check included extensions
     if ext in INCLUDE_EXT:
         return True
 
-    # Специальные файлы без расширения
+    # Special extensionless configuration files
     if file in ("Dockerfile", "alembic.ini"):
         return True
 
@@ -71,24 +71,24 @@ def should_include_file(file_path: str, file: str) -> bool:
 
 
 def generate_context():
-    """Генерирует полный контекст проекта в один файл."""
+    """Generates complete project context into a single file."""
     output_file = "full_project_context_amaimagery.txt"
 
     file_count = 0
     total_size = 0
 
     with open(output_file, "w", encoding="utf-8") as outfile:
-        # Заголовок
+        # Header
         outfile.write("=" * 80 + "\n")
-        outfile.write("ПОЛНЫЙ КОНТЕКСТ ПРОЕКТА\n")
+        outfile.write("FULL PROJECT CONTEXT\n")
         outfile.write("=" * 80 + "\n\n")
 
-        # Проходим по всем файлам
+        # Walk through files
         for root, dirs, files in os.walk("."):
-            # Фильтруем папки на лету
+            # Filter directories on the fly
             dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
 
-            # Дополнительная фильтрация для вложенных папок
+            # Additional filtering for dot-directories
             dirs[:] = [d for d in dirs if not d.startswith(".")]
 
             for file in files:
@@ -97,26 +97,26 @@ def generate_context():
 
                 path = os.path.join(root, file)
 
-                # Нормализуем путь для Windows
+                # Normalize path for platform consistency
                 path = os.path.normpath(path)
 
-                # Пропускаем сам выходной файл
+                # Skip the output file itself
                 if path == output_file or path == os.path.normpath(output_file):
                     continue
 
-                # Пишем заголовок файла
+                # Write file header
                 outfile.write(f"\n{'=' * 80}\n")
                 outfile.write(f"FILE: {path}\n")
                 outfile.write(f"{'=' * 80}\n\n")
 
                 try:
-                    # Проверяем размер файла (пропускаем слишком большие)
+                    # Check file size (skip files larger than 1MB)
                     file_size = os.path.getsize(path)
-                    if file_size > 1_000_000:  # Пропускаем файлы больше 1MB
+                    if file_size > 1_000_000:
                         outfile.write(f"[File too large: {file_size} bytes, skipped]\n")
                         continue
 
-                    with open(path, "r", encoding="utf-8", errors="ignore") as infile:
+                    with open(path, encoding="utf-8", errors="ignore") as infile:
                         content = infile.read()
                         outfile.write(content)
                         if not content.endswith("\n"):
@@ -128,16 +128,16 @@ def generate_context():
                 except Exception as e:
                     outfile.write(f"[Error reading file: {e}]\n")
 
-        # Статистика в конце
+        # Summary statistics
         outfile.write(f"\n\n{'=' * 80}\n")
-        outfile.write(f"СТАТИСТИКА\n")
+        outfile.write("STATISTICS\n")
         outfile.write(f"{'=' * 80}\n")
-        outfile.write(f"Обработано файлов: {file_count}\n")
-        outfile.write(f"Общий размер: {total_size:,} байт ({total_size / 1024:.2f} KB)\n")
+        outfile.write(f"Files processed: {file_count}\n")
+        outfile.write(f"Total size: {total_size:,} bytes ({total_size / 1024:.2f} KB)\n")
 
-    print(f"Готово. Файл {output_file} создан.")
-    print(f"Обработано файлов: {file_count}")
-    print(f"Общий размер: {total_size:,} байт ({total_size / 1024:.2f} KB)")
+    print(f"Done. File {output_file} created.")
+    print(f"Files processed: {file_count}")
+    print(f"Total size: {total_size:,} bytes ({total_size / 1024:.2f} KB)")
 
 
 if __name__ == "__main__":

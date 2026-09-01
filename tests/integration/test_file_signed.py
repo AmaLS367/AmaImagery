@@ -13,4 +13,4 @@ def test_file_signed_expired():
     exp = int(time.time()) - 1
     sig = make_signature(name, exp)
     r = client.get("/api/v1/file", params={"path": name, "exp": exp, "sig": sig})
-    assert r.status_code in (403, 404)  # истёкшая подпись или нет файла
+    assert r.status_code in (403, 404)  # Expired signature or file missing

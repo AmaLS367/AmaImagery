@@ -8,7 +8,7 @@ def test_register_login_me(app_client):
     assert r.status_code in (200, 201, 400)
     r = app_client.post("/api/v1/auth/login", json={"identifier": email, "password": password})
     if r.status_code not in (200, 201):
-        pytest.skip("api/v1/auth/login недоступен")
+        pytest.skip("api/v1/auth/login not available")
     token = r.json().get("access_token") or r.json().get("token")
     assert token
     hdr = {"Authorization": f"Bearer {token}"}

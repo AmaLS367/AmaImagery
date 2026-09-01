@@ -9,42 +9,42 @@ DJANGO_ALLOWED = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
 
 
 def gen_urlsafe(nbytes: int) -> str:
-    # ~4/3 * nbytes символов, только URL-безопасные
+    # ~4/3 * nbytes characters, URL-safe only
     return secrets.token_urlsafe(nbytes)
 
 
 def gen_hex(nbytes: int) -> str:
-    # Ровно 2*nbytes символов [0-9a-f]
+    # Exactly 2*nbytes characters [0-9a-f]
     return secrets.token_hex(nbytes)
 
 
 def gen_base64(nbytes: int) -> str:
-    # URL-safe Base64 без паддинга
+    # URL-safe Base64 without padding
     return base64.urlsafe_b64encode(os.urandom(nbytes)).rstrip(b"=").decode("ascii")
 
 
 def gen_django(length: int = 50) -> str:
-    # Совместимо с Django SECRET_KEY
+    # Compatible with Django SECRET_KEY format
     return "".join(secrets.choice(DJANGO_ALLOWED) for _ in range(length))
 
 
 def main() -> int:
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument("--format", choices=["urlsafe", "hex", "base64", "django"], default="urlsafe")
-    p.add_argument("--bytes", type=int, default=64, help="Размер сырого буфера для urlsafe/hex/base64")
-    p.add_argument("--length", type=int, default=50, help="Длина строки для --format=django")
-    p.add_argument("--env-var", type=str, default="", help="Имя переменной окружения для записи в файл")
-    p.add_argument("--out", type=Path, default=None, help="Путь к .env; если указан, добавит строку ENV=VALUE")
+    p.add_argument("--bytes", type=int, default=64, help="Raw buffer size in bytes for urlsafe/hex/base64")
+    p.add_argument("--length", type=int, default=50, help="String length for --format=django")
+    p.add_argument("--env-var", type=str, default="", help="Environment variable name to write to file")
+    p.add_argument("--out", type=Path, default=None, help="Path to .env file; if provided, appends ENV=VALUE")
     p.add_argument("--help", action="store_true")
     args = p.parse_args()
 
     if args.help:
         print(
-            "Примеры:\n"
-            "  python generate_secret_key.py                      # URL-safe ~86 символов\n"
-            "  python generate_secret_key.py --format=hex         # 128 hex-символов\n"
+            "Examples:\n"
+            "  python generate_secret_key.py                      # URL-safe ~86 chars\n"
+            "  python generate_secret_key.py --format=hex         # 128 hex chars\n"
             "  python generate_secret_key.py --format=base64      # URL-safe Base64\n"
-            "  python generate_secret_key.py --format=django      # 50 символов под Django\n"
+            "  python generate_secret_key.py --format=django      # 50 chars (Django style)\n"
             "  python generate_secret_key.py --env-var=SECRET_KEY --out=.env\n",
             file=sys.stderr,
         )
