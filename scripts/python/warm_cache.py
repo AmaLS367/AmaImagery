@@ -8,7 +8,7 @@ snapshot_download("openai/clip-vit-large-patch14", local_files_only=False)
 vae_id = os.getenv("VAE_ID", "stabilityai/sd-vae-ft-mse")
 snapshot_download(vae_id, local_files_only=False)
 
-model_id = os.getenv("MODEL_ID", "models/dreamshaper_6NoVae.safetensors")
+model_id = os.getenv("MODEL_ID", "runwayml/stable-diffusion-v1-5")
 dtype = torch.float16 if os.getenv("TORCH_DTYPE", "fp16") == "fp16" else torch.bfloat16
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
