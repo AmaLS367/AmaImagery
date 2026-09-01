@@ -1,5 +1,5 @@
 import { render, type RenderOptions } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 
 import { AuthProvider } from '@src/providers/AuthProvider'
 import { JobProvider } from '@src/providers/JobProvider'
