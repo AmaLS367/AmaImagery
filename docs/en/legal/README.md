@@ -2,7 +2,7 @@
 
 ## Overview
 
-Legal information, licensing, attribution, and model-asset obligations for **AmaImagery**.
+Legal information, licensing, and third-party obligations for **AmaImagery**.
 
 ## License Summary
 
@@ -12,20 +12,14 @@ Legal information, licensing, attribution, and model-asset obligations for **Ama
 - separate commercial licensing path described in `COMMERCIAL_LICENSE.md`
 
 ### Model / Asset Layer
-- model weights and derivative materials may carry separate obligations
-- review `NOTICE.txt`, `ATTRIBUTIONS.md`, and the license files under `models/`
+- third-party model weights and derivative materials carry their own respective obligations
+- review `NOTICE.txt` and the licenses of models you deploy
 
 ## Legal Sources
 
 - `LICENSE`
 - `COMMERCIAL_LICENSE.md`
 - `NOTICE.txt`
-- `ATTRIBUTIONS.md`
-- `models/AmaFusion_V1/MODEL_CARD.md`
-- `models/AmaFusion_V1/DATA_SOURCES.md`
-- `models/AmaFusion_V1/LICENSES/OpenRAIL-M.txt`
-- `models/AmaFusion_V1/LICENSES/Upstream_DreamShaper_LICENSE.txt`
-- `models/AmaFusion_V1/LICENSES/VAE_LICENSE.txt`
 
 ## Documentation Sections
 
@@ -33,15 +27,12 @@ Legal information, licensing, attribution, and model-asset obligations for **Ama
 |------|--------|
 | Full license breakdown page | 🚧 Coming soon |
 | Model-license deep-dive | 🚧 Coming soon |
-| Data-source deep-dive | 🚧 Coming soon |
-| Attribution deep-dive | 🚧 Coming soon |
 | Usage restrictions deep-dive | 🚧 Coming soon |
 
 ## Practical Notes
 
-- application code licensing and model licensing are not the same layer
-- using local weights does not automatically grant unrestricted redistribution rights
-- planned docs pages may expand compliance guidance later; the files listed above are authoritative
+- application code licensing and third-party model licensing are distinct layers
+- using third-party model weights is governed by their respective upstream developer licenses
 
 ## Legal Reminder
 

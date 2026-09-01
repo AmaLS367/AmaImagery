@@ -41,7 +41,6 @@ IGNORE_FILES = {
     "yarn.lock",
     "package-lock.json",
     # Большие файлы моделей
-    "AmaFusion_V1.safetensors",
     "dreamshaper_6NoVae.safetensors",
 }
 

@@ -69,7 +69,7 @@ RUN mkdir -p /app/outputs /app/logs /app/models \
 COPY --chown=app:app app ./app
 COPY --chown=app:app migrations ./migrations
 COPY --chown=app:app scripts ./scripts
-COPY --chown=app:app alembic.ini run.py pyproject.toml README.md NOTICE.txt ATTRIBUTIONS.md LICENSE ./
+COPY --chown=app:app alembic.ini run.py pyproject.toml README.md NOTICE.txt LICENSE ./
 
 EXPOSE 8000
 
@@ -157,7 +157,7 @@ RUN mkdir -p /app/outputs /app/logs /app/models \
 COPY --chown=app:app app ./app
 COPY --chown=app:app migrations ./migrations
 COPY --chown=app:app scripts ./scripts
-COPY --chown=app:app alembic.ini run.py pyproject.toml README.md NOTICE.txt ATTRIBUTIONS.md LICENSE ./
+COPY --chown=app:app alembic.ini run.py pyproject.toml README.md NOTICE.txt LICENSE ./
 
 EXPOSE 8000
 
