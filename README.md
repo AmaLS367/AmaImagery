@@ -5,8 +5,6 @@
   </picture>
 </p>
 
-<div align="center">
-
 AmaImagery is a self-hosted image generation platform built around a FastAPI backend, a React frontend, and an asynchronous worker pipeline. It exposes one operational contract across multiple generation providers, with `ComfyUI` as the practical primary runtime and `Diffusers` still available where local model management makes sense.
 
 ---
