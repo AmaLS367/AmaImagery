@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     }
 
     # --- Inference/model ---
-    model_id: Annotated[str, Field(alias="MODEL_ID")] = "models/dreamshaper_6NoVae.safetensors"
+    model_id: Annotated[str, Field(alias="MODEL_ID")] = "runwayml/stable-diffusion-v1-5"
     device: Annotated[str, Field(alias="DEVICE")] = "cuda"
     max_steps: Annotated[int, Field(alias="MAX_STEPS")] = 128
     max_size: Annotated[int, Field(alias="MAX_SIZE")] = 2048

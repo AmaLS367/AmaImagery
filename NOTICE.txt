@@ -1,7 +1,7 @@
 NOTICE
 
-This repository includes configuration and code that may interact with third-party model components.
-Those components remain under their own licenses. If you use, redistribute, or expose third-party model weights as a service, you are responsible for complying with those terms.
+This repository does not distribute third-party model weights, datasets, or model caches.
+It includes configuration and code that may interact with third-party model components obtained separately by an operator. Those components remain under their own licenses. If you download, use, redistribute, or expose third-party model weights as a service, you are responsible for complying with those terms.
 
 Third-party models and components
 - Stable Diffusion / SDXL - CreativeML Open RAIL / Stability AI Community License
