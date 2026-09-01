@@ -1,4 +1,4 @@
-@tailwind components;
+@reference "./globals.css";
 
 @layer components {
   .about { @apply text-foreground; }
@@ -58,4 +58,3 @@
     .about__links { @apply gap-4; }
   }
 }
-

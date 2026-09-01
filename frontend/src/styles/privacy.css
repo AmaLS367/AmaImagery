@@ -1,4 +1,4 @@
-@tailwind components;
+@reference "./globals.css";
 
 @layer components {
   .pp { @apply text-foreground; }

@@ -1,4 +1,4 @@
-@tailwind components;
+@reference "./globals.css";
 
 /* 404 — Glitch-Hero + Quick Links, в стиле сайта */
 @layer components {
