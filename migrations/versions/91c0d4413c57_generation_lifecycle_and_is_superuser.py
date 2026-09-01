@@ -40,7 +40,9 @@ def upgrade() -> None:
     if "provider_job_id" not in generation_columns:
         op.add_column("generations", sa.Column("provider_job_id", sa.String(length=255), nullable=True))
     if "provider_state" not in generation_columns:
-        op.add_column("generations", sa.Column("provider_state", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")))
+        op.add_column(
+            "generations", sa.Column("provider_state", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb"))
+        )
     if "result" not in generation_columns:
         op.add_column("generations", sa.Column("result", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")))
     if "error" not in generation_columns:
@@ -55,7 +57,9 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
         )
 
-    image_path_column = next((column for column in inspector.get_columns("generations") if column["name"] == "image_path"), None)
+    image_path_column = next(
+        (column for column in inspector.get_columns("generations") if column["name"] == "image_path"), None
+    )
     if image_path_column is not None and image_path_column.get("nullable", True) is False:
         op.alter_column("generations", "image_path", existing_type=sa.Text(), nullable=True)
 

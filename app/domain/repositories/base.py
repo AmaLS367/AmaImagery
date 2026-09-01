@@ -37,7 +37,9 @@ class IGenerationRepository(IRepository[Generation]):
     """
 
     @abstractmethod
-    async def list_by_user(self, user_id: UUID | str, limit: int | None = None, offset: int = 0) -> list[Generation]: ...
+    async def list_by_user(
+        self, user_id: UUID | str, limit: int | None = None, offset: int = 0
+    ) -> list[Generation]: ...
 
     @abstractmethod
     async def count_by_user(self, user_id: UUID | str) -> int: ...

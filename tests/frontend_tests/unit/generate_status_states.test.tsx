@@ -133,4 +133,43 @@ describe('Generate runtime states', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Retry with same settings' })).toBeInTheDocument())
   })
+
+  it('renders clean error state component on ComfyUI allocation failure without breaking layout', async () => {
+    seedSettings()
+    localStorage.setItem('amaimagery.activeJobId', 'job-err-1')
+    const failedJob = {
+      id: 'job-err-1',
+      status: 'error' as const,
+      backendStatus: 'failed' as const,
+      payload: {
+        prompt: 'A majestic scene',
+        negative_prompt: null,
+        steps: 30,
+        guidance_scale: 7,
+        width: 1024,
+        height: 1024,
+        seed: 12345,
+        ip_scale: 0.6,
+        style: 'realistic' as const,
+      },
+      error: 'ComfyUI ModelMMAP allocation failed: out of memory',
+      startedAt: Date.now(),
+      finishedAt: Date.now(),
+    }
+
+    mockedUseJobs.mockReturnValue({
+      jobs: [failedJob],
+      start: vi.fn(() => 'job-err-2'),
+      cancel: vi.fn(),
+      get: vi.fn(() => failedJob),
+      anyRunning: false,
+    })
+
+    renderGenerate()
+
+    await waitFor(() => expect(screen.getByText('Generation Failed')).toBeInTheDocument())
+    expect(screen.getByText(/GPU memory allocation failure/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Show technical details/i })).toBeInTheDocument()
+  })
 })
+

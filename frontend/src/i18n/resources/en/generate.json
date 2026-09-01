@@ -114,5 +114,15 @@
   "errors": {
     "prompt_short": "Prompt needs at least three characters.",
     "no_artifact": "Image was not returned by the system."
+  },
+  "error_state": {
+    "title": "Generation Failed",
+    "subtitle": "The backend encountered an error while processing the image.",
+    "details_toggle_show": "Show technical details",
+    "details_toggle_hide": "Hide technical details",
+    "copy_details": "Copy error",
+    "copied": "Copied!",
+    "retry": "Retry generation",
+    "dismiss": "Dismiss error"
   }
 }

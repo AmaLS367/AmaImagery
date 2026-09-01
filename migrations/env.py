@@ -1,4 +1,5 @@
 """Alembic migrations environment configuration."""
+
 import logging
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -9,16 +10,17 @@ import app.domain.models
 # Configure logging programmatically instead of using alembic.ini
 logging.basicConfig(
     level=logging.WARNING,
-    format='%(levelname)-5.5s [%(name)s] %(message)s',
-    datefmt='%H:%M:%S',
+    format="%(levelname)-5.5s [%(name)s] %(message)s",
+    datefmt="%H:%M:%S",
 )
-logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
-logging.getLogger('alembic').setLevel(logging.INFO)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+logging.getLogger("alembic").setLevel(logging.INFO)
 
 config = context.config
 
 try:
     from app.config import settings
+
     DATABASE_URL = settings.database_url
 except Exception:
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -29,6 +31,7 @@ if not DATABASE_URL:
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 target_metadata = RuntimeBase.metadata
 
+
 def run_migrations_offline():
     context.configure(
         url=DATABASE_URL,
@@ -38,6 +41,7 @@ def run_migrations_offline():
     )
     with context.begin_transaction():
         context.run_migrations()
+
 
 def run_migrations_online():
     connectable = engine_from_config(
@@ -55,6 +59,7 @@ def run_migrations_online():
         )
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()

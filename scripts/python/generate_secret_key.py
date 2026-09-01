@@ -7,21 +7,26 @@ from pathlib import Path
 
 DJANGO_ALLOWED = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
 
+
 def gen_urlsafe(nbytes: int) -> str:
     # ~4/3 * nbytes символов, только URL-безопасные
     return secrets.token_urlsafe(nbytes)
+
 
 def gen_hex(nbytes: int) -> str:
     # Ровно 2*nbytes символов [0-9a-f]
     return secrets.token_hex(nbytes)
 
+
 def gen_base64(nbytes: int) -> str:
     # URL-safe Base64 без паддинга
     return base64.urlsafe_b64encode(os.urandom(nbytes)).rstrip(b"=").decode("ascii")
 
+
 def gen_django(length: int = 50) -> str:
     # Совместимо с Django SECRET_KEY
     return "".join(secrets.choice(DJANGO_ALLOWED) for _ in range(length))
+
 
 def main() -> int:
     p = argparse.ArgumentParser(add_help=False)
@@ -68,6 +73,7 @@ def main() -> int:
             f.write(line)
 
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

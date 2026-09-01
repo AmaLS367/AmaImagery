@@ -1,12 +1,14 @@
 """
 Main entry point for the application server.
 """
+
 import signal
 import sys
+
 import uvicorn
 
-from app.core.logging import lg
 from app.config import settings
+from app.core.logging import lg
 
 
 def run_server():
@@ -35,10 +37,10 @@ if __name__ == "__main__":
     # Set up signal handlers for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     logger = lg("app")
     logger.info("Starting application server. Run the generation worker separately if queue processing is needed.")
-    
+
     try:
         run_server()
     except KeyboardInterrupt:

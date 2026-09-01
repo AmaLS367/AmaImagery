@@ -7,6 +7,7 @@ down_revision: Union[str, Sequence[str], None] = "506057d97046"
 branch_labels = None
 depends_on = None
 
+
 def upgrade():
     # users.email уникальность (регистронезависимо), если таблица существует
     op.execute("""
@@ -74,6 +75,7 @@ def upgrade():
       END IF;
     END$$;
     """)
+
 
 def downgrade():
     op.execute("DROP INDEX IF EXISTS ix_users_email_lower;")
