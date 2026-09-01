@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../_shared/assets/amaimagery-logo-dark.png">
+    <img src="../_shared/assets/amaimagery-logo-light.png" alt="AmaImagery Logo" width="380">
+  </picture>
+</p>
+
 # AmaImagery Documentation (English)
 
 Welcome to the **AmaImagery** documentation.
