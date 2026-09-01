@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
@@ -17,8 +18,9 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from sqlalchemy.engine.url import make_url
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import Response
 
 from app.api.admin.router import router as admin_router
 from app.api.v1 import api_v1
@@ -44,7 +46,7 @@ from app.services.rate_limiting import RateLimitLoggingMiddleware
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     Manages the application lifecycle events (startup and shutdown).
     Initializes infrastructure components (DB, Redis, Queue).
@@ -107,9 +109,9 @@ def _configure_system() -> None:
     try:
         import torch
 
-        torch.set_num_threads(max(1, int(settings.torch_threads)))
+        torch.set_num_threads(max(1, settings.torch_threads))
         if torch.cuda.is_available():
-            torch.cuda.set_per_process_memory_fraction(float(settings.cuda_vram_fraction))
+            torch.cuda.set_per_process_memory_fraction(settings.cuda_vram_fraction)
         if hasattr(torch.backends, "cudnn"):
             torch.backends.cudnn.benchmark = False
     except Exception as e:
@@ -124,7 +126,7 @@ def _setup_security_logging() -> None:
         def filter(self, record: logging.LogRecord) -> bool:
             if not settings.log_mask_auth:
                 return True
-            message = str(record.getMessage())
+            message = record.getMessage()
             masked_message = auth_pattern.sub(r"\1[REDACTED]", message)
             record.msg = masked_message
             return True
@@ -138,7 +140,7 @@ def _setup_security_logging() -> None:
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Adds security-related headers to all responses."""
 
-    async def dispatch(self, request: Request, call_next: Any) -> Any:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
 
         response.headers.setdefault("X-Content-Type-Options", "nosniff")

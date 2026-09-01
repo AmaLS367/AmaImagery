@@ -24,7 +24,7 @@ class SettingsIn(BaseModel):
 
 
 @router.get("/me/settings", response_model=SettingsOut)
-async def get_settings(user: User = Depends(current_user)):
+async def get_settings(user: User = Depends(current_user)) -> SettingsOut:
     uow = get_uow()
     async with uow:
         us = await uow.users.get_settings(user.id)
@@ -33,7 +33,7 @@ async def get_settings(user: User = Depends(current_user)):
 
 
 @router.patch("/me/settings", response_model=SettingsOut)
-async def patch_settings(payload: SettingsIn, user: User = Depends(current_user)):
+async def patch_settings(payload: SettingsIn, user: User = Depends(current_user)) -> SettingsOut:
     uow = get_uow()
     async with uow:
         us = await uow.users.get_settings(user.id) or UserSettings(user_id=user.id, data={})
@@ -57,8 +57,8 @@ class GenItem(BaseModel):
     image_filename: str | None = None
     metadata: dict[str, Any] | None = None
     error: str | None = None
-    prompt: dict
-    params: dict
+    prompt: dict[str, Any]
+    params: dict[str, Any]
     created_at: str
     started_at: str | None = None
     completed_at: str | None = None
@@ -77,7 +77,7 @@ async def my_generations(
     user: User = Depends(current_user),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-):
+) -> GenList:
     uow = get_uow()
     async with uow:
         total = await uow.generations.count_by_user(user.id)

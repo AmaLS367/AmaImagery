@@ -9,7 +9,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     # users.email uniqueness (case-insensitive) if table exists
     op.execute("""
     DO $$
@@ -78,7 +78,7 @@ def upgrade():
     """)
 
 
-def downgrade():
+def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_users_email_lower;")
     op.execute("DROP INDEX IF EXISTS ix_refresh_tokens_jti;")
     op.execute("DROP INDEX IF EXISTS ix_generations_created_at;")

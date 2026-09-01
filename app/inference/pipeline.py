@@ -96,7 +96,7 @@ def _ensure_snapshot(repo: str, offline: bool) -> Path:
     return snap
 
 
-def _align_ip_encoders(pipe):
+def _align_ip_encoders(pipe: Any) -> None:
     dev = next(pipe.unet.parameters()).device
     dt = next(pipe.unet.parameters()).dtype
 
@@ -126,7 +126,7 @@ def _align_ip_encoders(pipe):
                 a.image_encoder = enc2.to(device=dev)
 
 
-def _move_ip_encoders_to_cpu(pipe):
+def _move_ip_encoders_to_cpu(pipe: Any) -> None:
     # Global image_encoder -> CPU FP32
     enc = getattr(pipe, "image_encoder", None)
     if enc is not None:
@@ -154,7 +154,7 @@ def _move_ip_encoders_to_cpu(pipe):
                 a.image_encoder = enc2.to(device="cpu")
 
 
-def _align_ipadapter_long_buffers_to_unet_device(pipe):
+def _align_ipadapter_long_buffers_to_unet_device(pipe: Any) -> None:
     dev = next(pipe.unet.parameters()).device
 
     adapters = getattr(pipe, "ip_adapter", None)
@@ -191,7 +191,7 @@ def _align_ipadapter_long_buffers_to_unet_device(pipe):
                         )
 
 
-def get_pipeline():
+def get_pipeline() -> Any:
     global _pipe
     if _pipe is not None:
         return _pipe
@@ -409,7 +409,7 @@ def get_pipeline():
 
         _old_unet_forward = unet.forward
 
-        def _unet_forward(sample, timestep, *args, **kwargs):
+        def _unet_forward(sample: Any, timestep: Any, *args: Any, **kwargs: Any) -> Any:
             if isinstance(sample, torch.Tensor) and sample.dtype != unet_dtype:
                 sample = sample.to(dtype=unet_dtype)
             if isinstance(timestep, torch.Tensor) and timestep.dtype != unet_dtype:
@@ -435,7 +435,7 @@ def get_pipeline():
             _old_te_forward = te.forward
             te_w_dtype = te.linear_1.weight.dtype
 
-            def _te_forward(x, *a, **kw):
+            def _te_forward(x: Any, *a: Any, **kw: Any) -> Any:
                 if isinstance(x, torch.Tensor) and x.dtype != te_w_dtype:
                     x = x.to(dtype=te_w_dtype)
                 return _old_te_forward(x, *a, **kw)
@@ -451,7 +451,7 @@ def get_pipeline():
             vae_dtype = next(vae.parameters()).dtype
             _old_decode = vae.decode
 
-            def _decode(z, *a, **kw):
+            def _decode(z: Any, *a: Any, **kw: Any) -> Any:
                 if isinstance(z, torch.Tensor) and z.dtype != vae_dtype:
                     z = z.to(dtype=vae_dtype)
                 return _old_decode(z, *a, **kw)
@@ -464,7 +464,7 @@ def get_pipeline():
     return _pipe
 
 
-def get_pipeline_with_ip():
+def get_pipeline_with_ip() -> Any:
     """
     Loads IP-Adapter and returns pipeline.
     Disables slicing on self.unet during load.

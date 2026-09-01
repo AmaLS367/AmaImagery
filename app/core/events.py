@@ -74,7 +74,7 @@ class EventBus:
     Handlers are called in the order they were registered.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._handlers: dict[str, list[EventHandleType]] = {}
 
     def subscribe(self, event_name: str, handler: EventHandleType) -> None:

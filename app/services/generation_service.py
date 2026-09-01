@@ -23,7 +23,7 @@ class GenerationService:
     Provides validation, safety checks, and prompt processing without orchestration.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def _validate_request(self, request: GenReq) -> None:

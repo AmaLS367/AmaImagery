@@ -28,7 +28,7 @@ def find_project_root() -> Path:
 
 
 def delete_cache_files(root: Path) -> dict[str, list[str]]:
-    deleted = {
+    deleted: dict[str, list[str]] = {
         "directories": [],
         "pyc_files": [],
         "pyo_files": [],
@@ -90,7 +90,7 @@ def delete_cache_files(root: Path) -> dict[str, list[str]]:
     return deleted
 
 
-def main():
+def main() -> None:
     try:
         project_root = find_project_root()
         print(f"Project root: {project_root}")

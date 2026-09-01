@@ -70,7 +70,7 @@ def should_include_file(file_path: str, file: str) -> bool:
     return False
 
 
-def generate_context():
+def generate_context() -> None:
     """Generates complete project context into a single file."""
     output_file = "full_project_context_amaimagery.txt"
 

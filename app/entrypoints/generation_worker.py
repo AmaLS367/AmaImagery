@@ -15,7 +15,7 @@ from app.infra.redis import close_redis, get_redis, init_redis
 from app.workers import run_worker
 
 
-async def init_worker_infrastructure():
+async def init_worker_infrastructure() -> None:
     """Initialize Redis connection and verify task queue in worker process."""
     worker_log = lg("worker")
     try:
@@ -58,14 +58,14 @@ async def init_worker_infrastructure():
         raise
 
 
-def main():
+def main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     worker_log = lg("worker")
     worker_log.info("worker.process_started", extra={"pid": os.getpid()})
 
-    def signal_handler(sig, frame):
+    def signal_handler(sig: int, frame: Any) -> None:
         worker_log.info("worker.shutdown_signal", extra={"signal": sig})
         try:
             loop.stop()

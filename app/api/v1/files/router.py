@@ -25,7 +25,7 @@ async def download_file(
     path: str = Query(..., min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._-]+$"),
     exp: int = Query(..., ge=0),
     sig: str = Query(..., pattern=r"^[0-9a-f]{64}$"),
-    rate_limiter=Depends(create_rate_limiter(limit=5, window_sec=10)),
+    rate_limiter: None = Depends(create_rate_limiter(limit=5, window_sec=10)),
 ) -> FileResponse:
     logger.info("file.request", extra={**_LOG_CTX, "path": path, "exp": exp, "has_sig": bool(sig)})
 

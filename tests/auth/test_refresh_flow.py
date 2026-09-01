@@ -14,13 +14,13 @@ PASSWORD = os.getenv("TEST_PASSWORD", "pass12345")
 
 
 def _get_cookie_value(client: httpx.Client, name: str) -> str | None:
-    for c in client.cookies.jar:  # type: ignore[attr-defined]
-        if c.name == name:
-            return c.value
+    for c in client.cookies.jar:
+        if getattr(c, "name", None) == name:
+            return str(getattr(c, "value", ""))
     return None
 
 
-def test_refresh_flow_end_to_end():
+def test_refresh_flow_end_to_end() -> None:
     client = httpx.Client(timeout=10.0, follow_redirects=False)
 
     # 1) Login -> access token in JSON and refresh cookie in headers

@@ -5,7 +5,8 @@ from collections.abc import Callable
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request, status
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 
 from app.api.v1.auth.deps import get_user_or_ip_identifier
 from app.core.logging import sec
@@ -13,14 +14,14 @@ from app.infra.redis import get_redis
 
 
 class RateLimitLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
         if response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
             sec("rate_limited", path=str(request.url.path))
         return response
 
 
-def create_rate_limiter(limit: int, window_sec: int) -> Callable:
+def create_rate_limiter(limit: int, window_sec: int) -> Callable[..., Any]:
     async def _dep(
         request: Request,
         redis_client: Any = Depends(get_redis),
