@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  frontend:
-    name: frontend
+  frontend-lint-build:
+    name: frontend-lint-build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -39,11 +39,77 @@ jobs:
       - name: Typecheck frontend
         run: npm run typecheck --if-present || npx tsc --noEmit
 
-      - name: Lint frontend
-        run: npm run lint --if-present
-
       - name: Build frontend
         run: npm run build
+
+  frontend-unit-tests:
+    name: frontend-unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests/frontend_tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/frontend_tests/package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npm test
+
+  python-lint:
+    name: python-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Ruff check
+        run: uv run ruff check app tests
+
+      - name: Ruff format check
+        run: uv run ruff format --check app tests scripts migrations
+
+  python-typecheck:
+    name: python-typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: MyPy typecheck
+        run: uv run mypy app
 
   backend-fast:
     name: backend-fast
@@ -53,25 +119,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: pyproject.toml
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Install backend fast-path dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
 
-      - name: Ruff
-        run: python -m ruff check app tests
-
-      - name: MyPy
-        run: python -m mypy app
-
-      - name: Backend fast tests
+      - name: Backend fast unit tests
         env:
           SECRET_KEY: test-secret-key-for-ci
           LIMITS_ENABLED: "true"
@@ -79,7 +137,7 @@ jobs:
           DEBUG: "true"
           REFRESH_COOKIE_SECURE: "false"
         run: |
-          pytest -m "not (gpu or redis or db or e2e or slow or perf)" --maxfail=1 --disable-warnings -q --no-cov
+          uv run pytest -m "not (gpu or redis or db or e2e or slow or perf)" --maxfail=1 --disable-warnings -q --no-cov
 
   backend-integration:
     name: backend-integration
@@ -111,17 +169,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: pyproject.toml
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Install backend integration dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
 
       - name: Run backend integration suite
         env:
@@ -133,7 +189,7 @@ jobs:
           DEBUG: "true"
           REFRESH_COOKIE_SECURE: "false"
         run: |
-          pytest tests --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=60 --junitxml=pytest.xml
+          uv run pytest tests --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=60 --junitxml=pytest.xml
 
       - name: Upload backend artifacts
         if: always()

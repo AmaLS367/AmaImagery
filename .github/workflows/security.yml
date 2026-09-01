@@ -44,25 +44,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: uv.lock
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Install Python security tooling
-        run: |
-          python -m pip install --upgrade pip
-          pip install "uv==0.9.16" "pip-audit==2.10.1" "bandit==1.9.4"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
 
       - name: Python dependency audit
         run: |
           uv export --all-extras --locked --no-hashes --format requirements-txt --output-file .audit-requirements.txt
-          pip-audit -r .audit-requirements.txt
+          uv run pip-audit -r .audit-requirements.txt
 
-      - name: Bandit
-        run: bandit -q -r app -x tests
+      - name: Bandit security linter
+        run: uv run bandit -q -r app -x tests
 
   node-security:
     name: node-security
