@@ -6,7 +6,7 @@
 # ------------------------------------------------------------------------------
 # Stage 1a: Core Builder
 # ------------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS builder-core
+FROM python:3.14-slim-bookworm AS builder-core
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -37,7 +37,7 @@ RUN mkdir -p /build/app \
 # ------------------------------------------------------------------------------
 # Stage 1b: Core Runtime (Default target for API and Worker)
 # ------------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS runtime-core
+FROM python:3.14-slim-bookworm AS runtime-core
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
