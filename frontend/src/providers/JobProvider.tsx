@@ -47,10 +47,10 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([])
   const abortMap = useRef<Map<string, () => void>>(new Map())
 
-  // Единая очередь запросов живёт тут, не в странице
+  // Unified request queue lives here, not in the page
   const queueRef = useRef(new RequestQueue(settings.queue.maxParallel, settings.queue.cancelPrevious))
 
-  // При изменении политики очереди — обновить
+  // Update policy when queue settings change
   useEffect(() => {
     queueRef.current.setPolicy(settings.queue.maxParallel, settings.queue.cancelPrevious)
   }, [settings.queue.maxParallel, settings.queue.cancelPrevious])
@@ -59,7 +59,7 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
     const isAuthenticated = auth?.status === 'authenticated'
 
     if (settings.queue.cancelPrevious) {
-      // отменяем старые задачи
+      // Cancel older pending jobs
       abortMap.current.forEach(fn => fn())
       abortMap.current.clear()
       setJobs(prev => prev.map(j => j.status === 'running' || j.status === 'queued' ? { ...j, status: 'canceled', backendStatus: 'canceled' } : j))
@@ -73,16 +73,16 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
     setJobs(prev => [job, ...prev])
 
     const { promise, abort } = queueRef.current.run(async (signal) => {
-      // Отправляем запрос на генерацию
+      // Submit generation request
       const taskResp: TaskResp = await generateJSON(payload, signal)
       const task_id = taskResp.task_id
 
-      // Обновляем job с task_id
+      // Update job with task_id
       setJobs(prev => prev.map(j => j.id === id ? { ...j, task_id, status: 'running', backendStatus: 'running' } : j))
 
-      // Polling статуса задачи
-      const pollInterval = 2000 // 2 секунды
-      const maxAttempts = 300 // максимум 10 минут (300 * 2 сек)
+      // Poll task status
+      const pollInterval = 2000 // 2 seconds
+      const maxAttempts = 300 // Max 10 minutes (300 * 2s)
       let attempts = 0
 
       while (attempts < maxAttempts && !signal.aborted) {
@@ -100,7 +100,7 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
           const hasImage = statusResp.image_path || statusResp.image_filename || statusResp.image_url
           
           if (statusResp.status === 'completed' && hasImage) {
-            // Задача завершена успешно
+            // Task completed successfully
             setJobs(prev => prev.map(j => j.id === id ? { 
               ...j, 
               status: 'completed', 
@@ -127,17 +127,17 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
               addHistory(hist)
             }
 
-            // Уведомления/звук
+            // Notification / sound
             if (settings.notifyOnDone && 'Notification' in window) {
               try {
                 if (Notification.permission !== 'granted') await Notification.requestPermission()
-                if (Notification.permission === 'granted') new Notification('Готово', { body: 'Изображение сгенерировано' })
+                if (Notification.permission === 'granted') new Notification('Ready', { body: 'Image generation completed' })
               } catch {}
             }
             if (settings.soundOnDone) beep()
             return
           } else if (statusResp.status === 'failed') {
-            // Задача провалилась
+            // Task failed
             const errorMsg = statusResp.error || 'Generation failed'
             setJobs(prev => prev.map(j => j.id === id ? { 
               ...j, 
@@ -170,7 +170,7 @@ export function JobProvider({ children }: { children: React.ReactNode }) {
             setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'canceled', backendStatus: 'canceled', finishedAt: Date.now() } : j))
             return
           }
-          // Ошибка при получении статуса - продолжаем попытки
+          // Error fetching status - retry next poll
           console.warn('Failed to get task status:', e)
         }
 

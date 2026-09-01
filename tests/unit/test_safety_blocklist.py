@@ -7,19 +7,19 @@ def _reload_safety(nsrm: str):
     os.environ["NSFW_ALLOW"] = nsrm
     importlib.invalidate_caches()
 
-    # Перечитать config, чтобы подхватил новое ENV
+    # Reload config to pick up new environment variables
     if "app.config" in sys.modules:
         importlib.reload(sys.modules["app.config"])
     else:
         importlib.import_module("app.config")
 
-    # Перезагрузить core.safety (основной модуль)
+    # Reload core.safety (main safety module)
     if "app.core.safety" in sys.modules:
         importlib.reload(sys.modules["app.core.safety"])
     else:
         importlib.import_module("app.core.safety")
 
-    # Очистить кэш safety после перезагрузки
+    # Clear safety cache after reload
     safety_module = sys.modules["app.core.safety"]
     if hasattr(safety_module, "reload_rules"):
         safety_module.reload_rules()

@@ -5,10 +5,10 @@ import pytest
 
 @pytest.mark.db
 def test_alembic_upgrade_head():
-    # Требует установленный Alembic внутри контейнера/окружения
+    # Requires Alembic installed in the environment
     try:
         import alembic  # noqa
     except Exception:
-        pytest.skip("alembic не установлен")
-    # Мини-проверка: скрипт существует
+        pytest.skip("alembic is not installed")
+    # Quick sanity check: migrations structure exists
     assert os.path.exists("alembic.ini") or os.path.exists("migrations")

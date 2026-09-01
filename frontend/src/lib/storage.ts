@@ -54,7 +54,7 @@ export function getHistory(): HistoryItem[] {
 
 export function addHistory(item: HistoryItem) {
   const items = getHistory()
-  // dedup по пути
+  // Deduplicate by path
   const idx = items.findIndex(x => x.path === item.path)
   if (idx >= 0) items.splice(idx, 1)
   items.unshift(item)

@@ -12,6 +12,6 @@ def test_no_outbound_network_enabled(monkeypatch):
             s.connect(("1.1.1.1", 80))
             raise AssertionError("connect must be blocked")
         except OSError:
-            pass  # ожидаем блокировку
+            pass  # Expected to be blocked
     finally:
         s.close()

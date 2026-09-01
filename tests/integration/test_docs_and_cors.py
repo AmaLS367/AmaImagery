@@ -20,7 +20,7 @@ def test_docs_off_in_prod():
 
 
 def test_cors_negative_preflight():
-    # Запрещённый Origin — не должен отражаться обратно
+    # Disallowed Origin must not be reflected back
     r = client.options(
         "/api/v1/healthz",
         headers={

@@ -29,13 +29,13 @@ export default defineConfig(({ mode }) => {
   }
 })
 
-// (универсально для любых *.trycloudflare.com и прочих туннелей):
-
+// (Universal configuration for *.trycloudflare.com and other tunnels):
 // server: {
 //   host: true,
-//   allowedHosts: true, // отключает проверку хоста
+//   allowedHosts: true, // Disables host verification
 //   hmr: {
 //     protocol: 'https',
 //     clientPort: 443,
 //   },
 // }
+

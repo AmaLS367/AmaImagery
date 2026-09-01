@@ -2,7 +2,7 @@ import pytest
 
 
 def _resolve_ref(schema, ref):
-    # ref вида "#/components/schemas/Name"
+    # Reference in format "#/components/schemas/Name"
     if not ref.startswith("#/"):
         return {}
     parts = ref.lstrip("#/").split("/")
@@ -13,7 +13,7 @@ def _resolve_ref(schema, ref):
 
 
 def _build_min_payload(schema):
-    """На основании схемы собираем валидный минимальный payload."""
+    """Builds a valid minimal payload based on schema."""
     if "$ref" in schema:
         schema = _resolve_ref(_build_min_payload._openapi, schema["$ref"])
 
@@ -21,7 +21,7 @@ def _build_min_payload(schema):
     required = schema.get("required", [])
     props = schema.get("properties", {})
 
-    # дефолтные значения
+    # Default fallback values
     defaults = {
         "prompt": "test",
         "negative_prompt": "",
@@ -44,12 +44,12 @@ def _build_min_payload(schema):
         elif "enum" in prop:
             val = prop["enum"][0]
         elif prop.get("type") == "integer":
-            # учтём минимумы, кратности и т.п.
+            # Handle minimums, multiples, etc.
             v = defaults.get(name, 1)
             v = max(v, prop.get("minimum", v))
             multiple = prop.get("multipleOf")
             if multiple:
-                # приведём к кратности (например, width/height кратны 8)
+                # Align to multiple (e.g. width/height multiple of 8)
                 if v % multiple != 0:
                     v = ((v + multiple - 1) // multiple) * multiple
             val = int(v)
@@ -62,11 +62,11 @@ def _build_min_payload(schema):
         elif prop.get("type") == "string":
             val = str(defaults.get(name, "x"))
         else:
-            # неизвестный тип — подставим дефолт
+            # Unknown type -> fallback to default
             val = defaults.get(name, "x")
         data[name] = val
 
-    # полезные необязательные поля, если существуют
+    # Helpful optional fields if defined
     for opt in (
         "prompt",
         "negative_prompt",
@@ -86,21 +86,21 @@ def _build_min_payload(schema):
 
 
 def test_generate_mock(app_client, monkeypatch, tmp_path):
-    # 1) мок пайплайна
+    # 1) Pipeline mock
     try:
         import app.inference.pipeline as pl
     except Exception:
-        pytest.skip("pipeline недоступен")
+        pytest.skip("pipeline not available")
     out = tmp_path / "mock.png"
     out.write_bytes(b"\x89PNG\r\n\x1a\n")
     monkeypatch.setattr(pl, "generate_image", lambda *a, **k: str(out), raising=False)
 
-    # 2) читаем OpenAPI и находим схему тела для POST /api/v1/images/generate
+    # 2) Inspect OpenAPI and find schema for POST /api/v1/images/generate
     r = app_client.get("/openapi.json")
     if r.status_code != 200:
-        pytest.skip("OpenAPI недоступен")
+        pytest.skip("OpenAPI not available")
     openapi = r.json()
-    _build_min_payload._openapi = openapi  # для резолва $ref
+    _build_min_payload._openapi = openapi  # For $ref resolution
 
     paths = openapi.get("paths", {})
     gen = paths.get("/api/v1/images/generate") or {}
@@ -108,21 +108,21 @@ def test_generate_mock(app_client, monkeypatch, tmp_path):
     content = ((post.get("requestBody") or {}).get("content") or {}).get("application/json") or {}
     schema = content.get("schema")
     if not schema:
-        pytest.skip("Нет схемы requestBody у POST /api/v1/images/generate")
+        pytest.skip("No requestBody schema for POST /api/v1/images/generate")
 
     payload = _build_min_payload(schema)
 
-    # 3) запрос
+    # 3) Submit request
     resp = app_client.post("/api/v1/images/generate", json=payload)
     if resp.status_code in (200, 201, 202):
         assert True
         return
 
-    # Если это чистая валидация — не красим билд, а скипаем с причиной
+    # If it is a schema validation rejection, skip rather than failing
     try:
         detail = resp.json()
     except Exception:
         detail = resp.text
     if resp.status_code == 400:
-        pytest.skip(f"Валидация /api/v1/images/generate: {detail}")
-    pytest.fail(f"/api/v1/images/generate вернул {resp.status_code}: {detail}")
+        pytest.skip(f"Validation /api/v1/images/generate: {detail}")
+    pytest.fail(f"/api/v1/images/generate returned {resp.status_code}: {detail}")

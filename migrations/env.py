@@ -1,11 +1,12 @@
 """Alembic migrations environment configuration."""
 
 import logging
-from sqlalchemy import engine_from_config, pool
-from alembic import context
 import os
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+
 from app.infra.db import Base as RuntimeBase
-import app.domain.models
 
 # Configure logging programmatically instead of using alembic.ini
 logging.basicConfig(
