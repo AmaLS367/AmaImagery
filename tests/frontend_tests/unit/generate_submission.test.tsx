@@ -58,7 +58,7 @@ describe('Generate submission behavior', () => {
 
   it('sends a backend-valid payload with realistic style and appended banlist', async () => {
     seedSettings({ banlist: 'nsfw, gore' })
-    const start = vi.fn(() => 'job-1')
+    const start = vi.fn<(payload: GeneratePayload) => string>(() => 'job-1')
     mockedUseJobs.mockReturnValue({
       jobs: [],
       start,
@@ -79,7 +79,11 @@ describe('Generate submission behavior', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate' }))
 
     await waitFor(() => expect(start).toHaveBeenCalledTimes(1))
-    const payload = start.mock.calls[0]?.[0] as GeneratePayload
+    const firstCall = start.mock.calls[0]
+    const payload = firstCall?.[0]
+    if (!payload) {
+      throw new Error('Expected generation payload')
+    }
     expect(payload).toMatchObject({
       prompt: 'Runtime-safe portrait prompt',
       negative_prompt: 'blur, low detail, nsfw, gore',

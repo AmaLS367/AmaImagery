@@ -16,10 +16,6 @@ export default defineConfig({
       'react/jsx-runtime': path.resolve(__dirname, '../../frontend/node_modules/react/jsx-runtime.js'),
       'react/jsx-dev-runtime': path.resolve(__dirname, '../../frontend/node_modules/react/jsx-dev-runtime.js'),
       '@testing-library/react': path.resolve(__dirname, '../../frontend/node_modules/@testing-library/react'),
-      '@testing-library/jest-dom/vitest': path.resolve(
-        __dirname,
-        '../../frontend/node_modules/@testing-library/jest-dom/vitest.js',
-      ),
     },
   },
 })

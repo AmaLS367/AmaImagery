@@ -4,9 +4,8 @@
     "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["vitest/globals", "node"],
+    "types": ["vitest/globals", "node", "vite/client"],
     "strict": true,
-    "baseUrl": ".",
     "paths": {
       "@src/*": [
         "../../frontend/src/*"
