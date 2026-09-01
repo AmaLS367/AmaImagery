@@ -6,7 +6,7 @@
 # ------------------------------------------------------------------------------
 # Stage 1a: Core Builder
 # ------------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS builder-core
+FROM python:3.14-slim-bookworm AS builder-core
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -37,7 +37,7 @@ RUN mkdir -p /build/app \
 # ------------------------------------------------------------------------------
 # Stage 1b: Core Runtime (Default target for API and Worker)
 # ------------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS runtime-core
+FROM python:3.14-slim-bookworm AS runtime-core
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -84,7 +84,7 @@ CMD ["python", "run.py"]
 # ------------------------------------------------------------------------------
 # Stage 2a: ML / CUDA Builder
 # ------------------------------------------------------------------------------
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04 AS builder-ml
+FROM nvidia/cuda:13.3.1-devel-ubuntu22.04 AS builder-ml
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -120,7 +120,7 @@ RUN mkdir -p /build/app \
 # ------------------------------------------------------------------------------
 # Stage 2b: ML / CUDA Runtime (Target for standalone GPU diffusers pipeline)
 # ------------------------------------------------------------------------------
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04 AS runtime-ml
+FROM nvidia/cuda:13.3.1-runtime-ubuntu22.04 AS runtime-ml
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
