@@ -1,4 +1,11 @@
 <p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/_shared/assets/amaimagery-logo-dark.png">
+    <img src="./docs/_shared/assets/amaimagery-logo-light.png" alt="AmaImagery Logo" width="460">
+  </picture>
+</p>
+
+<p align="center">
   <img src="./docs/_shared/assets/readme-hero.svg" alt="AmaImagery hero" width="100%" />
 </p>
 
