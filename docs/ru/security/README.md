@@ -52,4 +52,4 @@ Security notes для текущего runtime **AmaImagery**: auth, file delive
 
 Если вы нашли уязвимость, пишите на `ama@amadev.tech`. Не открывайте публичный issue для непочиненной security-проблемы.
 
-Смотрите корневой [SECURITY.md](../../../SECURITY.md) для актуальной disclosure policy.
+Смотрите корневой [SECURITY.md](../../SECURITY.md) для актуальной disclosure policy.

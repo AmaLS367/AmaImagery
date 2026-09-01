@@ -132,7 +132,7 @@ Key runtime details:
 - [Development Guide](./development/README.md)
 - [Reference](./reference/README.md)
 - [Docker Setup](./docker/README.md)
-- [Contributing](../../CONTRIBUTING.md)
+- [Contributing](../CONTRIBUTING.md)
 - [Troubleshooting](./troubleshooting/README.md)
 
 ## 📞 Getting Help

@@ -91,7 +91,7 @@ We welcome contributions to improve and translate documentation.
 4. Update `.translation-status.json` when adding new translations.
 5. When docs and code disagree, the repo implementation wins.
 
-See [Contributing Guide](../CONTRIBUTING.md) for the repository workflow.
+See [Contributing Guide](./CONTRIBUTING.md) for the repository workflow.
 
 ---
 

@@ -132,7 +132,7 @@ Guided material и planned tutorials.
 - [Руководство по разработке](./development/README.md)
 - [Справочник](./reference/README.md)
 - [Docker Setup](./docker/README.md)
-- [Contributing](../../CONTRIBUTING.md)
+- [Contributing](../CONTRIBUTING.md)
 - [Устранение неполадок](./troubleshooting/README.md)
 
 ## 📞 Получение помощи

@@ -152,9 +152,10 @@ The runtime path is intentionally coherent:
     </td>
     <td width="50%">
       <strong>📜 Project policies</strong><br/><br/>
-      <a href="./CONTRIBUTING.md">Contributing</a><br/>
-      <a href="./SECURITY.md">Security</a><br/>
-      <a href="./SUPPORT.md">Support</a><br/>
+      <a href="./docs/CONTRIBUTING.md">Contributing</a><br/>
+      <a href="./docs/SECURITY.md">Security</a><br/>
+      <a href="./docs/SUPPORT.md">Support</a><br/>
+      <a href="./LICENSING.md">Licensing Overview</a><br/>
       <a href="./COMMERCIAL_LICENSE.md">Commercial Licensing</a>
     </td>
   </tr>
@@ -171,6 +172,7 @@ AmaImagery application code is dual-licensed:
 
 Third-party models, datasets, and assets may carry separate obligations. Review:
 
+- [Licensing Overview](./LICENSING.md)
 - [LICENSE](./LICENSE)
 - [NOTICE.txt](./NOTICE.txt)
 - [Legal Docs](./docs/en/legal/README.md)

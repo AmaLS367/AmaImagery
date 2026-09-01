@@ -72,7 +72,7 @@ npm run dev
 | Отдельная страница git workflow | 🚧 Coming soon |
 | Отдельная страница debugging | 🚧 Coming soon |
 | Отдельная страница code review | 🚧 Coming soon |
-| [Contributing](../../../CONTRIBUTING.md) | ✅ Доступно |
+| [Contributing](../../CONTRIBUTING.md) | ✅ Доступно |
 
 ## Инструменты разработки
 
